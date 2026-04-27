@@ -137,6 +137,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Set up Gradle
+        if: steps.release.outputs.skip != 'true'
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Set up Android SDK
         if: steps.release.outputs.skip != 'true'
         uses: android-actions/setup-android@v3
