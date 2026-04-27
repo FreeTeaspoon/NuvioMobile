@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: build-fork-release-from-official
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   UPSTREAM_REPO: NuvioMedia/NuvioMobile
@@ -182,7 +182,7 @@ jobs:
             exit 1
           fi
 
-          cp "${apk}" "dist/NuvioMobile-full-${{ steps.release.outputs.tag }}.apk"
+          cp "${apk}" "dist/kerrry.nuvio.app.apk"
           ls -lh dist
 
       - name: Publish fork release
