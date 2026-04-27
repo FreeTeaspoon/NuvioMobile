@@ -33,7 +33,7 @@ jobs:
           ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
 
-      - name: Sync official branch
+      - name: Prepare git remotes
         shell: bash
         run: |
           set -euo pipefail
@@ -42,24 +42,13 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
-          git fetch upstream "${TARGET_BRANCH}"
-
-          before="$(git rev-parse HEAD)"
-          git merge --no-edit "upstream/${TARGET_BRANCH}"
-          after="$(git rev-parse HEAD)"
-
-          if [ "${before}" != "${after}" ]; then
-            git push origin "HEAD:${TARGET_BRANCH}"
-          else
-            echo "Fork branch is already up to date with ${UPSTREAM_REPO}:${TARGET_BRANCH}."
-          fi
 
       - name: Read official release
         id: release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          REQUESTED_TAG: ${{ inputs.upstream_tag }}
+          REQUESTED_TAG: ${{ github.event.inputs.upstream_tag || '' }}
         run: |
           set -euo pipefail
 
@@ -92,7 +81,7 @@ jobs:
             echo "---"
             echo "Fork build from ${GITHUB_REPOSITORY}:${TARGET_BRANCH}."
             echo "Official release source: ${upstream_url}"
-            echo "This APK is built from this fork after merging ${UPSTREAM_REPO}:${TARGET_BRANCH}, so fork changes are included."
+            echo "This APK is built from this fork after merging the official ${UPSTREAM_REPO} ${upstream_tag} release source, so fork changes are included."
           } >> "${body_file}"
 
           echo "skip=false" >> "${GITHUB_OUTPUT}"
@@ -100,6 +89,30 @@ jobs:
           echo "name=${release_name}" >> "${GITHUB_OUTPUT}"
           echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
           echo "body_file=${body_file}" >> "${GITHUB_OUTPUT}"
+
+      - name: Sync official release source
+        id: sync_source
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${{ steps.release.outputs.tag }}"
+          official_ref="refs/remotes/upstream/release-tags/${tag}"
+
+          git fetch upstream "refs/tags/${tag}:${official_ref}"
+
+          before="$(git rev-parse HEAD)"
+          git merge --no-edit "${official_ref}"
+          after="$(git rev-parse HEAD)"
+
+          if [ "${before}" != "${after}" ]; then
+            git push origin "HEAD:${TARGET_BRANCH}"
+          else
+            echo "Fork branch already includes ${UPSTREAM_REPO} release ${tag}."
+          fi
+
+          echo "build_commit=${after}" >> "${GITHUB_OUTPUT}"
 
       - name: Set up JDK
         if: steps.release.outputs.skip != 'true'
@@ -183,7 +196,7 @@ jobs:
             release create "${{ steps.release.outputs.tag }}"
             dist/*.apk
             --repo "${GITHUB_REPOSITORY}"
-            --target "${TARGET_BRANCH}"
+            --target "${{ steps.sync_source.outputs.build_commit }}"
             --title "${{ steps.release.outputs.name }}"
             --notes-file "${{ steps.release.outputs.body_file }}"
           )
