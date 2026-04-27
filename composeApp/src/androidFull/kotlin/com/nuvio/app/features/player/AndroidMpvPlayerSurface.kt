@@ -258,7 +258,9 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         return true
     }
 
-    override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) = Unit
+    override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {
+        markPlaybackStarted()
+    }
 
     fun setPlaybackSource(
         videoUrl: String,
@@ -432,8 +434,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         val hasTimeline = durationSeconds > 0.0 || positionSeconds > 0.0
         val activelyPlaying = !paused && !pausedForCache && !idle && !eofReached
         if (hasTimeline || activelyPlaying) {
-            hasPlaybackStarted = true
-            isPlayerLoading = false
+            markPlaybackStarted()
         }
         val loading = pausedForCache || seeking ||
             (!hasPlaybackStarted && (isPlayerLoading || (idle && !paused && !eofReached)))
@@ -650,6 +651,18 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         onErrorChanged(null)
     }
 
+    private fun markPlaybackStarted() {
+        if (!hasPlaybackStarted) {
+            hasPlaybackStarted = true
+        }
+        if (isPlayerLoading) {
+            isPlayerLoading = false
+        }
+        if (currentErrorMessage?.startsWith("MPV did not start playback.") == true) {
+            clearPlaybackError()
+        }
+    }
+
     private fun setPlaybackError(message: String) {
         val logs = recentPlaybackLogs.takeLast(3)
         currentErrorMessage = (logs + message)
@@ -680,15 +693,13 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
 
     override fun eventProperty(property: String, value: Double) {
         if (property == "time-pos" && value > 0.0) {
-            hasPlaybackStarted = true
-            isPlayerLoading = false
+            markPlaybackStarted()
             clearPlaybackError()
             return
         }
         if (!hasLoadEventFired && (property == "duration/full" || property == "duration") && value > 0.0) {
             hasLoadEventFired = true
-            hasPlaybackStarted = true
-            isPlayerLoading = false
+            markPlaybackStarted()
             clearPlaybackError()
         }
     }
@@ -713,8 +724,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
             mpvEventFileLoaded,
             mpvEventVideoReconfig,
             mpvEventPlaybackRestart -> {
-                hasPlaybackStarted = true
-                isPlayerLoading = false
+                markPlaybackStarted()
                 clearPlaybackError()
                 if (!isPaused) {
                     MPVLib.setPropertyBoolean("pause", false)

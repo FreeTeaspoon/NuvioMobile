@@ -5,6 +5,7 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import com.nuvio.app.core.network.IPv4FirstDns
+import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import java.net.HttpURLConnection
 import java.net.URL
@@ -50,6 +51,21 @@ internal object PlayerPlaybackNetworking {
     private val playbackHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .dns(IPv4FirstDns())
+            .addInterceptor { chain ->
+                val request = chain.request()
+                val url = request.url
+                val hasUserInfo = url.username.isNotBlank() || url.password.isNotBlank()
+                val hasAuthorization = request.header("Authorization") != null
+                if (hasUserInfo && !hasAuthorization) {
+                    chain.proceed(
+                        request.newBuilder()
+                            .header("Authorization", Credentials.basic(url.username, url.password))
+                            .build()
+                    )
+                } else {
+                    chain.proceed(request)
+                }
+            }
             .sslSocketFactory(sslContext.socketFactory, trustAllManager)
             .hostnameVerifier(playbackHostnameVerifier)
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -85,7 +101,8 @@ internal object PlayerPlaybackNetworking {
         range: String? = null,
     ): HttpURLConnection {
         val mergedHeaders = DEFAULT_STREAM_HEADERS + headers
-        return (URL(url).openConnection() as HttpURLConnection).apply {
+        val parsedUrl = URL(url)
+        return (parsedUrl.openConnection() as HttpURLConnection).apply {
             if (this is HttpsURLConnection) {
                 sslSocketFactory = sslContext.socketFactory
                 hostnameVerifier = playbackHostnameVerifier
@@ -99,6 +116,15 @@ internal object PlayerPlaybackNetworking {
                 if (key.equals("Range", ignoreCase = true)) return@forEach
                 if (key.equals("User-Agent", ignoreCase = true)) return@forEach
                 setRequestProperty(key, value)
+            }
+            if (mergedHeaders.keys.none { it.equals("Authorization", ignoreCase = true) }) {
+                parsedUrl.userInfo
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { userInfo ->
+                        val username = userInfo.substringBefore(':')
+                        val password = userInfo.substringAfter(':', missingDelimiterValue = "")
+                        setRequestProperty("Authorization", Credentials.basic(username, password))
+                    }
             }
             range?.let { setRequestProperty("Range", it) }
         }
