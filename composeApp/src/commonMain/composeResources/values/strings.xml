@@ -619,6 +619,9 @@
     <string name="settings_playback_option_device_language">Device Language</string>
     <string name="settings_playback_option_forced">Forced</string>
     <string name="settings_playback_option_none">None</string>
+    <string name="settings_playback_player_engine">Player Engine</string>
+    <string name="settings_playback_player_engine_media3">Media3</string>
+    <string name="settings_playback_player_engine_mpv">MPV</string>
     <string name="settings_playback_prefer_binge_group">Prefer Binge Group</string>
     <string name="settings_playback_prefer_binge_group_description">When auto-playing, prefer a stream from the same binge group as the current one.</string>
     <string name="settings_playback_preferred_audio_language">Preferred Audio Language</string>

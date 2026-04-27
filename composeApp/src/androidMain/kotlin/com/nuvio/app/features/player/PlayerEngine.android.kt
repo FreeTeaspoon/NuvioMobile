@@ -64,7 +64,7 @@ private const val TAG = "NuvioPlayer"
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-actual fun PlatformPlayerSurface(
+internal fun AndroidMedia3PlayerSurface(
     sourceUrl: String,
     sourceAudioUrl: String?,
     sourceHeaders: Map<String, String>,

@@ -62,6 +62,11 @@ enum class PlayerResizeMode {
     Zoom,
 }
 
+enum class PlayerEngineType {
+    MEDIA3,
+    MPV,
+}
+
 data class PlayerPlaybackSnapshot(
     val isLoading: Boolean = true,
     val isPlaying: Boolean = false,

@@ -138,6 +138,14 @@ val releaseStorePassword = supabaseProps.getProperty("NUVIO_RELEASE_STORE_PASSWO
 val releaseKeyAlias = supabaseProps.getProperty("NUVIO_RELEASE_KEY_ALIAS")?.takeIf { it.isNotBlank() }
 val releaseKeyPassword = supabaseProps.getProperty("NUVIO_RELEASE_KEY_PASSWORD")?.takeIf { it.isNotBlank() }
 val releaseKeystore = releaseStoreFile?.let(rootProject::file)
+val hasReleaseSigningProperties = releaseStoreFile != null &&
+    releaseStorePassword != null &&
+    releaseKeyAlias != null &&
+    releaseKeyPassword != null
+if (hasReleaseSigningProperties && releaseKeystore?.exists() != true) {
+    error("NUVIO_RELEASE_STORE_FILE does not exist: ${releaseKeystore?.path}")
+}
+val hasReleaseSigningConfig = hasReleaseSigningProperties && releaseKeystore?.exists() == true
 val appVersionConfigFile = rootProject.file("iosApp/Configuration/Version.xcconfig")
 val releaseAppVersionName = readXcconfigValue(appVersionConfigFile, "MARKETING_VERSION")
     ?: error("MARKETING_VERSION is missing from ${appVersionConfigFile.path}")
@@ -274,6 +282,7 @@ afterEvaluate {
     dependencies {
         add("fullImplementation", libs.quickjs.kt)
         add("fullImplementation", libs.ksoup)
+        add("fullImplementation", files("full-libs/libmpv-release.aar"))
     }
 }
 
@@ -293,7 +302,7 @@ android {
 
     signingConfigs {
         create("release") {
-            if (releaseKeystore != null && releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null) {
+            if (hasReleaseSigningConfig) {
                 storeFile = releaseKeystore
                 storePassword = releaseStorePassword
                 keyAlias = releaseKeyAlias
@@ -313,6 +322,7 @@ android {
     productFlavors {
         create("full") {
             dimension = "distribution"
+            minSdk = maxOf(libs.versions.android.minSdk.get().toInt(), 26)
         }
         create("playstore") {
             dimension = "distribution"
@@ -330,7 +340,12 @@ android {
             pickFirsts += listOf(
                 "lib/*/libc++_shared.so",
                 "lib/*/libavcodec.so",
+                "lib/*/libavdevice.so",
+                "lib/*/libavfilter.so",
+                "lib/*/libavformat.so",
                 "lib/*/libavutil.so",
+                "lib/*/libmpv.so",
+                "lib/*/libplayer.so",
                 "lib/*/libswscale.so",
                 "lib/*/libswresample.so"
             )
@@ -344,7 +359,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             ndk {
                 debugSymbolLevel = "FULL"
             }

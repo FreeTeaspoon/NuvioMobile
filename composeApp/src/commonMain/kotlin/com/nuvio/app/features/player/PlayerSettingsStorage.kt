@@ -7,6 +7,8 @@ internal expect object PlayerSettingsStorage {
     fun saveShowLoadingOverlay(enabled: Boolean)
     fun loadResizeMode(): String?
     fun saveResizeMode(mode: String)
+    fun loadPlayerEngine(): String?
+    fun savePlayerEngine(engine: String)
     fun loadHoldToSpeedEnabled(): Boolean?
     fun saveHoldToSpeedEnabled(enabled: Boolean)
     fun loadHoldToSpeedValue(): Float?

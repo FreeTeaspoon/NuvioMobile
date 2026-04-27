@@ -50,6 +50,7 @@ import com.nuvio.app.features.mdblist.MdbListSettings
 import com.nuvio.app.features.mdblist.MdbListSettingsRepository
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepository
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsUiState
+import com.nuvio.app.features.player.PlayerEngineType
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.trakt.TraktAuthUiState
 import com.nuvio.app.features.trakt.TraktAuthRepository
@@ -165,6 +166,7 @@ fun SettingsScreen(
                 page = page,
                 onPageChange = { currentPage = it.name },
                 showLoadingOverlay = playerSettingsUiState.showLoadingOverlay,
+                playerEngine = playerSettingsUiState.playerEngine,
                 holdToSpeedEnabled = playerSettingsUiState.holdToSpeedEnabled,
                 holdToSpeedValue = playerSettingsUiState.holdToSpeedValue,
                 preferredAudioLanguage = playerSettingsUiState.preferredAudioLanguage,
@@ -205,6 +207,7 @@ fun SettingsScreen(
                 page = page,
                 onPageChange = { currentPage = it.name },
                 showLoadingOverlay = playerSettingsUiState.showLoadingOverlay,
+                playerEngine = playerSettingsUiState.playerEngine,
                 holdToSpeedEnabled = playerSettingsUiState.holdToSpeedEnabled,
                 holdToSpeedValue = playerSettingsUiState.holdToSpeedValue,
                 preferredAudioLanguage = playerSettingsUiState.preferredAudioLanguage,
@@ -255,6 +258,7 @@ private fun MobileSettingsScreen(
     page: SettingsPage,
     onPageChange: (SettingsPage) -> Unit,
     showLoadingOverlay: Boolean,
+    playerEngine: PlayerEngineType,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     preferredAudioLanguage: String,
@@ -329,6 +333,7 @@ private fun MobileSettingsScreen(
             SettingsPage.Playback -> playbackSettingsContent(
                 isTablet = false,
                 showLoadingOverlay = showLoadingOverlay,
+                playerEngine = playerEngine,
                 holdToSpeedEnabled = holdToSpeedEnabled,
                 holdToSpeedValue = holdToSpeedValue,
                 preferredAudioLanguage = preferredAudioLanguage,
@@ -417,6 +422,7 @@ private fun TabletSettingsScreen(
     page: SettingsPage,
     onPageChange: (SettingsPage) -> Unit,
     showLoadingOverlay: Boolean,
+    playerEngine: PlayerEngineType,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     preferredAudioLanguage: String,
@@ -559,6 +565,7 @@ private fun TabletSettingsScreen(
                 SettingsPage.Playback -> playbackSettingsContent(
                     isTablet = true,
                     showLoadingOverlay = showLoadingOverlay,
+                    playerEngine = playerEngine,
                     holdToSpeedEnabled = holdToSpeedEnabled,
                     holdToSpeedValue = holdToSpeedValue,
                     preferredAudioLanguage = preferredAudioLanguage,

@@ -32,6 +32,9 @@
 -keep class com.google.android.exoplayer2.** { *; }
 -keep interface com.google.android.exoplayer2.** { *; }
 
+# MPV Android bridge used by the full distribution player engine.
+-keep class dev.jdtech.mpv.** { *; }
+
 # Common optional security providers used by okhttp on some devices.
 -dontwarn okhttp3.internal.platform.**
 -dontwarn org.conscrypt.**

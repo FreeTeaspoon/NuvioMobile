@@ -110,6 +110,10 @@ actual object PlayerSettingsStorage {
         NSUserDefaults.standardUserDefaults.setObject(mode, forKey = ProfileScopedKey.of(resizeModeKey))
     }
 
+    actual fun loadPlayerEngine(): String? = null
+
+    actual fun savePlayerEngine(engine: String) {}
+
     actual fun loadHoldToSpeedEnabled(): Boolean? {
         val defaults = NSUserDefaults.standardUserDefaults
         val key = ProfileScopedKey.of(holdToSpeedEnabledKey)

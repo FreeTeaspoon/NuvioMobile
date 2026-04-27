@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.player.AudioLanguageOption
 import com.nuvio.app.features.player.AvailableLanguageOptions
+import com.nuvio.app.features.player.PlayerEngineType
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.SubtitleLanguageOption
 import com.nuvio.app.features.player.formatPlaybackSpeedLabel
@@ -65,6 +66,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun LazyListScope.playbackSettingsContent(
     isTablet: Boolean,
     showLoadingOverlay: Boolean,
+    playerEngine: PlayerEngineType,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     preferredAudioLanguage: String,
@@ -83,6 +85,7 @@ internal fun LazyListScope.playbackSettingsContent(
         PlaybackSettingsSection(
             isTablet = isTablet,
             showLoadingOverlay = showLoadingOverlay,
+            playerEngine = playerEngine,
             holdToSpeedEnabled = holdToSpeedEnabled,
             holdToSpeedValue = holdToSpeedValue,
             preferredAudioLanguage = preferredAudioLanguage,
@@ -104,6 +107,7 @@ internal fun LazyListScope.playbackSettingsContent(
 private fun PlaybackSettingsSection(
     isTablet: Boolean,
     showLoadingOverlay: Boolean,
+    playerEngine: PlayerEngineType,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     preferredAudioLanguage: String,
@@ -124,6 +128,7 @@ private fun PlaybackSettingsSection(
     var showSecondarySubtitleDialog by remember { mutableStateOf(false) }
     var showReuseCacheDurationDialog by remember { mutableStateOf(false) }
     var showDecoderPriorityDialog by remember { mutableStateOf(false) }
+    var showPlayerEngineDialog by remember { mutableStateOf(false) }
     var showHoldToSpeedValueDialog by remember { mutableStateOf(false) }
     var showLibassRenderTypeDialog by remember { mutableStateOf(false) }
     var showAutoPlayModeDialog by remember { mutableStateOf(false) }
@@ -151,6 +156,15 @@ private fun PlaybackSettingsSection(
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
+                if (!isIos && AppFeaturePolicy.mpvPlaybackEngineSelectable) {
+                    SettingsNavigationRow(
+                        title = stringResource(Res.string.settings_playback_player_engine),
+                        description = playerEngineLabel(playerEngine),
+                        isTablet = isTablet,
+                        onClick = { showPlayerEngineDialog = true },
+                    )
+                    SettingsGroupDivider(isTablet = isTablet)
+                }
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_playback_show_loading_overlay),
                     description = stringResource(Res.string.settings_playback_show_loading_overlay_description),
@@ -732,6 +746,17 @@ private fun PlaybackSettingsSection(
         )
     }
 
+    if (showPlayerEngineDialog) {
+        PlayerEngineDialog(
+            selectedEngine = playerEngine,
+            onEngineSelected = { engine ->
+                PlayerSettingsRepository.setPlayerEngine(engine)
+                showPlayerEngineDialog = false
+            },
+            onDismiss = { showPlayerEngineDialog = false },
+        )
+    }
+
     if (showHoldToSpeedValueDialog) {
         HoldToSpeedValueDialog(
             selectedSpeed = holdToSpeedValue,
@@ -990,6 +1015,93 @@ private fun ReuseCacheDurationDialog(
                             ) {
                                 Text(
                                     text = formatReuseCacheDuration(hours),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Box(
+                                    modifier = Modifier.size(24.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(Res.string.settings_playback_dialog_close),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun PlayerEngineDialog(
+    selectedEngine: PlayerEngineType,
+    onEngineSelected: (PlayerEngineType) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val options = listOf(PlayerEngineType.MEDIA3, PlayerEngineType.MPV)
+
+    BasicAlertDialog(
+        onDismissRequest = onDismiss,
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.settings_playback_player_engine),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    options.forEach { engine ->
+                        val isSelected = engine == selectedEngine
+                        val containerColor = if (isSelected) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                        }
+
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onEngineSelected(engine) },
+                            shape = RoundedCornerShape(12.dp),
+                            color = containerColor,
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = playerEngineLabel(engine),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.weight(1f),
@@ -1983,6 +2095,14 @@ private fun decoderPriorityRes(priority: Int): StringResource = when (priority) 
 
 @Composable
 private fun decoderPriorityLabel(priority: Int): String = stringResource(decoderPriorityRes(priority))
+
+private fun playerEngineRes(engine: PlayerEngineType): StringResource = when (engine) {
+    PlayerEngineType.MEDIA3 -> Res.string.settings_playback_player_engine_media3
+    PlayerEngineType.MPV -> Res.string.settings_playback_player_engine_mpv
+}
+
+@Composable
+private fun playerEngineLabel(engine: PlayerEngineType): String = stringResource(playerEngineRes(engine))
 
 private fun StreamAutoPlaySource.labelRes(pluginsEnabled: Boolean): StringResource = when (this) {
     StreamAutoPlaySource.ALL_SOURCES ->
