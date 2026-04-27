@@ -13,6 +13,8 @@ data class PlayerLaunch(
     val sourceAudioUrl: String? = null,
     val sourceHeaders: Map<String, String> = emptyMap(),
     val sourceResponseHeaders: Map<String, String> = emptyMap(),
+    val sourceFilename: String? = null,
+    val sourceVideoSize: Long? = null,
     val logo: String? = null,
     val poster: String? = null,
     val background: String? = null,

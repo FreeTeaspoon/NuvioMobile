@@ -116,6 +116,8 @@ fun PlayerScreen(
     sourceAudioUrl: String? = null,
     sourceHeaders: Map<String, String> = emptyMap(),
     sourceResponseHeaders: Map<String, String> = emptyMap(),
+    sourceFilename: String? = null,
+    sourceVideoSize: Long? = null,
     providerName: String,
     streamTitle: String,
     streamSubtitle: String?,
@@ -174,6 +176,8 @@ fun PlayerScreen(
         var activeSourceResponseHeaders by remember(sourceUrl, sourceResponseHeaders) {
             mutableStateOf(sanitizePlaybackResponseHeaders(sourceResponseHeaders))
         }
+        var activeSourceFilename by rememberSaveable(sourceUrl, sourceFilename) { mutableStateOf(sourceFilename) }
+        var activeSourceVideoSize by rememberSaveable(sourceUrl, sourceVideoSize) { mutableStateOf(sourceVideoSize) }
         var activeStreamTitle by rememberSaveable { mutableStateOf(streamTitle) }
         var activeStreamSubtitle by rememberSaveable { mutableStateOf(streamSubtitle) }
         var activeProviderName by rememberSaveable { mutableStateOf(providerName) }
@@ -788,6 +792,8 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
             activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
+            activeSourceFilename = stream.behaviorHints.filename
+            activeSourceVideoSize = stream.behaviorHints.videoSize
             activeStreamTitle = stream.streamLabel
             activeStreamSubtitle = stream.streamSubtitle
             activeProviderName = stream.addonName
@@ -848,6 +854,8 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
             activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
+            activeSourceFilename = stream.behaviorHints.filename
+            activeSourceVideoSize = stream.behaviorHints.videoSize
             activeStreamTitle = stream.streamLabel
             activeStreamSubtitle = stream.streamSubtitle
             activeProviderName = stream.addonName
@@ -894,6 +902,8 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = emptyMap()
             activeSourceResponseHeaders = emptyMap()
+            activeSourceFilename = downloadItem.fileName
+            activeSourceVideoSize = downloadItem.totalBytes
             activeStreamTitle = downloadItem.streamTitle.ifBlank {
                 episode.title.ifBlank { title }
             }
@@ -1506,6 +1516,8 @@ fun PlayerScreen(
                 sourceAudioUrl = activeSourceAudioUrl,
                 sourceHeaders = activeSourceHeaders,
                 sourceResponseHeaders = activeSourceResponseHeaders,
+                sourceFilename = activeSourceFilename,
+                sourceVideoSize = activeSourceVideoSize,
                 modifier = Modifier.fillMaxSize(),
                 playWhenReady = shouldPlay,
                 resizeMode = resizeMode,

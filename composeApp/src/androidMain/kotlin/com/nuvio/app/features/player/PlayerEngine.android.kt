@@ -69,6 +69,8 @@ internal fun AndroidMedia3PlayerSurface(
     sourceAudioUrl: String?,
     sourceHeaders: Map<String, String>,
     sourceResponseHeaders: Map<String, String>,
+    sourceFilename: String?,
+    sourceVideoSize: Long?,
     useYoutubeChunkedPlayback: Boolean,
     modifier: Modifier,
     playWhenReady: Boolean,
@@ -95,12 +97,31 @@ internal fun AndroidMedia3PlayerSurface(
     val sanitizedSourceResponseHeaders = remember(sourceResponseHeaders) {
         sanitizePlaybackResponseHeaders(sourceResponseHeaders)
     }
+    val sourceMimeType = remember(sourceUrl, sanitizedSourceResponseHeaders, sourceFilename) {
+        inferPlaybackMimeType(
+            sourceUrl = sourceUrl,
+            responseHeaders = sanitizedSourceResponseHeaders,
+            sourceFilename = sourceFilename,
+        )
+    }
+    val sourceAudioMimeType = remember(sourceAudioUrl) {
+        sourceAudioUrl?.let { inferPlaybackMimeType(sourceUrl = it) }
+    }
     val useLibass = playerSettings.useLibass
     val libassRenderType = runCatching {
         LibassRenderType.valueOf(playerSettings.libassRenderType)
     }.getOrDefault(LibassRenderType.CUES)
 
-    val exoPlayer = remember(sourceUrl, sourceAudioUrl, sanitizedSourceHeaders, sanitizedSourceResponseHeaders) {
+    val exoPlayer = remember(
+        sourceUrl,
+        sourceAudioUrl,
+        sanitizedSourceHeaders,
+        sanitizedSourceResponseHeaders,
+        sourceFilename,
+        sourceVideoSize,
+        sourceMimeType,
+        sourceAudioMimeType,
+    ) {
         val renderersFactory = DefaultRenderersFactory(context)
             .setExtensionRendererMode(playerSettings.decoderPriority)
             .setMapDV7ToHevc(playerSettings.mapDV7ToHevc)
@@ -164,11 +185,11 @@ internal fun AndroidMedia3PlayerSurface(
         player.apply {
                 if (!sourceAudioUrl.isNullOrBlank()) {
                     val msf = DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory)
-                    val videoSource = msf.createMediaSource(MediaItem.fromUri(sourceUrl))
-                    val audioSource = msf.createMediaSource(MediaItem.fromUri(sourceAudioUrl))
+                    val videoSource = msf.createMediaSource(buildPlaybackMediaItem(sourceUrl, sourceMimeType))
+                    val audioSource = msf.createMediaSource(buildPlaybackMediaItem(sourceAudioUrl, sourceAudioMimeType))
                     setMediaSource(MergingMediaSource(videoSource, audioSource))
                 } else {
-                    setMediaItem(MediaItem.fromUri(sourceUrl))
+                    setMediaItem(buildPlaybackMediaItem(sourceUrl, sourceMimeType))
                 }
                 prepare()
                 this.playWhenReady = playWhenReady
@@ -458,6 +479,17 @@ private tailrec fun Context.findActivity(): Activity? =
         is ContextWrapper -> baseContext.findActivity()
         else -> null
     }
+
+private fun buildPlaybackMediaItem(
+    url: String,
+    mimeType: String?,
+): MediaItem {
+    val builder = MediaItem.Builder().setUri(url)
+    if (!mimeType.isNullOrBlank()) {
+        builder.setMimeType(mimeType)
+    }
+    return builder.build()
+}
 
 private fun ExoPlayer.snapshot(): PlayerPlaybackSnapshot =
     PlayerPlaybackSnapshot(
