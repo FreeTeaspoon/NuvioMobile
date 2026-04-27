@@ -142,8 +142,6 @@ jobs:
           set -euo pipefail
 
           missing=()
-          [ -n "${SUPABASE_URL}" ] || missing+=("SUPABASE_URL")
-          [ -n "${SUPABASE_ANON_KEY}" ] || missing+=("SUPABASE_ANON_KEY")
           [ -n "${ANDROID_RELEASE_KEYSTORE_BASE64}" ] || missing+=("ANDROID_RELEASE_KEYSTORE_BASE64")
           [ -n "${ANDROID_RELEASE_STORE_PASSWORD}" ] || missing+=("ANDROID_RELEASE_STORE_PASSWORD")
           [ -n "${ANDROID_RELEASE_KEY_ALIAS}" ] || missing+=("ANDROID_RELEASE_KEY_ALIAS")
