@@ -23,6 +23,7 @@ concurrency:
 env:
   UPSTREAM_REPO: NuvioMedia/NuvioMobile
   TARGET_BRANCH: cmp-rewrite
+  RELEASE_APK_NAME: kerrry.nuvio.app.apk
 
 jobs:
   build:
@@ -71,8 +72,23 @@ jobs:
             exit 1
           fi
 
-          if gh release view "${upstream_tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "Release ${upstream_tag} already exists in ${GITHUB_REPOSITORY}; nothing to build."
+          existing_release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${upstream_tag}" 2>/dev/null || true)"
+          if [ -n "${existing_release_json}" ]; then
+            apk_asset_ids="$(jq -r --arg desired "${RELEASE_APK_NAME}" '.assets[]? | select(.name | endswith(".apk")) | select(.name != $desired) | .id' <<<"${existing_release_json}")"
+
+            if [ -n "${apk_asset_ids}" ]; then
+              while IFS= read -r asset_id; do
+                [ -n "${asset_id}" ] || continue
+                gh api \
+                  --method PATCH \
+                  "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" \
+                  -f "name=${RELEASE_APK_NAME}" >/dev/null
+              done <<<"${apk_asset_ids}"
+              echo "Renamed existing APK release asset to ${RELEASE_APK_NAME}."
+            else
+              echo "Release ${upstream_tag} already exists in ${GITHUB_REPOSITORY}; APK asset name is already current or no APK asset exists."
+            fi
+
             echo "skip=true" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
@@ -182,7 +198,7 @@ jobs:
             exit 1
           fi
 
-          cp "${apk}" "dist/kerrry.nuvio.app.apk"
+          cp "${apk}" "dist/${RELEASE_APK_NAME}"
           ls -lh dist
 
       - name: Publish fork release
