@@ -1,6 +1,9 @@
 name: Build Fork Release From Official
 
 on:
+  push:
+    branches:
+      - cmp-rewrite
   workflow_dispatch:
     inputs:
       upstream_tag:
