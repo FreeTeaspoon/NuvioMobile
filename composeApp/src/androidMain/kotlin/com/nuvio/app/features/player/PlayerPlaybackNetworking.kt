@@ -22,7 +22,9 @@ internal object PlayerPlaybackNetworking {
         "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
             "AppleWebKit/537.36 (KHTML, like Gecko) " +
             "Chrome/120.0.0.0 Safari/537.36",
-        
+        "Accept" to "*/*",
+        "Accept-Encoding" to "identity",
+        "Connection" to "keep-alive",
     )
 
     internal const val DEFAULT_USER_AGENT =
@@ -51,8 +53,8 @@ internal object PlayerPlaybackNetworking {
             .sslSocketFactory(sslContext.socketFactory, trustAllManager)
             .hostnameVerifier(playbackHostnameVerifier)
             .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
             .followRedirects(true)
             .followSslRedirects(true)
             .retryOnConnectionFailure(true)

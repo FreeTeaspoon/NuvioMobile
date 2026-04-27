@@ -783,7 +783,7 @@ fun PlayerScreen(
                     addonId = stream.addonId,
                     requestHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request),
                     responseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response),
-                    filename = stream.behaviorHints.filename,
+                    filename = stream.playbackFilenameHint,
                     videoSize = stream.behaviorHints.videoSize,
                     bingeGroup = stream.behaviorHints.bingeGroup,
                 )
@@ -792,7 +792,7 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
             activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
-            activeSourceFilename = stream.behaviorHints.filename
+            activeSourceFilename = stream.playbackFilenameHint
             activeSourceVideoSize = stream.behaviorHints.videoSize
             activeStreamTitle = stream.streamLabel
             activeStreamSubtitle = stream.streamSubtitle
@@ -845,7 +845,7 @@ fun PlayerScreen(
                     addonId = stream.addonId,
                     requestHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request),
                     responseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response),
-                    filename = stream.behaviorHints.filename,
+                    filename = stream.playbackFilenameHint,
                     videoSize = stream.behaviorHints.videoSize,
                     bingeGroup = stream.behaviorHints.bingeGroup,
                 )
@@ -854,7 +854,7 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
             activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
-            activeSourceFilename = stream.behaviorHints.filename
+            activeSourceFilename = stream.playbackFilenameHint
             activeSourceVideoSize = stream.behaviorHints.videoSize
             activeStreamTitle = stream.streamLabel
             activeStreamSubtitle = stream.streamSubtitle

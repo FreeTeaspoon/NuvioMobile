@@ -27,6 +27,11 @@ data class StreamItem(
 
     val hasPlayableSource: Boolean
         get() = url != null || infoHash != null || externalUrl != null
+
+    val playbackFilenameHint: String?
+        get() = behaviorHints.filename
+            ?: listOfNotNull(name, description, url, externalUrl)
+                .firstNotNullOfOrNull(::extractPlaybackFilenameHint)
 }
 
 data class StreamBehaviorHints(
@@ -49,6 +54,16 @@ data class AddonStreamGroup(
     val isLoading: Boolean = false,
     val error: String? = null,
 )
+
+private val playbackFilenamePattern =
+    Regex("""(?i)([^/\\|]+\.(mkv|mk3d|webm|mp4|m4v|mov|avi|ts|m2ts|mts|mpg|mpeg|flv|m3u8|mpd))""")
+
+private fun extractPlaybackFilenameHint(value: String): String? =
+    playbackFilenamePattern.find(value)
+        ?.value
+        ?.trim()
+        ?.trim('"', '\'', ' ', '\t', '\r', '\n')
+        ?.takeIf { it.isNotBlank() }
 
 enum class StreamsEmptyStateReason {
     NoAddonsInstalled,
