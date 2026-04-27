@@ -1,0 +1,114 @@
+name: Build cmp-rewrite Release
+
+on:
+  push:
+    tags:
+      - "cmp-rewrite-*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-cmp-rewrite-release-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  RELEASE_APK_NAME: kerrry.nuvio.app.apk
+
+jobs:
+  build:
+    name: Build signed fork APK and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Write local build config
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || vars.SUPABASE_ANON_KEY }}
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          missing=()
+          [ -n "${ANDROID_RELEASE_KEYSTORE_BASE64}" ] || missing+=("ANDROID_RELEASE_KEYSTORE_BASE64")
+          [ -n "${ANDROID_RELEASE_STORE_PASSWORD}" ] || missing+=("ANDROID_RELEASE_STORE_PASSWORD")
+          [ -n "${ANDROID_RELEASE_KEY_ALIAS}" ] || missing+=("ANDROID_RELEASE_KEY_ALIAS")
+          [ -n "${ANDROID_RELEASE_KEY_PASSWORD}" ] || missing+=("ANDROID_RELEASE_KEY_PASSWORD")
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf '::error::Missing required repository secrets/variables: %s\n' "${missing[*]}"
+            exit 1
+          fi
+
+          printf '%s' "${ANDROID_RELEASE_KEYSTORE_BASE64}" | base64 -d > release-key.jks
+
+          {
+            printf 'sdk.dir=%s\n' "${ANDROID_HOME}"
+            printf 'SUPABASE_URL=%s\n' "${SUPABASE_URL}"
+            printf 'SUPABASE_ANON_KEY=%s\n' "${SUPABASE_ANON_KEY}"
+            printf 'NUVIO_RELEASE_STORE_FILE=release-key.jks\n'
+            printf 'NUVIO_RELEASE_STORE_PASSWORD=%s\n' "${ANDROID_RELEASE_STORE_PASSWORD}"
+            printf 'NUVIO_RELEASE_KEY_ALIAS=%s\n' "${ANDROID_RELEASE_KEY_ALIAS}"
+            printf 'NUVIO_RELEASE_KEY_PASSWORD=%s\n' "${ANDROID_RELEASE_KEY_PASSWORD}"
+          } > local.properties
+
+      - name: Build full release APK
+        shell: bash
+        run: ./gradlew --console=plain :composeApp:assembleFullRelease
+
+      - name: Stage release asset
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist
+          apk="$(find composeApp/build/outputs/apk/full/release -maxdepth 1 -name '*.apk' ! -name '*unsigned.apk' | head -n 1)"
+          if [ -z "${apk}" ]; then
+            echo "::error::No signed full release APK was produced."
+            exit 1
+          fi
+
+          cp "${apk}" "dist/${RELEASE_APK_NAME}"
+          ls -lh dist
+
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          notes_file="${RUNNER_TEMP}/release-notes.md"
+          {
+            echo "Fork build from ${GITHUB_REPOSITORY}:cmp-rewrite."
+            echo
+            echo "Included fixes:"
+            echo "- MPV playback no longer remains stuck behind the initial loading overlay when MPV reports playback through timeline or video reconfiguration events."
+            echo "- Stream MIME type inference now uses stream metadata, filenames, response headers, and URL extensions."
+          } > "${notes_file}"
+
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/*.apk \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${GITHUB_SHA}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file "${notes_file}"
