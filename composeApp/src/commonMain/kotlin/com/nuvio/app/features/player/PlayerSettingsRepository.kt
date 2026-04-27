@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 data class PlayerSettingsUiState(
     val showLoadingOverlay: Boolean = true,
     val resizeMode: PlayerResizeMode = PlayerResizeMode.Fit,
+    val playerEngine: PlayerEngineType = PlayerEngineType.MEDIA3,
     val holdToSpeedEnabled: Boolean = true,
     val holdToSpeedValue: Float = 2f,
     val preferredAudioLanguage: String = AudioLanguageOption.DEVICE,
@@ -48,6 +49,7 @@ object PlayerSettingsRepository {
     private var hasLoaded = false
     private var showLoadingOverlay = true
     private var resizeMode = PlayerResizeMode.Fit
+    private var playerEngine = PlayerEngineType.MEDIA3
     private var holdToSpeedEnabled = true
     private var holdToSpeedValue = 2f
     private var preferredAudioLanguage = AudioLanguageOption.DEVICE
@@ -90,6 +92,7 @@ object PlayerSettingsRepository {
         hasLoaded = false
         showLoadingOverlay = true
         resizeMode = PlayerResizeMode.Fit
+        playerEngine = PlayerEngineType.MEDIA3
         holdToSpeedEnabled = true
         holdToSpeedValue = 2f
         preferredAudioLanguage = AudioLanguageOption.DEVICE
@@ -127,6 +130,10 @@ object PlayerSettingsRepository {
         resizeMode = PlayerSettingsStorage.loadResizeMode()
             ?.let { runCatching { PlayerResizeMode.valueOf(it) }.getOrNull() }
             ?: PlayerResizeMode.Fit
+        playerEngine = resolvePlayerEngine(
+            rawEngine = PlayerSettingsStorage.loadPlayerEngine(),
+            mpvSelectable = AppFeaturePolicy.mpvPlaybackEngineSelectable,
+        )
         holdToSpeedEnabled = PlayerSettingsStorage.loadHoldToSpeedEnabled() ?: true
         holdToSpeedValue = PlayerSettingsStorage.loadHoldToSpeedValue() ?: 2f
         preferredAudioLanguage =
@@ -204,6 +211,15 @@ object PlayerSettingsRepository {
         resizeMode = mode
         publish()
         PlayerSettingsStorage.saveResizeMode(mode.name)
+    }
+
+    fun setPlayerEngine(engine: PlayerEngineType) {
+        ensureLoaded()
+        val normalized = resolvePlayerEngine(engine.name, AppFeaturePolicy.mpvPlaybackEngineSelectable)
+        if (playerEngine == normalized) return
+        playerEngine = normalized
+        publish()
+        PlayerSettingsStorage.savePlayerEngine(engine.name)
     }
 
     fun setHoldToSpeedEnabled(enabled: Boolean) {
@@ -444,6 +460,10 @@ object PlayerSettingsRepository {
         _uiState.value = PlayerSettingsUiState(
             showLoadingOverlay = showLoadingOverlay,
             resizeMode = resizeMode,
+            playerEngine = resolvePlayerEngine(
+                rawEngine = playerEngine.name,
+                mpvSelectable = AppFeaturePolicy.mpvPlaybackEngineSelectable,
+            ),
             holdToSpeedEnabled = holdToSpeedEnabled,
             holdToSpeedValue = holdToSpeedValue,
             preferredAudioLanguage = preferredAudioLanguage,
@@ -481,5 +501,16 @@ object PlayerSettingsRepository {
         } else {
             source
         }
+    }
+}
+
+internal fun resolvePlayerEngine(rawEngine: String?, mpvSelectable: Boolean): PlayerEngineType {
+    val parsed = rawEngine
+        ?.let { runCatching { PlayerEngineType.valueOf(it) }.getOrNull() }
+        ?: PlayerEngineType.MEDIA3
+    return if (parsed == PlayerEngineType.MPV && !mpvSelectable) {
+        PlayerEngineType.MEDIA3
+    } else {
+        parsed
     }
 }

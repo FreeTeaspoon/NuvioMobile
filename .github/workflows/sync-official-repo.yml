@@ -1,0 +1,53 @@
+name: Sync Official Repo
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-official-repo
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: NuvioMedia/NuvioMobile
+  UPSTREAM_BRANCH: cmp-rewrite
+
+jobs:
+  sync:
+    name: Merge upstream branch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.UPSTREAM_BRANCH }}
+          fetch-depth: 0
+
+      - name: Merge official upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch upstream "${UPSTREAM_BRANCH}" --tags
+
+          git checkout "${UPSTREAM_BRANCH}"
+          before="$(git rev-parse HEAD)"
+          git merge --no-edit "upstream/${UPSTREAM_BRANCH}"
+          after="$(git rev-parse HEAD)"
+
+          if [ "${before}" != "${after}" ]; then
+            git push origin "HEAD:${UPSTREAM_BRANCH}"
+          else
+            echo "Branch is already up to date with ${UPSTREAM_REPO}:${UPSTREAM_BRANCH}."
+          fi
+
+          git push origin --tags
