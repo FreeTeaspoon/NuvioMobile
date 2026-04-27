@@ -199,7 +199,8 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
 ) : TextureView(context, attrs, defStyleAttr),
     TextureView.SurfaceTextureListener,
-    MPVLib.EventObserver {
+    MPVLib.EventObserver,
+    MPVLib.LogObserver {
 
     var onErrorChanged: (String?) -> Unit = {}
 
@@ -211,6 +212,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     private var resumeOnForeground = false
     private var isPlayerLoading = true
     private var hasLoadEventFired = false
+    private var hasPlaybackStarted = false
     private var resizeMode: PlayerResizeMode = PlayerResizeMode.Fit
     private var subtitleStyle: SubtitleStyleState = SubtitleStyleState.DEFAULT
     private var currentErrorMessage: String? = null
@@ -231,6 +233,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
             MPVLib.init()
             MPVLib.attachSurface(surface!!)
             MPVLib.addObserver(this)
+            MPVLib.addLogObserver(this)
             MPVLib.setPropertyString("android-surface-size", "${width}x$height")
             observeProperties()
             isMpvInitialized = true
@@ -431,11 +434,18 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         val eofReached = MPVLib.getPropertyBoolean("eof-reached") ?: false
         val idle = MPVLib.getPropertyBoolean("core-idle") ?: false
         val seeking = MPVLib.getPropertyBoolean("seeking") ?: false
-        val loading = isPlayerLoading || pausedForCache || seeking || (idle && !paused && !eofReached)
+        val hasTimeline = durationSeconds > 0.0 || positionSeconds > 0.0
+        val activelyPlaying = !paused && !pausedForCache && !idle && !eofReached
+        if (hasTimeline || activelyPlaying) {
+            hasPlaybackStarted = true
+            isPlayerLoading = false
+        }
+        val loading = pausedForCache || seeking ||
+            (!hasPlaybackStarted && (isPlayerLoading || (idle && !paused && !eofReached)))
 
         return PlayerPlaybackSnapshot(
             isLoading = loading,
-            isPlaying = !paused && !pausedForCache && !idle && !eofReached,
+            isPlaying = activelyPlaying,
             isEnded = eofReached,
             durationMs = (durationSeconds.coerceAtLeast(0.0) * 1000.0).toLong(),
             positionMs = (positionSeconds.coerceAtLeast(0.0) * 1000.0).toLong(),
@@ -450,6 +460,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     fun destroyPlayer() {
         if (!isMpvInitialized) return
         runCatching { MPVLib.removeObserver(this) }
+        runCatching { MPVLib.removeLogObserver(this) }
         runCatching { MPVLib.detachSurface() }
         runCatching { MPVLib.destroy() }
         isMpvInitialized = false
@@ -511,6 +522,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         clearPlaybackError()
         isPlayerLoading = true
         hasLoadEventFired = false
+        hasPlaybackStarted = false
         applyHttpHeadersAsOptions(request.requestHeaders)
         MPVLib.command(arrayOf("loadfile", request.videoUrl, "replace"))
         val audioUrl = request.audioUrl
@@ -625,8 +637,11 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         onErrorChanged(currentErrorMessage)
     }
 
-    private fun appendPlaybackLog(prefix: String, level: String, text: String) {
-        if (level != "warn" && level != "error" && level != "fatal") return
+    private fun appendPlaybackLog(prefix: String, level: Int, text: String) {
+        val mpvLogLevelFatal = 10
+        val mpvLogLevelError = 20
+        val mpvLogLevelWarn = 30
+        if (level != mpvLogLevelWarn && level != mpvLogLevelError && level != mpvLogLevelFatal) return
         val trimmed = text.trim()
         if (trimmed.isBlank()) return
         recentPlaybackLogs = (recentPlaybackLogs + "[$prefix] $trimmed").takeLast(4)
@@ -641,8 +656,15 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     override fun eventProperty(property: String, value: Long) = Unit
 
     override fun eventProperty(property: String, value: Double) {
+        if (property == "time-pos" && value > 0.0) {
+            hasPlaybackStarted = true
+            isPlayerLoading = false
+            clearPlaybackError()
+            return
+        }
         if (!hasLoadEventFired && (property == "duration/full" || property == "duration") && value > 0.0) {
             hasLoadEventFired = true
+            hasPlaybackStarted = true
             isPlayerLoading = false
             clearPlaybackError()
         }
@@ -660,10 +682,15 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     override fun event(eventId: Int) {
         val mpvEventEndFile = 7
         val mpvEventFileLoaded = 8
-        val mpvEventLogMessage = 16
+        val mpvEventLogMessage = 2
+        val mpvEventVideoReconfig = 17
+        val mpvEventPlaybackRestart = 21
 
         when (eventId) {
-            mpvEventFileLoaded -> {
+            mpvEventFileLoaded,
+            mpvEventVideoReconfig,
+            mpvEventPlaybackRestart -> {
+                hasPlaybackStarted = true
                 isPlayerLoading = false
                 clearPlaybackError()
                 if (!isPaused) {
@@ -681,6 +708,10 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
             }
             mpvEventLogMessage -> Unit
         }
+    }
+
+    override fun logMessage(prefix: String, level: Int, text: String) {
+        appendPlaybackLog(prefix, level, text)
     }
 }
 
