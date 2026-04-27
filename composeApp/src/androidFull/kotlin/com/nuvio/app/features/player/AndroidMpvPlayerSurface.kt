@@ -13,11 +13,8 @@ import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -54,36 +51,33 @@ internal fun AndroidMpvPlayerSurface(
     val sanitizedSourceHeaders = remember(sourceHeaders) {
         sanitizePlaybackHeaders(sourceHeaders)
     }
-    var playerView by remember { mutableStateOf<AndroidMpvPlayerView?>(null) }
+    val playerView = remember(context) { AndroidMpvPlayerView(context) }
 
     LaunchedEffect(playerView) {
-        val view = playerView ?: return@LaunchedEffect
-        onControllerReady(AndroidMpvPlayerController(view))
+        onControllerReady(AndroidMpvPlayerController(playerView))
     }
 
     LaunchedEffect(playerView) {
-        val view = playerView ?: return@LaunchedEffect
         while (isActive) {
-            latestOnSnapshot.value(view.snapshot())
+            latestOnSnapshot.value(playerView.snapshot())
             delay(250L)
         }
     }
 
     DisposableEffect(playerView, lifecycleOwner) {
-        val view = playerView
         PlayerPictureInPictureManager.registerPausePlaybackCallback {
-            view?.pause()
+            playerView.pause()
         }
         val activity = context.findActivity()
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_START -> view?.resumeIfNeeded()
+                Lifecycle.Event.ON_START -> playerView.resumeIfNeeded()
                 Lifecycle.Event.ON_STOP -> {
                     val isInPictureInPicture =
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && activity?.isInPictureInPictureMode == true
                     val isFinishing = activity?.isFinishing == true
                     if (!isInPictureInPicture || isFinishing) {
-                        view?.pauseForBackground()
+                        playerView.pauseForBackground()
                     }
                 }
                 else -> Unit
@@ -93,17 +87,15 @@ internal fun AndroidMpvPlayerSurface(
         onDispose {
             PlayerPictureInPictureManager.registerPausePlaybackCallback(null)
             lifecycleOwner.lifecycle.removeObserver(observer)
-            view?.destroyPlayer()
+            playerView.destroyPlayer()
         }
     }
 
     AndroidView(
         modifier = modifier,
-        factory = { viewContext ->
-            AndroidMpvPlayerView(viewContext).apply {
+        factory = {
+            playerView.apply {
                 layoutParams = android.view.ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
-                onErrorChanged = latestOnError.value
-                playerView = this
             }
         },
         update = { view ->
@@ -208,11 +200,13 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     private var surface: Surface? = null
     private var activeRequest: MpvPlaybackRequest? = null
     private var pendingRequest: MpvPlaybackRequest? = null
+    private var currentRequestHeaders: Map<String, String> = emptyMap()
     private var isPaused = true
     private var resumeOnForeground = false
     private var isPlayerLoading = true
     private var hasLoadEventFired = false
     private var hasPlaybackStarted = false
+    private var loadGeneration = 0
     private var resizeMode: PlayerResizeMode = PlayerResizeMode.Fit
     private var subtitleStyle: SubtitleStyleState = SubtitleStyleState.DEFAULT
     private var currentErrorMessage: String? = null
@@ -276,6 +270,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
             audioUrl = audioUrl?.takeIf { it.isNotBlank() },
             requestHeaders = requestHeaders,
         )
+        currentRequestHeaders = request.requestHeaders
         if (request == activeRequest && isMpvInitialized) return
         activeRequest = request
         if (isMpvInitialized) {
@@ -488,14 +483,21 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         MPVLib.setOptionString("cache-secs", "30")
         MPVLib.setOptionString("network-timeout", "60")
         MPVLib.setOptionString("ytdl", "no")
+        applyHttpHeadersAsOptions(currentRequestHeaders)
         MPVLib.setOptionString("tls-verify", "no")
         MPVLib.setOptionString("http-reconnect", "yes")
         MPVLib.setOptionString("stream-reconnect", "yes")
+        MPVLib.setOptionString("demuxer-lavf-o", "live_start_index=0,prefer_x_start=1,http_persistent=1")
+        MPVLib.setOptionString("demuxer-seekable-cache", "yes")
+        MPVLib.setOptionString("force-seekable", "yes")
         MPVLib.setOptionString("sub-auto", "fuzzy")
         MPVLib.setOptionString("sub-visibility", "yes")
         MPVLib.setOptionString("embeddedfonts", "yes")
         MPVLib.setOptionString("sub-codepage", "auto")
         MPVLib.setOptionString("osc", "no")
+        MPVLib.setOptionString("osd-level", "1")
+        MPVLib.setOptionString("sid", "auto")
+        MPVLib.setOptionString("terminal", "no")
         MPVLib.setOptionString("input-default-bindings", "no")
     }
 
@@ -523,8 +525,29 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         isPlayerLoading = true
         hasLoadEventFired = false
         hasPlaybackStarted = false
+        loadGeneration++
+        val generation = loadGeneration
         applyHttpHeadersAsOptions(request.requestHeaders)
-        MPVLib.command(arrayOf("loadfile", request.videoUrl, "replace"))
+        MPVLib.command(arrayOf("loadfile", request.videoUrl))
+        postDelayed({
+            if (
+                isMpvInitialized &&
+                activeRequest == request &&
+                loadGeneration == generation &&
+                !hasPlaybackStarted &&
+                currentErrorMessage == null
+            ) {
+                isPlayerLoading = false
+                val idle = MPVLib.getPropertyBoolean("core-idle") ?: false
+                val pausedForCache = MPVLib.getPropertyBoolean("paused-for-cache") ?: false
+                val seeking = MPVLib.getPropertyBoolean("seeking") ?: false
+                val duration = MPVLib.getPropertyDouble("duration/full") ?: MPVLib.getPropertyDouble("duration") ?: 0.0
+                val position = MPVLib.getPropertyDouble("time-pos") ?: 0.0
+                setPlaybackError(
+                    "MPV did not start playback. idle=$idle cache=$pausedForCache seeking=$seeking duration=$duration position=$position"
+                )
+            }
+        }, 15_000L)
         val audioUrl = request.audioUrl
         if (!audioUrl.isNullOrBlank()) {
             postDelayed({

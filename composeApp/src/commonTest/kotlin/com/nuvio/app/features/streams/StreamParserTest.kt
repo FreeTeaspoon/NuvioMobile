@@ -119,4 +119,25 @@ class StreamParserTest {
         assertEquals("video/mp4", responseHeaders["content-type"])
         assertEquals("ok", responseHeaders["x-test"])
     }
+
+    @Test
+    fun `playback filename hint falls back to stream name when behavior hint is missing`() {
+        val streams = StreamParser.parse(
+            payload =
+                """
+                {
+                  "streams": [
+                    {
+                      "url": "https://dav.example/stream/abc123",
+                      "name": "Movie.Name.2026.1080p.mkv"
+                    }
+                  ]
+                }
+                """.trimIndent(),
+            addonName = "Addon",
+            addonId = "addon.id",
+        )
+
+        assertEquals("Movie.Name.2026.1080p.mkv", streams.single().playbackFilenameHint)
+    }
 }

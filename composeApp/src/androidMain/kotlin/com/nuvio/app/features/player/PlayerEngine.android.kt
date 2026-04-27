@@ -208,6 +208,7 @@ internal fun AndroidMedia3PlayerSurface(
 
         val listener = object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
+                Log.e(TAG, "Media3 playback error: code=${error.errorCodeName}, message=${error.message}", error)
                 latestOnError.value(error.localizedMessage ?: runBlocking { getString(Res.string.player_unable_to_play_stream) })
             }
 
