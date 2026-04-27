@@ -37,7 +37,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
-          git fetch upstream "${UPSTREAM_BRANCH}" --tags
+          git fetch upstream "${UPSTREAM_BRANCH}"
 
           git checkout "${UPSTREAM_BRANCH}"
           before="$(git rev-parse HEAD)"
@@ -49,5 +49,3 @@ jobs:
           else
             echo "Branch is already up to date with ${UPSTREAM_REPO}:${UPSTREAM_BRANCH}."
           fi
-
-          git push origin --tags

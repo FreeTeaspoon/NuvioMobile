@@ -1,0 +1,195 @@
+name: Build Fork Release From Official
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_tag:
+        description: "Optional official release tag to build from. Leave blank for latest."
+        required: false
+        type: string
+  schedule:
+    - cron: "47 */6 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-fork-release-from-official
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: NuvioMedia/NuvioMobile
+  TARGET_BRANCH: cmp-rewrite
+
+jobs:
+  build:
+    name: Build fork APK and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+
+      - name: Sync official branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch upstream "${TARGET_BRANCH}"
+
+          before="$(git rev-parse HEAD)"
+          git merge --no-edit "upstream/${TARGET_BRANCH}"
+          after="$(git rev-parse HEAD)"
+
+          if [ "${before}" != "${after}" ]; then
+            git push origin "HEAD:${TARGET_BRANCH}"
+          else
+            echo "Fork branch is already up to date with ${UPSTREAM_REPO}:${TARGET_BRANCH}."
+          fi
+
+      - name: Read official release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.upstream_tag }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${REQUESTED_TAG}" ]; then
+            release_json="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${REQUESTED_TAG}")"
+          else
+            release_json="$(gh api "repos/${UPSTREAM_REPO}/releases/latest")"
+          fi
+
+          upstream_tag="$(jq -r '.tag_name' <<<"${release_json}")"
+          release_name="$(jq -r '.name // .tag_name' <<<"${release_json}")"
+          prerelease="$(jq -r '.prerelease' <<<"${release_json}")"
+          upstream_url="$(jq -r '.html_url' <<<"${release_json}")"
+
+          if [ -z "${upstream_tag}" ] || [ "${upstream_tag}" = "null" ]; then
+            echo "::error::Official release has no tag."
+            exit 1
+          fi
+
+          if gh release view "${upstream_tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${upstream_tag} already exists in ${GITHUB_REPOSITORY}; nothing to build."
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          body_file="${RUNNER_TEMP}/release-body.md"
+          jq -r '.body // ""' <<<"${release_json}" > "${body_file}"
+          {
+            echo
+            echo "---"
+            echo "Fork build from ${GITHUB_REPOSITORY}:${TARGET_BRANCH}."
+            echo "Official release source: ${upstream_url}"
+            echo "This APK is built from this fork after merging ${UPSTREAM_REPO}:${TARGET_BRANCH}, so fork changes are included."
+          } >> "${body_file}"
+
+          echo "skip=false" >> "${GITHUB_OUTPUT}"
+          echo "tag=${upstream_tag}" >> "${GITHUB_OUTPUT}"
+          echo "name=${release_name}" >> "${GITHUB_OUTPUT}"
+          echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
+          echo "body_file=${body_file}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up JDK
+        if: steps.release.outputs.skip != 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        if: steps.release.outputs.skip != 'true'
+        uses: android-actions/setup-android@v3
+
+      - name: Write local build config
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || vars.SUPABASE_ANON_KEY }}
+          ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
+          ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
+          ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
+          ANDROID_RELEASE_KEY_PASSWORD: ${{ secrets.ANDROID_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          missing=()
+          [ -n "${SUPABASE_URL}" ] || missing+=("SUPABASE_URL")
+          [ -n "${SUPABASE_ANON_KEY}" ] || missing+=("SUPABASE_ANON_KEY")
+          [ -n "${ANDROID_RELEASE_KEYSTORE_BASE64}" ] || missing+=("ANDROID_RELEASE_KEYSTORE_BASE64")
+          [ -n "${ANDROID_RELEASE_STORE_PASSWORD}" ] || missing+=("ANDROID_RELEASE_STORE_PASSWORD")
+          [ -n "${ANDROID_RELEASE_KEY_ALIAS}" ] || missing+=("ANDROID_RELEASE_KEY_ALIAS")
+          [ -n "${ANDROID_RELEASE_KEY_PASSWORD}" ] || missing+=("ANDROID_RELEASE_KEY_PASSWORD")
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf '::error::Missing required repository secrets/variables: %s\n' "${missing[*]}"
+            exit 1
+          fi
+
+          printf '%s' "${ANDROID_RELEASE_KEYSTORE_BASE64}" | base64 -d > release-key.jks
+
+          {
+            printf 'sdk.dir=%s\n' "${ANDROID_HOME}"
+            printf 'SUPABASE_URL=%s\n' "${SUPABASE_URL}"
+            printf 'SUPABASE_ANON_KEY=%s\n' "${SUPABASE_ANON_KEY}"
+            printf 'NUVIO_RELEASE_STORE_FILE=release-key.jks\n'
+            printf 'NUVIO_RELEASE_STORE_PASSWORD=%s\n' "${ANDROID_RELEASE_STORE_PASSWORD}"
+            printf 'NUVIO_RELEASE_KEY_ALIAS=%s\n' "${ANDROID_RELEASE_KEY_ALIAS}"
+            printf 'NUVIO_RELEASE_KEY_PASSWORD=%s\n' "${ANDROID_RELEASE_KEY_PASSWORD}"
+          } > local.properties
+
+      - name: Build full release APK
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        run: ./gradlew --console=plain :composeApp:assembleFullRelease
+
+      - name: Stage release asset
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist
+          apk="$(find composeApp/build/outputs/apk/full/release -maxdepth 1 -name '*.apk' ! -name '*unsigned.apk' | head -n 1)"
+          if [ -z "${apk}" ]; then
+            echo "::error::No signed full release APK was produced."
+            exit 1
+          fi
+
+          cp "${apk}" "dist/NuvioMobile-full-${{ steps.release.outputs.tag }}.apk"
+          ls -lh dist
+
+      - name: Publish fork release
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          args=(
+            release create "${{ steps.release.outputs.tag }}"
+            dist/*.apk
+            --repo "${GITHUB_REPOSITORY}"
+            --target "${TARGET_BRANCH}"
+            --title "${{ steps.release.outputs.name }}"
+            --notes-file "${{ steps.release.outputs.body_file }}"
+          )
+
+          if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then
+            args+=(--prerelease)
+          fi
+
+          gh "${args[@]}"
