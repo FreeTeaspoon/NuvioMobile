@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RELEASE_APK_NAME: kerrry.nuvio.app.apk
+  RELEASE_APK_NAME: kerry.nuvio.app.apk
 
 jobs:
   build:
