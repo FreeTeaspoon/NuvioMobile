@@ -20,7 +20,7 @@ concurrency:
 env:
   UPSTREAM_REPO: NuvioMedia/NuvioMobile
   TARGET_BRANCH: cmp-rewrite
-  RELEASE_APK_NAME: kerrry.nuvio.app.apk
+  RELEASE_APK_NAME: kerry.nuvio.app.apk
 
 jobs:
   build:
