@@ -47,6 +47,10 @@ jobs:
             echo
             echo "Version: ${version}"
             echo "Commit: ${GITHUB_SHA}"
+            echo
+            echo "Changes:"
+            echo "- Fix Android MPV resume playback so videos start from saved progress."
+            echo "- Keep the loading overlay visible until MPV has rendered the resumed frame."
           } > "${notes_file}"
 
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
