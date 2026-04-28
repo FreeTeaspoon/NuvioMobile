@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RELEASE_APK_NAME: kerrry.nuvio.app.apk
+  RELEASE_APK_NAME: kerry.nuvio.app.apk
 
 jobs:
   build:
@@ -40,7 +40,7 @@ jobs:
             exit 1
           fi
 
-          tag="cmp-rewrite-${version}"
+          tag="${version}"
           notes_file="${RUNNER_TEMP}/release-notes.md"
           {
             echo "Fork build from ${GITHUB_REPOSITORY}:cmp-rewrite."
@@ -102,7 +102,7 @@ jobs:
 
       - name: Build full release APK
         shell: bash
-        run: ./gradlew --console=plain :composeApp:assembleFullRelease
+        run: ./gradlew --console=plain :composeApp:assembleFullRelease -Pnuvio.release.abiSplit=true
 
       - name: Stage release asset
         shell: bash
@@ -110,9 +110,9 @@ jobs:
           set -euo pipefail
 
           mkdir -p dist
-          apk="$(find composeApp/build/outputs/apk/full/release -maxdepth 1 -name '*.apk' ! -name '*unsigned.apk' | head -n 1)"
+          apk="$(find composeApp/build/outputs/apk/full/release -maxdepth 1 -name '*arm64-v8a*release*.apk' ! -name '*unsigned.apk' | head -n 1)"
           if [ -z "${apk}" ]; then
-            echo "::error::No signed full release APK was produced."
+            echo "::error::No signed arm64-v8a full release APK was produced."
             exit 1
           fi
 
@@ -136,7 +136,7 @@ jobs:
             gh release edit "${tag}" \
               --repo "${GITHUB_REPOSITORY}" \
               --target "${GITHUB_SHA}" \
-              --title "${tag}" \
+              --title "${{ steps.release.outputs.version }}" \
               --notes-file "${notes_file}"
             gh release upload "${tag}" dist/*.apk --repo "${GITHUB_REPOSITORY}" --clobber
           else
@@ -144,6 +144,6 @@ jobs:
               dist/*.apk \
               --repo "${GITHUB_REPOSITORY}" \
               --target "${GITHUB_SHA}" \
-              --title "${tag}" \
+              --title "${{ steps.release.outputs.version }}" \
               --notes-file "${notes_file}"
           fi
