@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Forward10
 import androidx.compose.material.icons.rounded.Lock
@@ -54,6 +55,39 @@ import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.nuvioTypeScale
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
+
+internal data class PlayerSeekBarFractions(
+    val playedFraction: Float,
+    val bufferedFraction: Float,
+)
+
+internal fun calculatePlayerSeekBarFractions(
+    durationMs: Long,
+    displayedPositionMs: Long,
+    bufferedPositionMs: Long,
+): PlayerSeekBarFractions {
+    if (durationMs <= 0L) {
+        return PlayerSeekBarFractions(
+            playedFraction = 0f,
+            bufferedFraction = 0f,
+        )
+    }
+
+    val playedFraction = (displayedPositionMs.coerceIn(0L, durationMs).toFloat() / durationMs.toFloat())
+        .coerceIn(0f, 1f)
+    val clampedBufferedFraction = (bufferedPositionMs.coerceIn(0L, durationMs).toFloat() / durationMs.toFloat())
+        .coerceIn(0f, 1f)
+    val bufferedFraction = if (bufferedPositionMs <= 0L) {
+        0f
+    } else {
+        maxOf(clampedBufferedFraction, playedFraction)
+    }
+
+    return PlayerSeekBarFractions(
+        playedFraction = playedFraction,
+        bufferedFraction = bufferedFraction,
+    )
+}
 
 @Composable
 internal fun PlayerControlsShell(
@@ -429,11 +463,12 @@ private fun ProgressControls(
     val audioPainter = appIconPainter(AppIconResource.PlayerAudioFilled)
 
     Column(modifier = modifier) {
-        Slider(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(metrics.sliderTouchHeight)
-                .graphicsLayer(scaleY = metrics.sliderScaleY),
+        PlayerSeekBar(
+            durationMs = playbackSnapshot.durationMs,
+            displayedPositionMs = displayedPositionMs,
+            bufferedPositionMs = playbackSnapshot.bufferedPositionMs,
+            sliderTouchHeight = metrics.sliderTouchHeight,
+            sliderScaleY = metrics.sliderScaleY,
             value = displayedPositionMs.coerceIn(0L, durationMs).toFloat(),
             onValueChange = { value -> onScrubChange(value.toLong()) },
             onValueChangeFinished = { onScrubFinished(displayedPositionMs.coerceIn(0L, durationMs)) },
@@ -518,14 +553,6 @@ internal fun LockedPlayerOverlay(
     modifier: Modifier = Modifier,
 ) {
     val durationMs = playbackSnapshot.durationMs.coerceAtLeast(1L)
-    val sliderColors = SliderDefaults.colors(
-        thumbColor = Color.White,
-        activeTrackColor = Color.White,
-        inactiveTrackColor = Color.White.copy(alpha = 0.28f),
-        disabledThumbColor = Color.White,
-        disabledActiveTrackColor = Color.White,
-        disabledInactiveTrackColor = Color.White.copy(alpha = 0.28f),
-    )
 
     Box(modifier = modifier.fillMaxSize()) {
         Box(
@@ -580,17 +607,17 @@ internal fun LockedPlayerOverlay(
                 .padding(horizontal = horizontalSafePadding + metrics.horizontalPadding)
                 .padding(bottom = metrics.sliderBottomOffset),
         ) {
-            Slider(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(metrics.sliderTouchHeight)
-                    .graphicsLayer(scaleY = metrics.sliderScaleY),
+            PlayerSeekBar(
+                durationMs = playbackSnapshot.durationMs,
+                displayedPositionMs = displayedPositionMs,
+                bufferedPositionMs = playbackSnapshot.bufferedPositionMs,
+                sliderTouchHeight = metrics.sliderTouchHeight,
+                sliderScaleY = metrics.sliderScaleY,
                 value = displayedPositionMs.coerceIn(0L, durationMs).toFloat(),
                 onValueChange = {},
                 onValueChangeFinished = {},
                 valueRange = 0f..durationMs.toFloat(),
                 enabled = false,
-                colors = sliderColors,
             )
             Row(
                 modifier = Modifier
@@ -604,6 +631,78 @@ internal fun LockedPlayerOverlay(
                 TimePill(text = formatPlaybackTime(durationMs), fontSize = metrics.timeSize)
             }
         }
+    }
+}
+
+@Composable
+private fun PlayerSeekBar(
+    durationMs: Long,
+    displayedPositionMs: Long,
+    bufferedPositionMs: Long,
+    sliderTouchHeight: androidx.compose.ui.unit.Dp,
+    sliderScaleY: Float,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier,
+) {
+    val fractions = calculatePlayerSeekBarFractions(
+        durationMs = durationMs,
+        displayedPositionMs = displayedPositionMs,
+        bufferedPositionMs = bufferedPositionMs,
+    )
+    val sliderColors = SliderDefaults.colors(
+        thumbColor = Color.White,
+        activeTrackColor = Color.Transparent,
+        inactiveTrackColor = Color.Transparent,
+        disabledThumbColor = Color.White,
+        disabledActiveTrackColor = Color.Transparent,
+        disabledInactiveTrackColor = Color.Transparent,
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(sliderTouchHeight)
+            .graphicsLayer(scaleY = sliderScaleY),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            HorizontalDivider(
+                modifier = Modifier.fillMaxWidth(),
+                thickness = 4.dp,
+                color = Color.White.copy(alpha = 0.25f),
+            )
+            if (fractions.bufferedFraction > 0f) {
+                HorizontalDivider(
+                    modifier = Modifier.fillMaxWidth(fractions.bufferedFraction),
+                    thickness = 4.dp,
+                    color = Color.White.copy(alpha = 0.46f),
+                )
+            }
+            if (fractions.playedFraction > 0f) {
+                HorizontalDivider(
+                    modifier = Modifier.fillMaxWidth(fractions.playedFraction),
+                    thickness = 4.dp,
+                    color = Color.White,
+                )
+            }
+        }
+
+        Slider(
+            modifier = Modifier.fillMaxWidth(),
+            value = value,
+            onValueChange = onValueChange,
+            onValueChangeFinished = onValueChangeFinished,
+            valueRange = valueRange,
+            enabled = enabled,
+            colors = sliderColors,
+        )
     }
 }
 
