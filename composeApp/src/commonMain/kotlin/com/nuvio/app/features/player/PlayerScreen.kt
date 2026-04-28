@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -35,6 +36,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -76,6 +78,7 @@ private const val PlayerLockedOverlayDurationMs = 2_000L
 private const val PlayerLeftGestureBoundary = 0.4f
 private const val PlayerRightGestureBoundary = 0.6f
 private const val PlayerVerticalGestureSensitivity = 1f
+private val PlayerTopSideGestureExclusionHeight = 72.dp
 private val PlayerSliderOverlayGap = 12.dp
 private val PlayerTimeRowHeight = 36.dp
 private val PlayerActionRowHeight = 50.dp
@@ -156,6 +159,11 @@ fun PlayerScreen(
         val metrics = remember(maxWidth) { PlayerLayoutMetrics.fromWidth(maxWidth) }
         val sliderEdgePadding = horizontalSafePadding + metrics.horizontalPadding
         val overlayBottomPadding = sliderOverlayBottomPadding(metrics)
+        val density = LocalDensity.current
+        val safeTopPadding = WindowInsets.safeContent.asPaddingValues().calculateTopPadding()
+        val topSideGestureExclusionPx = with(density) {
+            (safeTopPadding + PlayerTopSideGestureExclusionHeight).toPx()
+        }
         val scope = rememberCoroutineScope()
         val hapticFeedback = LocalHapticFeedback.current
         val resizeModeFitLabel = stringResource(Res.string.compose_player_resize_fit)
@@ -1386,7 +1394,7 @@ fun PlayerScreen(
                         },
                     )
                 }
-                .pointerInput(gestureController, layoutSize) {
+                .pointerInput(gestureController, layoutSize, topSideGestureExclusionPx) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         if (playerControlsLockedState.value) {
@@ -1401,9 +1409,10 @@ fun PlayerScreen(
                         val controller = gestureController
                         val width = size.width.toFloat().takeIf { it > 0f } ?: return@awaitEachGesture
                         val height = size.height.toFloat().takeIf { it > 0f } ?: return@awaitEachGesture
+                        val sideGesturesAllowed = down.position.y >= topSideGestureExclusionPx
                         val region = when {
-                            down.position.x < width * PlayerLeftGestureBoundary -> PlayerSideGesture.Brightness
-                            down.position.x > width * PlayerRightGestureBoundary -> PlayerSideGesture.Volume
+                            sideGesturesAllowed && down.position.x < width * PlayerLeftGestureBoundary -> PlayerSideGesture.Brightness
+                            sideGesturesAllowed && down.position.x > width * PlayerRightGestureBoundary -> PlayerSideGesture.Volume
                             else -> null
                         }
 
