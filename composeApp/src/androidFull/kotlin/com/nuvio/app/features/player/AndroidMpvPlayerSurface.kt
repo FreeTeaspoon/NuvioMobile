@@ -182,6 +182,7 @@ private data class MpvTrack(
     val language: String?,
     val codec: String?,
     val isSelected: Boolean,
+    val isExternal: Boolean = false,
     val isForced: Boolean = false,
 )
 
@@ -380,23 +381,38 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         if (index < 0) {
             MPVLib.setPropertyString("sid", "no")
             MPVLib.setPropertyString("sub-visibility", "no")
+            logSubtitleState("selectSubtitleTrack disabled")
             return
         }
         val trackId = readTracks("sub").firstOrNull { it.index == index }?.id ?: return
-        MPVLib.setPropertyInt("sid", trackId)
         MPVLib.setPropertyString("sub-visibility", "yes")
+        MPVLib.setPropertyInt("sid", trackId)
+        applySubtitleStyle(subtitleStyle)
+        logSubtitleState("selectSubtitleTrack index=$index trackId=$trackId")
     }
 
     fun setSubtitleUri(url: String) {
         if (!isMpvInitialized || url.isBlank()) return
-        MPVLib.command(arrayOf("sub-add", url, "select"))
+        removeExternalSubtitleTracks()
         MPVLib.setPropertyString("sub-visibility", "yes")
+        applySubtitleStyle(subtitleStyle)
+        MPVLib.command(arrayOf("sub-add", url, "select"))
+        logSubtitleState("setSubtitleUri command")
+        postDelayed({
+            if (isMpvInitialized) {
+                MPVLib.setPropertyString("sub-visibility", "yes")
+                applySubtitleStyle(subtitleStyle)
+                logSubtitleState("setSubtitleUri delayed")
+            }
+        }, 300L)
     }
 
     fun clearExternalSubtitle() {
         if (!isMpvInitialized) return
         removeExternalSubtitleTracks()
         MPVLib.setPropertyString("sid", "no")
+        MPVLib.setPropertyString("sub-visibility", "no")
+        logSubtitleState("clearExternalSubtitle")
     }
 
     fun clearExternalSubtitleAndSelect(trackIndex: Int) {
@@ -410,10 +426,13 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         if (!isMpvInitialized) return
         MPVLib.setPropertyString("sub-ass-override", "force")
         MPVLib.setPropertyString("sub-color", style.textColor.toMpvColorString())
-        MPVLib.setPropertyString("sub-outline-color", "#000000")
-        MPVLib.setPropertyDouble("sub-outline-size", if (style.outlineEnabled) 1.65 else 0.0)
+        MPVLib.setPropertyString("sub-border-color", "#FF000000")
+        MPVLib.setPropertyDouble("sub-border-size", if (style.outlineEnabled) 3.0 else 0.0)
+        MPVLib.setPropertyInt("sub-shadow-offset", if (style.outlineEnabled) 2 else 0)
+        MPVLib.setPropertyString("sub-shadow-color", "#80000000")
         MPVLib.setPropertyDouble("sub-font-size", style.toMpvSubtitleFontSize())
         MPVLib.setPropertyInt("sub-pos", style.toMpvSubtitlePosition())
+        MPVLib.setPropertyString("sub-use-margins", "yes")
     }
 
     fun snapshot(): PlayerPlaybackSnapshot {
@@ -491,15 +510,34 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         MPVLib.setOptionString("demuxer-lavf-o", "live_start_index=0,prefer_x_start=1,http_persistent=1")
         MPVLib.setOptionString("demuxer-seekable-cache", "yes")
         MPVLib.setOptionString("force-seekable", "yes")
-        MPVLib.setOptionString("sub-auto", "fuzzy")
-        MPVLib.setOptionString("sub-visibility", "yes")
-        MPVLib.setOptionString("embeddedfonts", "yes")
-        MPVLib.setOptionString("sub-codepage", "auto")
+        applySubtitleRenderDefaults()
         MPVLib.setOptionString("osc", "no")
         MPVLib.setOptionString("osd-level", "1")
-        MPVLib.setOptionString("sid", "auto")
         MPVLib.setOptionString("terminal", "no")
         MPVLib.setOptionString("input-default-bindings", "no")
+    }
+
+    private fun applySubtitleRenderDefaults() {
+        MPVLib.setOptionString("sub-auto", "fuzzy")
+        MPVLib.setOptionString("sub-visibility", "yes")
+        MPVLib.setOptionString("sub-font-size", "48")
+        MPVLib.setOptionString("sub-pos", "100")
+        MPVLib.setOptionString("sub-color", "#FFFFFFFF")
+        MPVLib.setOptionString("sub-border-size", "3")
+        MPVLib.setOptionString("sub-border-color", "#FF000000")
+        MPVLib.setOptionString("sub-shadow-offset", "2")
+        MPVLib.setOptionString("sub-shadow-color", "#80000000")
+        MPVLib.setOptionString("osd-fonts-dir", "/system/fonts")
+        MPVLib.setOptionString("sub-fonts-dir", "/system/fonts")
+        MPVLib.setOptionString("sub-font", "Roboto")
+        MPVLib.setOptionString("embeddedfonts", "yes")
+        MPVLib.setOptionString("sub-codepage", "auto")
+        MPVLib.setOptionString("blend-subtitles", "no")
+        MPVLib.setOptionString("sub-use-margins", "yes")
+        MPVLib.setOptionString("sub-ass-override", "force")
+        MPVLib.setOptionString("sub-scale", "1.0")
+        MPVLib.setOptionString("sub-fix-timing", "yes")
+        MPVLib.setOptionString("sid", "auto")
     }
 
     private fun observeProperties() {
@@ -519,6 +557,9 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         MPVLib.observeProperty("eof-reached", mpvFormatFlag)
         MPVLib.observeProperty("track-list", mpvFormatNone)
         MPVLib.observeProperty("track-list/count", mpvFormatInt64)
+        MPVLib.observeProperty("sid", mpvFormatInt64)
+        MPVLib.observeProperty("sub-visibility", mpvFormatFlag)
+        MPVLib.observeProperty("sub-text", mpvFormatNone)
     }
 
     private fun loadRequest(request: MpvPlaybackRequest) {
@@ -624,6 +665,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
             val codec = MPVLib.getPropertyString("track-list/$index/codec")
                 ?.takeIf { it.isNotBlank() }
             val selected = MPVLib.getPropertyBoolean("track-list/$index/selected") ?: false
+            val external = MPVLib.getPropertyBoolean("track-list/$index/external") ?: false
             val forced = type == "sub" && inferForcedSubtitleTrack(
                 label = title,
                 language = language,
@@ -637,12 +679,39 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
                     language = language,
                     codec = codec,
                     isSelected = selected,
+                    isExternal = external,
                     isForced = forced,
                 )
             )
             logicalIndex++
         }
         return tracks
+    }
+
+    private fun logSubtitleState(reason: String) {
+        val tracks = readTracks("sub")
+        val selectedSid = MPVLib.getPropertyInt("sid")?.toString()
+            ?: MPVLib.getPropertyString("sid")
+            ?: "unknown"
+        val visibility = MPVLib.getPropertyString("sub-visibility")
+            ?: MPVLib.getPropertyBoolean("sub-visibility")?.toString()
+            ?: "unknown"
+        val selectedTrack = tracks.firstOrNull { it.isSelected }
+        Log.d(
+            TAG,
+            buildString {
+                append("Subtitle state [$reason]: ")
+                append("sid=$selectedSid ")
+                append("visibility=$visibility ")
+                append("tracks=${tracks.size} ")
+                append("external=${tracks.count { it.isExternal }}")
+                if (selectedTrack != null) {
+                    append(" selectedId=${selectedTrack.id}")
+                    append(" selectedTitle=${selectedTrack.title.ifBlank { "none" }}")
+                    append(" selectedLang=${selectedTrack.language ?: "none"}")
+                }
+            }
+        )
     }
 
     private fun clearPlaybackError() {

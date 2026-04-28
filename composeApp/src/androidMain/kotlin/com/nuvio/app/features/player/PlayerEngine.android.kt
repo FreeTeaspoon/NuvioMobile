@@ -209,7 +209,7 @@ internal fun AndroidMedia3PlayerSurface(
         val listener = object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 Log.e(TAG, "Media3 playback error: code=${error.errorCodeName}, message=${error.message}", error)
-                latestOnError.value(error.localizedMessage ?: runBlocking { getString(Res.string.player_unable_to_play_stream) })
+                latestOnError.value(error.toPlayerErrorMessage())
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -490,6 +490,21 @@ private fun buildPlaybackMediaItem(
         builder.setMimeType(mimeType)
     }
     return builder.build()
+}
+
+private fun PlaybackException.toPlayerErrorMessage(): String {
+    val fallback = runBlocking { getString(Res.string.player_unable_to_play_stream) }
+    val baseMessage = localizedMessage
+        ?.takeIf { it.isNotBlank() }
+        ?: fallback
+    val causeMessage = generateSequence(cause) { it.cause }
+        .mapNotNull { it.localizedMessage?.takeIf(String::isNotBlank) }
+        .firstOrNull { !it.equals(baseMessage, ignoreCase = true) }
+    return if (causeMessage == null) {
+        baseMessage
+    } else {
+        "$baseMessage: $causeMessage"
+    }
 }
 
 private fun ExoPlayer.snapshot(): PlayerPlaybackSnapshot =
