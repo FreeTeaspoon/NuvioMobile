@@ -205,8 +205,8 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     private var isPaused = true
     private var resumeOnForeground = false
     private var isPlayerLoading = true
-    private var hasLoadEventFired = false
-    private var hasPlaybackStarted = false
+    private var hasRenderedFrameForCurrentRequest = false
+    private var isSeekFramePending = false
     private var loadGeneration = 0
     private var resizeMode: PlayerResizeMode = PlayerResizeMode.Fit
     private var subtitleStyle: SubtitleStyleState = SubtitleStyleState.DEFAULT
@@ -260,7 +260,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     }
 
     override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) {
-        markPlaybackStarted()
+        markFrameRendered()
     }
 
     fun setPlaybackSource(
@@ -314,12 +314,14 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
 
     fun seekTo(positionMs: Long) {
         if (!isMpvInitialized) return
+        isSeekFramePending = true
         val seconds = (positionMs.coerceAtLeast(0L).toDouble() / 1000.0).formatSeconds()
         MPVLib.command(arrayOf("seek", seconds, "absolute"))
     }
 
     fun seekBy(offsetMs: Long) {
         if (!isMpvInitialized) return
+        isSeekFramePending = true
         val seconds = (offsetMs.toDouble() / 1000.0).formatSeconds()
         MPVLib.command(arrayOf("seek", seconds, "relative"))
     }
@@ -450,13 +452,11 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         val eofReached = MPVLib.getPropertyBoolean("eof-reached") ?: false
         val idle = MPVLib.getPropertyBoolean("core-idle") ?: false
         val seeking = MPVLib.getPropertyBoolean("seeking") ?: false
-        val hasTimeline = durationSeconds > 0.0 || positionSeconds > 0.0
         val activelyPlaying = !paused && !pausedForCache && !idle && !eofReached
-        if (hasTimeline || activelyPlaying) {
-            markPlaybackStarted()
-        }
-        val loading = pausedForCache || seeking ||
-            (!hasPlaybackStarted && (isPlayerLoading || (idle && !paused && !eofReached)))
+        val loading = pausedForCache ||
+            seeking ||
+            isSeekFramePending ||
+            !hasRenderedFrameForCurrentRequest
 
         return PlayerPlaybackSnapshot(
             isLoading = loading,
@@ -565,8 +565,8 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     private fun loadRequest(request: MpvPlaybackRequest) {
         clearPlaybackError()
         isPlayerLoading = true
-        hasLoadEventFired = false
-        hasPlaybackStarted = false
+        hasRenderedFrameForCurrentRequest = false
+        isSeekFramePending = false
         loadGeneration++
         val generation = loadGeneration
         applyHttpHeadersAsOptions(request.requestHeaders)
@@ -576,7 +576,8 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
                 isMpvInitialized &&
                 activeRequest == request &&
                 loadGeneration == generation &&
-                !hasPlaybackStarted &&
+                !isPaused &&
+                !hasRenderedFrameForCurrentRequest &&
                 currentErrorMessage == null
             ) {
                 isPlayerLoading = false
@@ -720,10 +721,11 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         onErrorChanged(null)
     }
 
-    private fun markPlaybackStarted() {
-        if (!hasPlaybackStarted) {
-            hasPlaybackStarted = true
+    private fun markFrameRendered() {
+        if (!hasRenderedFrameForCurrentRequest) {
+            hasRenderedFrameForCurrentRequest = true
         }
+        isSeekFramePending = false
         if (isPlayerLoading) {
             isPlayerLoading = false
         }
@@ -762,20 +764,23 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
 
     override fun eventProperty(property: String, value: Double) {
         if (property == "time-pos" && value > 0.0) {
-            markPlaybackStarted()
             clearPlaybackError()
             return
         }
-        if (!hasLoadEventFired && (property == "duration/full" || property == "duration") && value > 0.0) {
-            hasLoadEventFired = true
-            markPlaybackStarted()
+        if ((property == "duration/full" || property == "duration") && value > 0.0) {
             clearPlaybackError()
         }
     }
 
     override fun eventProperty(property: String, value: Boolean) {
         when (property) {
-            "paused-for-cache", "seeking" -> isPlayerLoading = value
+            "paused-for-cache" -> isPlayerLoading = value
+            "seeking" -> {
+                isPlayerLoading = value
+                if (value) {
+                    isSeekFramePending = true
+                }
+            }
             "eof-reached" -> if (value) isPlayerLoading = false
         }
     }
@@ -793,7 +798,6 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
             mpvEventFileLoaded,
             mpvEventVideoReconfig,
             mpvEventPlaybackRestart -> {
-                markPlaybackStarted()
                 clearPlaybackError()
                 if (!isPaused) {
                     MPVLib.setPropertyBoolean("pause", false)

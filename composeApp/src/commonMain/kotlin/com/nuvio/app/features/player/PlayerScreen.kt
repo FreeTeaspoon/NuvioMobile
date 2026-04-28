@@ -220,10 +220,12 @@ fun PlayerScreen(
         var speedBoostRestoreSpeed by remember(activeSourceUrl) { mutableStateOf<Float?>(null) }
         var isHoldToSpeedGestureActive by remember(activeSourceUrl) { mutableStateOf(false) }
         var initialSeekApplied by remember(activeSourceUrl, activeInitialPositionMs, activeInitialProgressFraction) {
-            val initialProgressFraction = activeInitialProgressFraction
             mutableStateOf(
-                activeInitialPositionMs <= 0L &&
-                    (initialProgressFraction == null || initialProgressFraction <= 0f),
+                resolveInitialSeekTarget(
+                    initialPositionMs = activeInitialPositionMs,
+                    initialProgressFraction = activeInitialProgressFraction,
+                    durationMs = 0L,
+                ) == InitialSeekTarget.None,
             )
         }
         var lastProgressPersistEpochMs by remember(activeSourceUrl) { mutableStateOf(0L) }
@@ -244,6 +246,7 @@ fun PlayerScreen(
         val displayedPositionMs = scrubbingPositionMs ?: playbackSnapshot.positionMs
         val isEpisode = activeSeasonNumber != null && activeEpisodeNumber != null
         val currentGestureFeedback = liveGestureFeedback ?: gestureFeedback
+        val latestPlaybackSnapshotState = rememberUpdatedState(playbackSnapshot)
 
         LaunchedEffect(currentGestureFeedback) {
             if (currentGestureFeedback != null) {
@@ -402,6 +405,7 @@ fun PlayerScreen(
         }
 
         fun flushWatchProgress() {
+            if (!initialSeekApplied) return
             emitStopScrobbleForCurrentProgress()
             WatchProgressRepository.flushPlaybackProgress(
                 session = playbackSession,
@@ -1154,37 +1158,62 @@ fun PlayerScreen(
         LaunchedEffect(
             playerController,
             playerControllerSourceUrl,
-            playbackSnapshot.isLoading,
-            playbackSnapshot.durationMs,
+            activeSourceUrl,
             activeInitialPositionMs,
             activeInitialProgressFraction,
-            initialSeekApplied,
         ) {
             val controller = playerController ?: return@LaunchedEffect
             if (playerControllerSourceUrl != activeSourceUrl) {
                 return@LaunchedEffect
             }
-            if (initialSeekApplied || playbackSnapshot.isLoading) {
-                return@LaunchedEffect
-            }
 
-            val progressFraction = activeInitialProgressFraction
-                ?.takeIf { it > 0f }
-                ?.coerceIn(0f, 1f)
-            val targetPositionMs = when {
-                activeInitialPositionMs > 0L -> activeInitialPositionMs
-                progressFraction != null && playbackSnapshot.durationMs > 0L -> {
-                    (playbackSnapshot.durationMs.toDouble() * progressFraction.toDouble()).toLong()
+            var attempts = 0
+            while (attempts < InitialSeekMaxAttempts) {
+                val snapshot = latestPlaybackSnapshotState.value
+                when (val target = resolveInitialSeekTarget(
+                    initialPositionMs = activeInitialPositionMs,
+                    initialProgressFraction = activeInitialProgressFraction,
+                    durationMs = snapshot.durationMs,
+                )) {
+                    InitialSeekTarget.None -> {
+                        initialSeekApplied = true
+                        return@LaunchedEffect
+                    }
+
+                    InitialSeekTarget.WaitingForDuration -> {
+                        attempts++
+                        delay(InitialSeekRetryIntervalMs)
+                    }
+
+                    is InitialSeekTarget.Position -> {
+                        if (hasInitialSeekSettled(
+                                targetMs = target.positionMs,
+                                currentPositionMs = snapshot.positionMs,
+                                durationMs = snapshot.durationMs,
+                            )
+                        ) {
+                            initialSeekApplied = true
+                            return@LaunchedEffect
+                        }
+
+                        controller.seekTo(target.positionMs)
+                        attempts++
+                        delay(InitialSeekRetryIntervalMs)
+
+                        val updatedSnapshot = latestPlaybackSnapshotState.value
+                        if (hasInitialSeekSettled(
+                                targetMs = target.positionMs,
+                                currentPositionMs = updatedSnapshot.positionMs,
+                                durationMs = updatedSnapshot.durationMs,
+                            )
+                        ) {
+                            initialSeekApplied = true
+                            return@LaunchedEffect
+                        }
+                    }
                 }
-                progressFraction != null -> return@LaunchedEffect
-                else -> 0L
-            }
-            if (targetPositionMs <= 0L) {
-                initialSeekApplied = true
-                return@LaunchedEffect
             }
 
-            controller.seekTo(targetPositionMs)
             initialSeekApplied = true
         }
 
@@ -1213,7 +1242,18 @@ fun PlayerScreen(
             pausedOverlayVisible = true
         }
 
-        LaunchedEffect(playbackSnapshot.positionMs, playbackSnapshot.isPlaying, playbackSnapshot.isEnded, playbackSnapshot.durationMs) {
+        LaunchedEffect(
+            initialSeekApplied,
+            playbackSnapshot.positionMs,
+            playbackSnapshot.isPlaying,
+            playbackSnapshot.isEnded,
+            playbackSnapshot.durationMs,
+        ) {
+            if (!initialSeekApplied) {
+                previousIsPlaying = false
+                return@LaunchedEffect
+            }
+
             if (playbackSnapshot.isEnded) {
                 hasSentCompletionScrobbleForCurrentItem = false
                 flushWatchProgress()
@@ -1528,7 +1568,7 @@ fun PlayerScreen(
                 sourceFilename = activeSourceFilename,
                 sourceVideoSize = activeSourceVideoSize,
                 modifier = Modifier.fillMaxSize(),
-                playWhenReady = shouldPlay,
+                playWhenReady = shouldPlay && initialSeekApplied,
                 resizeMode = resizeMode,
                 onControllerReady = { controller ->
                     playerController = controller
@@ -1536,7 +1576,7 @@ fun PlayerScreen(
                 },
                 onSnapshot = { snapshot ->
                     playbackSnapshot = snapshot
-                    if (!snapshot.isLoading) {
+                    if (!snapshot.isLoading && initialSeekApplied) {
                         initialLoadCompleted = true
                     }
                     if (snapshot.isEnded) {
@@ -1646,7 +1686,9 @@ fun PlayerScreen(
             }
 
             AnimatedVisibility(
-                visible = playerSettingsUiState.showLoadingOverlay && !initialLoadCompleted && errorMessage == null,
+                visible = playerSettingsUiState.showLoadingOverlay &&
+                    errorMessage == null &&
+                    (!initialLoadCompleted || !initialSeekApplied),
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
