@@ -169,6 +169,9 @@ val iosDistributionSourceDir = if (iosDistribution == "full") {
 val iosFrameworkBundleId = "com.nuvio.media"
 val fullCommonSourceDir = project.file("src/fullCommonMain/kotlin")
 val generatedRuntimeConfigDir = layout.buildDirectory.dir("generated/runtime-config/kotlin")
+val releaseAbiSplitEnabled = providers.gradleProperty("nuvio.release.abiSplit")
+    .map(String::toBoolean)
+    .orElse(false)
 
 val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generateRuntimeConfigs") {
     outputDir.set(generatedRuntimeConfigDir)
@@ -349,6 +352,14 @@ android {
                 "lib/*/libswscale.so",
                 "lib/*/libswresample.so"
             )
+        }
+    }
+    splits {
+        abi {
+            isEnable = releaseAbiSplitEnabled.get()
+            reset()
+            include("arm64-v8a")
+            isUniversalApk = false
         }
     }
     buildTypes {
