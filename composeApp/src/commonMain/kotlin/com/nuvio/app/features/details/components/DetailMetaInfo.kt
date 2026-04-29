@@ -33,11 +33,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nuvio.app.features.details.buildRatingProviderUrl
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaExternalRating
 import com.nuvio.app.features.details.formatRuntimeForDisplay
@@ -70,6 +74,14 @@ fun DetailMetaInfo(
     meta: MetaDetails,
     modifier: Modifier = Modifier,
 ) {
+    val uriHandler = LocalUriHandler.current
+    val openRatingUrl: (String) -> Unit = remember(uriHandler) {
+        { url ->
+            runCatching { uriHandler.openUri(url) }
+            Unit
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -109,7 +121,17 @@ fun DetailMetaInfo(
                     DetailHeroMetaBadge(text = badge)
                 }
                 if (meta.imdbRating != null && !hasMdbImdbRating) {
+                    val imdbUrl = remember(meta) { buildRatingProviderUrl(meta, PROVIDER_IMDB) }
                     Row(
+                        modifier = imdbUrl?.let { url ->
+                            Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable(
+                                    onClickLabel = "Open IMDb",
+                                    role = Role.Button,
+                                    onClick = { openRatingUrl(url) },
+                                )
+                        } ?: Modifier,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Surface(
@@ -145,7 +167,9 @@ fun DetailMetaInfo(
             exit = fadeOut() + shrinkVertically(),
         ) {
             DetailRatingsRow(
+                meta = meta,
                 ratings = meta.externalRatings,
+                onOpenUrl = openRatingUrl,
             )
         }
 
@@ -202,7 +226,9 @@ fun DetailMetaInfo(
 
 @Composable
 private fun DetailRatingsRow(
+    meta: MetaDetails,
     ratings: List<MetaExternalRating>,
+    onOpenUrl: (String) -> Unit,
 ) {
     val orderedRatings = remember(ratings) {
         val bySource = ratings.associateBy { it.source }
@@ -221,7 +247,20 @@ private fun DetailRatingsRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         orderedRatings.forEach { (visuals, rating) ->
+            val ratingUrl = remember(meta, visuals.source) {
+                buildRatingProviderUrl(meta, visuals.source)
+            }
             Row(
+                modifier = ratingUrl?.let { url ->
+                    Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(
+                            onClickLabel = "Open ${visuals.displayName}",
+                            role = Role.Button,
+                            onClick = { onOpenUrl(url) },
+                        )
+                        .padding(horizontal = 2.dp, vertical = 2.dp)
+                } ?: Modifier,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Image(
