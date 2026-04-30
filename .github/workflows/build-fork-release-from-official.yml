@@ -129,7 +129,18 @@ jobs:
           git fetch upstream "refs/heads/${TARGET_BRANCH}:${official_branch_ref}" "refs/tags/${upstream_tag}:${official_tag_ref}"
 
           before="$(git rev-parse HEAD)"
-          git merge --no-edit "${official_branch_ref}"
+          if ! git merge --no-edit "${official_branch_ref}"; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            if [ "${conflicts}" != "${version_file}" ]; then
+              echo "::error::Merge conflict while syncing ${UPSTREAM_REPO}:${TARGET_BRANCH}. Conflicted files:"
+              printf '%s\n' "${conflicts}"
+              exit 1
+            fi
+
+            git checkout --theirs -- "${version_file}"
+            git add "${version_file}"
+            git commit --no-edit
+          fi
 
           git show "${official_branch_ref}:${version_file}" > "${version_file}"
           official_marketing_version="$(sed -n 's/^MARKETING_VERSION=//p' "${version_file}" | head -n 1)"
