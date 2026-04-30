@@ -9,6 +9,8 @@ import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_TOMATOES
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_TRAKT
 import io.ktor.http.encodeURLParameter
 
+internal const val RATING_PROVIDER_LINK_CATEGORY = "rating-provider"
+
 private val imdbIdRegex = Regex("tt\\d+", RegexOption.IGNORE_CASE)
 private val releaseYearRegex = Regex("^\\D*(\\d{4})")
 private val tmdbPrefixedIdRegex = Regex(
@@ -19,9 +21,46 @@ private val tmdbUrlRegex = Regex(
     pattern = """themoviedb\.org/(?:movie|tv)/(\d+)""",
     option = RegexOption.IGNORE_CASE,
 )
+private val imdbDirectUrlRegex = Regex(
+    pattern = """^https?://(?:www\.)?imdb\.com/title/tt\d+/?(?:[?#].*)?$""",
+    option = RegexOption.IGNORE_CASE,
+)
+private val tmdbDirectUrlRegex = Regex(
+    pattern = """^https?://(?:www\.)?themoviedb\.org/(?:movie|tv)/\d+(?:-[^/?#]+)?/?(?:[?#].*)?$""",
+    option = RegexOption.IGNORE_CASE,
+)
+private val traktDirectUrlRegex = Regex(
+    pattern = """^https?://(?:www\.)?trakt\.tv/(?:movies|shows)/[^/?#]+/?(?:[?#].*)?$""",
+    option = RegexOption.IGNORE_CASE,
+)
+private val rottenTomatoesDirectUrlRegex = Regex(
+    pattern = """^https?://(?:www\.)?rottentomatoes\.com/(?:m|tv)/[^?#]+/?(?:[?#].*)?$""",
+    option = RegexOption.IGNORE_CASE,
+)
+private val metacriticDirectUrlRegex = Regex(
+    pattern = """^https?://(?:www\.)?metacritic\.com/(?:movie|tv)/[^?#]+/?(?:[?#].*)?$""",
+    option = RegexOption.IGNORE_CASE,
+)
+private val letterboxdDirectUrlRegex = Regex(
+    pattern = """^https?://(?:www\.)?letterboxd\.com/(?:film/[^/?#]+|imdb/tt\d+)/?(?:[?#].*)?$""",
+    option = RegexOption.IGNORE_CASE,
+)
+private val knownRatingProviders = setOf(
+    PROVIDER_IMDB,
+    PROVIDER_TMDB,
+    PROVIDER_TOMATOES,
+    PROVIDER_METACRITIC,
+    PROVIDER_TRAKT,
+    PROVIDER_LETTERBOXD,
+    PROVIDER_AUDIENCE,
+)
 
 internal fun buildRatingProviderUrl(meta: MetaDetails, source: String): String? {
     val normalizedSource = source.trim().lowercase()
+    if (normalizedSource !in knownRatingProviders) return null
+
+    meta.findDirectRatingProviderUrl(normalizedSource)?.let { return it }
+
     val searchQuery = meta.ratingSearchQuery()
     val encodedQuery = searchQuery.encodeURLParameter()
     val encodedPath = encodedQuery
@@ -48,6 +87,36 @@ internal fun buildRatingProviderUrl(meta: MetaDetails, source: String): String? 
     }
 }
 
+internal fun normalizeRatingProviderUrl(rawUrl: String): String? {
+    val trimmed = rawUrl
+        .trim()
+        .replace("&amp;", "&")
+    return when {
+        trimmed.startsWith("https://", ignoreCase = true) -> trimmed
+        trimmed.startsWith("http://", ignoreCase = true) -> "https://" + trimmed.drop("http://".length)
+        trimmed.startsWith("//") -> "https:$trimmed"
+        else -> null
+    }
+}
+
+internal fun ratingProvidersForDirectUrl(rawUrl: String): List<String> {
+    val url = normalizeRatingProviderUrl(rawUrl) ?: return emptyList()
+    return when {
+        imdbDirectUrlRegex.matches(url) -> listOf(PROVIDER_IMDB)
+        tmdbDirectUrlRegex.matches(url) -> listOf(PROVIDER_TMDB)
+        traktDirectUrlRegex.matches(url) -> listOf(PROVIDER_TRAKT)
+        rottenTomatoesDirectUrlRegex.matches(url) -> listOf(PROVIDER_TOMATOES, PROVIDER_AUDIENCE)
+        metacriticDirectUrlRegex.matches(url) -> listOf(PROVIDER_METACRITIC)
+        letterboxdDirectUrlRegex.matches(url) -> listOf(PROVIDER_LETTERBOXD)
+        else -> emptyList()
+    }
+}
+
+internal fun isDirectRatingProviderUrlForSource(rawUrl: String, source: String): Boolean {
+    val normalizedSource = source.trim().lowercase()
+    return normalizedSource in ratingProvidersForDirectUrl(rawUrl)
+}
+
 private fun MetaDetails.ratingSearchQuery(): String {
     val title = name.trim()
     val year = releaseInfo
@@ -56,6 +125,27 @@ private fun MetaDetails.ratingSearchQuery(): String {
         ?.getOrNull(1)
         ?.takeIf { it.isNotBlank() }
     return listOfNotNull(title.takeIf { it.isNotBlank() }, year).joinToString(" ")
+}
+
+private fun MetaDetails.findDirectRatingProviderUrl(source: String): String? {
+    val generatedProviderNames = if (source == PROVIDER_AUDIENCE) {
+        setOf(PROVIDER_AUDIENCE, PROVIDER_TOMATOES)
+    } else {
+        setOf(source)
+    }
+
+    links.asSequence()
+        .filter { link ->
+            link.category == RATING_PROVIDER_LINK_CATEGORY &&
+                link.name.trim().lowercase() in generatedProviderNames
+        }
+        .mapNotNull { link -> normalizeRatingProviderUrl(link.url) }
+        .firstOrNull { url -> isDirectRatingProviderUrlForSource(url, source) }
+        ?.let { return it }
+
+    return links.asSequence()
+        .mapNotNull { link -> normalizeRatingProviderUrl(link.url) }
+        .firstOrNull { url -> isDirectRatingProviderUrlForSource(url, source) }
 }
 
 private fun MetaDetails.extractImdbId(): String? =

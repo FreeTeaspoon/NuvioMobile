@@ -1,9 +1,14 @@
 package com.nuvio.app.features.mdblist
 
 import co.touchlab.kermit.Logger
+import com.nuvio.app.features.addons.httpGetText
 import com.nuvio.app.features.addons.httpPostJson
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaExternalRating
+import com.nuvio.app.features.details.MetaLink
+import com.nuvio.app.features.details.RATING_PROVIDER_LINK_CATEGORY
+import com.nuvio.app.features.details.normalizeRatingProviderUrl
+import com.nuvio.app.features.details.ratingProvidersForDirectUrl
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -37,7 +42,12 @@ object MdbListMetadataService {
     private val log = Logger.withTag("MdbListMetadata")
     private val json = Json { ignoreUnknownKeys = true }
     private val ratingsCache = mutableMapOf<String, List<MetaExternalRating>>()
+    private val providerLinksCache = mutableMapOf<String, Map<String, String>>()
     private val imdbRegex = Regex("tt\\d+")
+    private val anchorHrefRegex = Regex(
+        pattern = """<a\b[^>]*\bhref\s*=\s*(['"])(.*?)\1""",
+        options = setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+    )
 
     fun shouldFetchForMeta(
         meta: MetaDetails,
@@ -66,18 +76,33 @@ object MdbListMetadataService {
         val mediaType = toMdbListMediaType(meta.type)
         val enabledProviders = settings.enabledProvidersInPriorityOrder()
 
-        val ratings = fetchRatings(
-            imdbId = imdbId,
-            mediaType = mediaType,
-            apiKey = apiKey,
-            providers = enabledProviders,
-        )
+        val (ratings, providerLinks) = coroutineScope {
+            val ratingsDeferred = async {
+                fetchRatings(
+                    imdbId = imdbId,
+                    mediaType = mediaType,
+                    apiKey = apiKey,
+                    providers = enabledProviders,
+                )
+            }
+            val linksDeferred = async {
+                fetchProviderLinks(
+                    imdbId = imdbId,
+                    mediaType = mediaType,
+                )
+            }
+            ratingsDeferred.await() to linksDeferred.await()
+        }
 
-        return meta.copy(externalRatings = ratings)
+        return meta.copy(
+            externalRatings = ratings,
+            links = mergeRatingProviderLinks(meta.links, providerLinks),
+        )
     }
 
     fun clearCache() {
         ratingsCache.clear()
+        providerLinksCache.clear()
     }
 
     private suspend fun fetchRatings(
@@ -104,6 +129,62 @@ object MdbListMetadataService {
 
         ratingsCache[cacheKey] = ratings
         ratings
+    }
+
+    private suspend fun fetchProviderLinks(
+        imdbId: String,
+        mediaType: String,
+    ): Map<String, String> = withContext(Dispatchers.Default) {
+        val cacheKey = "$mediaType:$imdbId"
+        providerLinksCache[cacheKey]?.let { return@withContext it }
+
+        val links = runCatching {
+            val pageUrl = "https://www.mdblist.com/$mediaType/$imdbId"
+            extractRatingProviderLinksFromHtml(httpGetText(pageUrl))
+        }.onFailure { error ->
+            if (error is CancellationException) throw error
+            log.w { "MDBList provider link request failed for $mediaType/$imdbId: ${error.message}" }
+        }.getOrDefault(emptyMap())
+
+        providerLinksCache[cacheKey] = links
+        links
+    }
+
+    internal fun extractRatingProviderLinksFromHtml(html: String): Map<String, String> {
+        val links = linkedMapOf<String, String>()
+        anchorHrefRegex.findAll(html).forEach { match ->
+            val url = normalizeRatingProviderUrl(match.groupValues.getOrNull(2).orEmpty())
+                ?: return@forEach
+            ratingProvidersForDirectUrl(url).forEach { provider ->
+                links.putIfAbsent(provider, url)
+            }
+        }
+        return links
+    }
+
+    internal fun mergeRatingProviderLinks(
+        existingLinks: List<MetaLink>,
+        providerLinks: Map<String, String>,
+    ): List<MetaLink> {
+        if (providerLinks.isEmpty()) {
+            return existingLinks
+        }
+
+        val generatedLinks = providerLinks.map { (provider, url) ->
+            MetaLink(
+                name = provider,
+                category = RATING_PROVIDER_LINK_CATEGORY,
+                url = url,
+            )
+        }
+
+        val replacementProviders = providerLinks.keys
+        return existingLinks
+            .filterNot { link ->
+                link.category == RATING_PROVIDER_LINK_CATEGORY &&
+                    link.name.trim().lowercase() in replacementProviders
+            }
+            .plus(generatedLinks)
     }
 
     private suspend fun fetchProviderRating(
