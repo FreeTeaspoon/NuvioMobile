@@ -12,9 +12,9 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ## 0.1.12.1
 
-### Changed
+### Fixed
 
-- Fork release build for upstream NuvioMobile `0.1.12`.
+- Rating provider logos and numbers now open direct provider pages when available, with search fallback when a direct link cannot be found.
 
 ## 0.1.11.1
 

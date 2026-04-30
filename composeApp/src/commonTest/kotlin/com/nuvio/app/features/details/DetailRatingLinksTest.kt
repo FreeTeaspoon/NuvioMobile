@@ -113,12 +113,67 @@ class DetailRatingLinksTest {
     }
 
     @Test
+    fun `direct rating provider links win over search fallbacks`() {
+        val meta = meta(
+            name = "Skins",
+            releaseInfo = "2007-01-25",
+            links = listOf(
+                ratingProviderLink(PROVIDER_TMDB, "https://www.themoviedb.org/tv/900"),
+                ratingProviderLink(PROVIDER_TOMATOES, "https://www.rottentomatoes.com/tv/skins"),
+                ratingProviderLink(PROVIDER_AUDIENCE, "https://www.rottentomatoes.com/tv/skins"),
+                ratingProviderLink(PROVIDER_METACRITIC, "https://www.metacritic.com/tv/the-xac"),
+                ratingProviderLink(PROVIDER_TRAKT, "https://trakt.tv/shows/skins"),
+                ratingProviderLink(PROVIDER_LETTERBOXD, "https://letterboxd.com/imdb/tt0840196"),
+            ),
+        )
+
+        assertEquals(
+            "https://www.themoviedb.org/tv/900",
+            buildRatingProviderUrl(meta, PROVIDER_TMDB),
+        )
+        assertEquals(
+            "https://www.rottentomatoes.com/tv/skins",
+            buildRatingProviderUrl(meta, PROVIDER_TOMATOES),
+        )
+        assertEquals(
+            "https://www.rottentomatoes.com/tv/skins",
+            buildRatingProviderUrl(meta, PROVIDER_AUDIENCE),
+        )
+        assertEquals(
+            "https://www.metacritic.com/tv/the-xac",
+            buildRatingProviderUrl(meta, PROVIDER_METACRITIC),
+        )
+        assertEquals(
+            "https://trakt.tv/shows/skins",
+            buildRatingProviderUrl(meta, PROVIDER_TRAKT),
+        )
+        assertEquals(
+            "https://letterboxd.com/imdb/tt0840196",
+            buildRatingProviderUrl(meta, PROVIDER_LETTERBOXD),
+        )
+    }
+
+    @Test
+    fun `audience source can reuse rotten tomatoes provider link`() {
+        val meta = meta(
+            links = listOf(
+                ratingProviderLink(PROVIDER_TOMATOES, "https://www.rottentomatoes.com/tv/skins"),
+            ),
+        )
+
+        assertEquals(
+            "https://www.rottentomatoes.com/tv/skins",
+            buildRatingProviderUrl(meta, PROVIDER_AUDIENCE),
+        )
+    }
+
+    @Test
     fun `unknown source has no link`() {
         assertNull(buildRatingProviderUrl(meta(), "unknown"))
     }
 
     @Test
-    fun `direct ids can be extracted from links`() {
+    fun `generic metadata provider links open directly`() {
         val meta = meta(
             id = "addon:skins",
             links = listOf(
@@ -136,7 +191,7 @@ class DetailRatingLinksTest {
         )
 
         assertEquals(
-            "https://www.themoviedb.org/tv/9001",
+            "https://www.themoviedb.org/tv/9001-skins",
             buildRatingProviderUrl(meta, PROVIDER_TMDB),
         )
         assertEquals(
@@ -144,6 +199,15 @@ class DetailRatingLinksTest {
             buildRatingProviderUrl(meta, PROVIDER_IMDB),
         )
     }
+
+    private fun ratingProviderLink(
+        provider: String,
+        url: String,
+    ): MetaLink = MetaLink(
+        name = provider,
+        category = RATING_PROVIDER_LINK_CATEGORY,
+        url = url,
+    )
 
     private fun meta(
         id: String = "show",
