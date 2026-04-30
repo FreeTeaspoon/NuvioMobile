@@ -145,11 +145,14 @@ import com.nuvio.app.features.home.HomeCatalogSettingsSyncService
 import com.nuvio.app.features.collection.FolderDetailScreen
 import com.nuvio.app.features.collection.FolderDetailRepository
 import com.nuvio.app.features.streams.StreamAutoPlayPolicy
+import com.nuvio.app.features.streams.StreamEpisodeMeta
 import com.nuvio.app.features.streams.StreamLaunch
 import com.nuvio.app.features.streams.StreamLaunchStore
 import com.nuvio.app.features.streams.StreamLinkCacheRepository
 import com.nuvio.app.features.streams.StreamsRepository
 import com.nuvio.app.features.streams.StreamsScreen
+import com.nuvio.app.features.streams.toStreamEpisodeMeta
+import com.nuvio.app.features.tmdb.TmdbMetadataService
 import com.nuvio.app.features.tmdb.TmdbService
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.trakt.TraktAuthRepository
@@ -1190,6 +1193,14 @@ private fun MainAppContent(
                     ) {
                         mutableStateOf(!shouldResolveEpisodeVideoId)
                     }
+                    var episodeMeta by remember(
+                        launch.videoId,
+                        launch.parentMetaId,
+                        launch.seasonNumber,
+                        launch.episodeNumber,
+                    ) {
+                        mutableStateOf<StreamEpisodeMeta?>(null)
+                    }
 
                     LaunchedEffect(
                         launch.videoId,
@@ -1200,6 +1211,7 @@ private fun MainAppContent(
                         launch.episodeNumber,
                     ) {
                         effectiveVideoId = launch.videoId
+                        episodeMeta = null
                         if (!shouldResolveEpisodeVideoId) {
                             hasResolvedVideoId = true
                             return@LaunchedEffect
@@ -1208,7 +1220,7 @@ private fun MainAppContent(
                         hasResolvedVideoId = false
                         val metaType = launch.parentMetaType ?: launch.type
                         val metaId = launch.parentMetaId ?: return@LaunchedEffect
-                        val resolvedVideoId = runCatching {
+                        val matchedVideo = runCatching {
                             MetaDetailsRepository.fetch(metaType, metaId)
                         }.getOrNull()
                             ?.videos
@@ -1216,11 +1228,45 @@ private fun MainAppContent(
                                 video.season == launch.seasonNumber &&
                                     video.episode == launch.episodeNumber
                             }
+                        val resolvedEpisodeMeta = matchedVideo?.toStreamEpisodeMeta()
+                        episodeMeta = when {
+                            resolvedEpisodeMeta == null -> null
+                            resolvedEpisodeMeta.imdbId == null && episodeMeta?.imdbId != null ->
+                                resolvedEpisodeMeta.copy(imdbId = episodeMeta?.imdbId)
+                            else -> resolvedEpisodeMeta
+                        }
+                        val resolvedVideoId = matchedVideo
                             ?.id
                             ?.takeIf { it.isNotBlank() }
 
                         effectiveVideoId = resolvedVideoId ?: launch.videoId
                         hasResolvedVideoId = true
+                    }
+
+                    LaunchedEffect(
+                        launch.parentMetaId,
+                        launch.parentMetaType,
+                        launch.type,
+                        launch.seasonNumber,
+                        launch.episodeNumber,
+                        hasResolvedVideoId,
+                        episodeMeta?.imdbId,
+                    ) {
+                        if (!shouldResolveEpisodeVideoId) return@LaunchedEffect
+                        if (!hasResolvedVideoId) return@LaunchedEffect
+                        if (episodeMeta?.imdbId != null) return@LaunchedEffect
+                        val parentMetaId = launch.parentMetaId ?: return@LaunchedEffect
+                        val seasonNumber = launch.seasonNumber ?: return@LaunchedEffect
+                        val episodeNumber = launch.episodeNumber ?: return@LaunchedEffect
+                        val resolvedImdbId = TmdbMetadataService.resolveEpisodeImdbId(
+                            parentMetaId = parentMetaId,
+                            parentMetaType = launch.parentMetaType ?: launch.type,
+                            seasonNumber = seasonNumber,
+                            episodeNumber = episodeNumber,
+                        ) ?: return@LaunchedEffect
+                        if (episodeMeta?.imdbId == null) {
+                            episodeMeta = (episodeMeta ?: StreamEpisodeMeta()).copy(imdbId = resolvedImdbId)
+                        }
                     }
 
                     val playerSettings by remember {
@@ -1361,6 +1407,7 @@ private fun MainAppContent(
                         episodeNumber = launch.episodeNumber,
                         episodeTitle = launch.episodeTitle,
                         episodeThumbnail = launch.episodeThumbnail,
+                        episodeMeta = episodeMeta,
                         resumePositionMs = launch.resumePositionMs,
                         resumeProgressFraction = launch.resumeProgressFraction,
                         manualSelection = launch.manualSelection,

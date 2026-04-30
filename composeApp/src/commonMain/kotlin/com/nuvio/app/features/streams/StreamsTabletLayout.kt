@@ -59,11 +59,13 @@ internal fun TabletStreamsLayout(
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
+    episodeMeta: StreamEpisodeMeta?,
     uiState: StreamsUiState,
     resumePositionMs: Long?,
     resumeProgressFraction: Float?,
     onStreamSelected: (stream: StreamItem, resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit,
     onStreamLongPress: (StreamItem) -> Unit,
+    onOpenImdbUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hazeState = rememberHazeState()
@@ -147,6 +149,8 @@ internal fun TabletStreamsLayout(
                         episodeNumber = episodeNumber,
                         episodeTitle = episodeTitle,
                         showTitle = title,
+                        episodeMeta = episodeMeta,
+                        onOpenImdbUrl = onOpenImdbUrl,
                     )
                 } else {
                     TabletMovieInfoPanel(
@@ -271,6 +275,8 @@ private fun TabletEpisodeInfoPanel(
     episodeNumber: Int,
     episodeTitle: String?,
     showTitle: String,
+    episodeMeta: StreamEpisodeMeta?,
+    onOpenImdbUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val textShadow = Shadow(
@@ -327,6 +333,11 @@ private fun TabletEpisodeInfoPanel(
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        EpisodeMetadataRow(
+            episodeMeta = episodeMeta,
+            onOpenImdbUrl = onOpenImdbUrl,
         )
     }
 }
