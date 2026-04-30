@@ -2,6 +2,7 @@
 
 package com.nuvio.app.features.player
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -10,6 +11,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+private const val TAG = "NuvioPlayerEngine"
 
 @Composable
 actual fun PlatformPlayerSurface(
@@ -35,8 +38,34 @@ actual fun PlatformPlayerSurface(
     var fallbackToMpv by remember(sourceUrl, sourceFilename) {
         mutableStateOf(false)
     }
+    var fallbackPositionMs by remember(sourceUrl, sourceFilename) {
+        mutableStateOf(0L)
+    }
+    var latestMedia3Snapshot by remember(sourceUrl, sourceFilename) {
+        mutableStateOf(PlayerPlaybackSnapshot())
+    }
+    val preferMpvForSource = remember(sourceUrl, sourceResponseHeaders, sourceFilename) {
+        shouldPreferMpvForPlaybackSource(
+            sourceUrl = sourceUrl,
+            responseHeaders = sourceResponseHeaders,
+            sourceFilename = sourceFilename,
+        )
+    }
 
-    val useMpv = playerSettings.playerEngine == PlayerEngineType.MPV || fallbackToMpv
+    val engineSelectionReason = when {
+        playerSettings.playerEngine == PlayerEngineType.MPV -> "MPV_USER_SELECTED"
+        fallbackToMpv -> "MPV_FALLBACK"
+        preferMpvForSource -> "MPV_DAV_SOURCE"
+        else -> "MEDIA3"
+    }
+
+    val useMpv = playerSettings.playerEngine == PlayerEngineType.MPV ||
+        fallbackToMpv ||
+        preferMpvForSource
+
+    LaunchedEffect(engineSelectionReason) {
+        Log.d(TAG, "Selected player engine: $engineSelectionReason")
+    }
     LaunchedEffect(fallbackToMpv) {
         if (fallbackToMpv) onError(null)
     }
@@ -46,6 +75,7 @@ actual fun PlatformPlayerSurface(
             sourceUrl = sourceUrl,
             sourceAudioUrl = sourceAudioUrl,
             sourceHeaders = sourceHeaders,
+            initialPositionMs = if (fallbackToMpv) fallbackPositionMs else 0L,
             modifier = modifier,
             playWhenReady = playWhenReady,
             resizeMode = resizeMode,
@@ -54,10 +84,6 @@ actual fun PlatformPlayerSurface(
             onError = onError,
         )
     } else {
-        val shouldFallbackOnMedia3SourceError = shouldFallbackToMpvForDavSource(
-            sourceUrl = sourceUrl,
-            sourceFilename = sourceFilename,
-        )
         AndroidMedia3PlayerSurface(
             sourceUrl = sourceUrl,
             sourceAudioUrl = sourceAudioUrl,
@@ -71,45 +97,27 @@ actual fun PlatformPlayerSurface(
             resizeMode = resizeMode,
             useNativeController = useNativeController,
             onControllerReady = onControllerReady,
-            onSnapshot = onSnapshot,
-            onError = { message ->
-                if (message != null && shouldFallbackOnMedia3SourceError) {
+            onSnapshot = { snapshot ->
+                latestMedia3Snapshot = snapshot
+                onSnapshot(snapshot)
+            },
+            onError = onError,
+            onRecoverableSourceError = { message, snapshot ->
+                if (shouldFallbackToMpvForPlaybackError(
+                        sourceUrl = sourceUrl,
+                        responseHeaders = sourceResponseHeaders,
+                        sourceFilename = sourceFilename,
+                        errorMessage = message,
+                    )
+                ) {
+                    fallbackPositionMs = maxOf(snapshot.positionMs, latestMedia3Snapshot.positionMs)
+                        .coerceAtLeast(0L)
                     fallbackToMpv = true
+                    true
                 } else {
-                    onError(message)
+                    false
                 }
             },
         )
     }
-}
-
-private fun shouldFallbackToMpvForDavSource(
-    sourceUrl: String,
-    sourceFilename: String?,
-): Boolean {
-    val normalized = "$sourceUrl ${sourceFilename.orEmpty()}".lowercase()
-    if (normalized.contains("nzbdav") ||
-        normalized.contains("altmount") ||
-        normalized.contains("webdav") ||
-        normalized.contains("usenet")
-    ) {
-        return true
-    }
-
-    val hasUrlUserInfo = Regex("""^[a-z][a-z0-9+.-]*://[^/@]+:[^/@]+@""")
-        .containsMatchIn(sourceUrl.lowercase())
-    if (hasUrlUserInfo) return true
-
-    val path = sourceUrl.substringBefore('?').substringBefore('#')
-    val lastPathSegment = path.substringAfterLast('/')
-    val urlLooksExtensionless = !lastPathSegment.contains('.')
-    val filenameHasVideoExtension = sourceFilename
-        ?.lowercase()
-        ?.let { filename ->
-            listOf(".mkv", ".mk3d", ".webm", ".mp4", ".m4v", ".mov", ".avi", ".ts", ".m2ts", ".mts", ".mpg", ".mpeg", ".flv")
-                .any(filename::contains)
-        }
-        ?: false
-
-    return urlLooksExtensionless && filenameHasVideoExtension
 }

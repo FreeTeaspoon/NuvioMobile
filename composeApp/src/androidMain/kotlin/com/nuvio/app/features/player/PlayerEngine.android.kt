@@ -79,11 +79,13 @@ internal fun AndroidMedia3PlayerSurface(
     onControllerReady: (PlayerEngineController) -> Unit,
     onSnapshot: (PlayerPlaybackSnapshot) -> Unit,
     onError: (String?) -> Unit,
+    onRecoverableSourceError: (String, PlayerPlaybackSnapshot) -> Boolean = { _, _ -> false },
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val latestOnSnapshot = rememberUpdatedState(onSnapshot)
     val latestOnError = rememberUpdatedState(onError)
+    val latestOnRecoverableSourceError = rememberUpdatedState(onRecoverableSourceError)
     val coroutineScope = rememberCoroutineScope()
 
     val playerSettings = remember {
@@ -200,6 +202,10 @@ internal fun AndroidMedia3PlayerSurface(
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     var currentSubtitleStyle by remember { mutableStateOf(SubtitleStyleState.DEFAULT) }
     var subtitleSelectionJob by remember { mutableStateOf<Job?>(null) }
+    var terminalSnapshotOverride by remember(exoPlayer) { mutableStateOf<PlayerPlaybackSnapshot?>(null) }
+
+    fun currentSnapshotForUi(): PlayerPlaybackSnapshot =
+        terminalSnapshotOverride ?: exoPlayer.snapshot()
 
     DisposableEffect(exoPlayer) {
         PlayerPictureInPictureManager.registerPausePlaybackCallback {
@@ -209,7 +215,27 @@ internal fun AndroidMedia3PlayerSurface(
         val listener = object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 Log.e(TAG, "Media3 playback error: code=${error.errorCodeName}, message=${error.message}", error)
-                latestOnError.value(error.toPlayerErrorMessage())
+                val message = error.toPlayerErrorMessage()
+                val snapshot = exoPlayer.snapshot()
+                if (shouldTreatMedia3VarintFailureAsEnded(
+                        sourceUrl = sourceUrl,
+                        responseHeaders = sanitizedSourceResponseHeaders,
+                        sourceFilename = sourceFilename,
+                        errorMessage = message,
+                        snapshot = snapshot,
+                    )
+                ) {
+                    val endedSnapshot = snapshot.asEndedPlaybackSnapshot()
+                    terminalSnapshotOverride = endedSnapshot
+                    latestOnError.value(null)
+                    latestOnSnapshot.value(endedSnapshot)
+                    return
+                }
+                if (latestOnRecoverableSourceError.value(message, snapshot)) {
+                    latestOnError.value(null)
+                    return
+                }
+                latestOnError.value(message)
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -222,18 +248,19 @@ internal fun AndroidMedia3PlayerSurface(
                 }
                 Log.d(TAG, "onPlaybackStateChanged: $stateName")
                 if (playbackState == Player.STATE_READY) {
+                    terminalSnapshotOverride = null
                     latestOnError.value(null)
                     exoPlayer.logCurrentTracks("STATE_READY")
                 }
-                latestOnSnapshot.value(exoPlayer.snapshot())
+                latestOnSnapshot.value(currentSnapshotForUi())
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                latestOnSnapshot.value(exoPlayer.snapshot())
+                latestOnSnapshot.value(currentSnapshotForUi())
             }
 
             override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
-                latestOnSnapshot.value(exoPlayer.snapshot())
+                latestOnSnapshot.value(currentSnapshotForUi())
             }
 
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
@@ -250,7 +277,7 @@ internal fun AndroidMedia3PlayerSurface(
                         exoPlayer.selectTrackByIndex(C.TRACK_TYPE_TEXT, idx)
                     }
                 }
-                latestOnSnapshot.value(exoPlayer.snapshot())
+                latestOnSnapshot.value(currentSnapshotForUi())
             }
 
         }
@@ -287,13 +314,14 @@ internal fun AndroidMedia3PlayerSurface(
 
     LaunchedEffect(exoPlayer, playWhenReady) {
         exoPlayer.playWhenReady = playWhenReady
-        latestOnSnapshot.value(exoPlayer.snapshot())
+        latestOnSnapshot.value(currentSnapshotForUi())
     }
 
     LaunchedEffect(exoPlayer) {
         onControllerReady(
             object : PlayerEngineController {
                 override fun play() {
+                    terminalSnapshotOverride = null
                     exoPlayer.playWhenReady = true
                     exoPlayer.play()
                 }
@@ -303,14 +331,17 @@ internal fun AndroidMedia3PlayerSurface(
                 }
 
                 override fun seekTo(positionMs: Long) {
+                    terminalSnapshotOverride = null
                     exoPlayer.seekTo(positionMs.coerceAtLeast(0L))
                 }
 
                 override fun seekBy(offsetMs: Long) {
+                    terminalSnapshotOverride = null
                     exoPlayer.seekTo((exoPlayer.currentPosition + offsetMs).coerceAtLeast(0L))
                 }
 
                 override fun retry() {
+                    terminalSnapshotOverride = null
                     exoPlayer.prepare()
                     exoPlayer.playWhenReady = true
                 }
@@ -435,7 +466,7 @@ internal fun AndroidMedia3PlayerSurface(
 
     LaunchedEffect(exoPlayer) {
         while (isActive) {
-            latestOnSnapshot.value(exoPlayer.snapshot())
+            latestOnSnapshot.value(currentSnapshotForUi())
             delay(250L)
         }
     }

@@ -37,6 +37,7 @@ internal fun AndroidMpvPlayerSurface(
     sourceUrl: String,
     sourceAudioUrl: String?,
     sourceHeaders: Map<String, String>,
+    initialPositionMs: Long,
     modifier: Modifier,
     playWhenReady: Boolean,
     resizeMode: PlayerResizeMode,
@@ -105,6 +106,7 @@ internal fun AndroidMpvPlayerSurface(
                 videoUrl = sourceUrl,
                 audioUrl = sourceAudioUrl,
                 requestHeaders = sanitizedSourceHeaders,
+                initialPositionMs = initialPositionMs.coerceAtLeast(0L),
             )
             view.setPaused(!playWhenReady)
         },
@@ -173,6 +175,7 @@ private data class MpvPlaybackRequest(
     val videoUrl: String,
     val audioUrl: String?,
     val requestHeaders: Map<String, String>,
+    val initialPositionMs: Long,
 )
 
 private data class MpvTrack(
@@ -207,6 +210,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     private var isPlayerLoading = true
     private var hasRenderedFrameForCurrentRequest = false
     private var isSeekFramePending = false
+    private var initialSeekAppliedForRequest: MpvPlaybackRequest? = null
     private var loadGeneration = 0
     private var resizeMode: PlayerResizeMode = PlayerResizeMode.Fit
     private var subtitleStyle: SubtitleStyleState = SubtitleStyleState.DEFAULT
@@ -267,11 +271,13 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         videoUrl: String,
         audioUrl: String?,
         requestHeaders: Map<String, String>,
+        initialPositionMs: Long,
     ) {
         val request = MpvPlaybackRequest(
             videoUrl = videoUrl,
             audioUrl = audioUrl?.takeIf { it.isNotBlank() },
             requestHeaders = requestHeaders,
+            initialPositionMs = initialPositionMs.coerceAtLeast(0L),
         )
         currentRequestHeaders = request.requestHeaders
         if (request == activeRequest && isMpvInitialized) return
@@ -567,6 +573,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         isPlayerLoading = true
         hasRenderedFrameForCurrentRequest = false
         isSeekFramePending = false
+        initialSeekAppliedForRequest = null
         loadGeneration++
         val generation = loadGeneration
         applyHttpHeadersAsOptions(request.requestHeaders)
@@ -599,6 +606,22 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
                 }
             }, 200L)
         }
+    }
+
+    private fun applyInitialPositionSeekIfNeeded() {
+        val request = activeRequest ?: return
+        val positionMs = request.initialPositionMs
+        if (positionMs <= 0L || initialSeekAppliedForRequest == request) return
+
+        initialSeekAppliedForRequest = request
+        postDelayed({
+            if (isMpvInitialized && activeRequest == request) {
+                seekTo(positionMs)
+                if (!isPaused) {
+                    MPVLib.setPropertyBoolean("pause", false)
+                }
+            }
+        }, 100L)
     }
 
     private fun applyHttpHeadersAsOptions(headers: Map<String, String>) {
@@ -795,7 +818,13 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         val mpvEventPlaybackRestart = 21
 
         when (eventId) {
-            mpvEventFileLoaded,
+            mpvEventFileLoaded -> {
+                clearPlaybackError()
+                applyInitialPositionSeekIfNeeded()
+                if (!isPaused) {
+                    MPVLib.setPropertyBoolean("pause", false)
+                }
+            }
             mpvEventVideoReconfig,
             mpvEventPlaybackRestart -> {
                 clearPlaybackError()
