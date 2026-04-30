@@ -69,8 +69,35 @@ jobs:
           fi
 
           body_file="${RUNNER_TEMP}/release-body.md"
-          release_name="${upstream_tag#v}"
+          upstream_version="${upstream_tag#v}"
+          fork_version="${upstream_version}.1"
+          fork_tag="${fork_version}"
           jq -r '.body // ""' <<<"${release_json}" > "${body_file}"
+
+          changelog_notes="${RUNNER_TEMP}/changelog-notes.md"
+          if [ -f CHANGELOG.md ] && awk -v version="${fork_version}" '
+            /^##[[:space:]]+/ {
+              heading = $0
+              sub(/^##[[:space:]]+/, "", heading)
+              sub(/^\[/, "", heading)
+              sub(/\].*$/, "", heading)
+              sub(/[[:space:]].*$/, "", heading)
+              if (heading == version) {
+                found = 1
+                next
+              }
+              if (found) exit
+            }
+            found { print }
+            END { if (!found) exit 1 }
+          ' CHANGELOG.md > "${changelog_notes}" && [ -s "${changelog_notes}" ]; then
+            {
+              echo
+              echo "### Fork Changes"
+              cat "${changelog_notes}"
+            } >> "${body_file}"
+          fi
+
           {
             echo
             echo "---"
@@ -79,7 +106,7 @@ jobs:
             echo "This APK is built from this fork after merging the official ${UPSTREAM_REPO} ${upstream_tag} release source, so fork changes are included."
           } >> "${body_file}"
 
-          existing_release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${upstream_tag}" 2>/dev/null || true)"
+          existing_release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${fork_tag}" 2>/dev/null || true)"
           if [ -n "${existing_release_json}" ]; then
             existing_release_id="$(jq -r '.id // empty' <<<"${existing_release_json}")"
             desired_apk_count="$(jq -r --arg desired "${RELEASE_APK_NAME}" '[.assets[]? | select(.name == $desired)] | length' <<<"${existing_release_json}")"
@@ -105,7 +132,7 @@ jobs:
             if [ -n "${existing_release_id}" ]; then
               release_patch="${RUNNER_TEMP}/release-patch.json"
               jq -n \
-                --arg name "${release_name}" \
+                --arg name "${fork_version}" \
                 --rawfile body "${body_file}" \
                 --argjson prerelease "${prerelease}" \
                 '{name: $name, body: $body, prerelease: $prerelease}' > "${release_patch}"
@@ -113,21 +140,22 @@ jobs:
                 --method PATCH \
                 "repos/${GITHUB_REPOSITORY}/releases/${existing_release_id}" \
                 --input "${release_patch}" >/dev/null
-              echo "Updated release ${upstream_tag} title and notes from ${UPSTREAM_REPO}."
+              echo "Updated release ${fork_tag} title and notes from ${UPSTREAM_REPO} ${upstream_tag}."
             fi
 
             if [ "${has_release_apk}" = "true" ]; then
-              echo "Release ${upstream_tag} already exists in ${GITHUB_REPOSITORY}; APK asset and notes are current."
+              echo "Release ${fork_tag} already exists in ${GITHUB_REPOSITORY}; APK asset and notes are current."
               echo "skip=true" >> "${GITHUB_OUTPUT}"
               exit 0
             else
-              echo "Release ${upstream_tag} exists in ${GITHUB_REPOSITORY} without an APK asset; rebuilding ${RELEASE_APK_NAME}."
+              echo "Release ${fork_tag} exists in ${GITHUB_REPOSITORY} without an APK asset; rebuilding ${RELEASE_APK_NAME}."
             fi
           fi
 
           echo "skip=false" >> "${GITHUB_OUTPUT}"
-          echo "tag=${upstream_tag}" >> "${GITHUB_OUTPUT}"
-          echo "name=${release_name}" >> "${GITHUB_OUTPUT}"
+          echo "upstream_tag=${upstream_tag}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${fork_tag}" >> "${GITHUB_OUTPUT}"
+          echo "name=${fork_version}" >> "${GITHUB_OUTPUT}"
           echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
           echo "body_file=${body_file}" >> "${GITHUB_OUTPUT}"
 
@@ -138,10 +166,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          tag="${{ steps.release.outputs.tag }}"
-          official_ref="refs/remotes/upstream/release-tags/${tag}"
+          upstream_tag="${{ steps.release.outputs.upstream_tag }}"
+          official_ref="refs/remotes/upstream/release-tags/${upstream_tag}"
 
-          git fetch upstream "refs/tags/${tag}:${official_ref}"
+          git fetch upstream "refs/tags/${upstream_tag}:${official_ref}"
 
           before="$(git rev-parse HEAD)"
           git merge --no-edit "${official_ref}"
@@ -150,7 +178,7 @@ jobs:
           if [ "${before}" != "${after}" ]; then
             git push origin "HEAD:${TARGET_BRANCH}"
           else
-            echo "Fork branch already includes ${UPSTREAM_REPO} release ${tag}."
+            echo "Fork branch already includes ${UPSTREAM_REPO} release ${upstream_tag}."
           fi
 
           echo "build_commit=${after}" >> "${GITHUB_OUTPUT}"

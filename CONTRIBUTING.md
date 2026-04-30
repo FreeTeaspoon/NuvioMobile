@@ -111,6 +111,43 @@ PRs that do not fit this policy will be closed without merge so review time can 
 
 ---
 
+## Commit messages
+
+Use short, scoped commit messages that make release notes and history easy to scan.
+
+Preferred format:
+
+```text
+type(scope): summary
+```
+
+Examples:
+
+```text
+fix(player): prevent crash when stream ends
+chore(release): bump version to 0.1.12
+docs(readme): clarify Android setup
+```
+
+Recommended types:
+
+- `fix` for bug fixes
+- `feat` for approved user-facing additions
+- `chore` for maintenance, build, and release work
+- `docs` for documentation-only changes
+- `test` for test-only changes
+- `refactor` for behavior-preserving code changes with a clear maintenance reason
+
+Keep the summary imperative and specific. Avoid vague messages such as `update`, `fix stuff`, or `changes`.
+
+## Release notes
+
+User-facing release notes live in `CHANGELOG.md`. When a PR changes behavior that users may notice, fill in the PR template's **User-facing changes** section and add the entry under `Unreleased` in `CHANGELOG.md`.
+
+During release, move relevant `Unreleased` entries under a version heading that matches `MARKETING_VERSION` in `iosApp/Configuration/Version.xcconfig`. The release workflow uses that matching changelog section for GitHub release notes when an upstream release body is not available.
+
+---
+
 ## One issue per problem
 
 Please open separate issues for separate bugs/features. It makes tracking, fixing, and closing issues much faster.
