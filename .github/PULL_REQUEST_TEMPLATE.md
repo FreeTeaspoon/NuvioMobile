@@ -15,6 +15,10 @@
 
 <!-- Why this change is needed. Link bug/issue/context. -->
 
+## User-facing changes
+
+<!-- What users will notice in release notes. If none, write: None -->
+
 ## Policy check
 
 <!-- ALL boxes must be checked or the PR will be closed without review. -->

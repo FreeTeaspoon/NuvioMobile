@@ -29,7 +29,8 @@ jobs:
               return (next === -1 ? rest : rest.slice(0, next)).trim();
             }
 
-            const required = ["Summary", "Why", "Testing", "Breaking changes", "Linked issues"];
+            const required = ["Summary", "Why", "User-facing changes", "Testing", "Breaking changes", "Linked issues"];
+            const allowNone = new Set(["User-facing changes", "Breaking changes", "Linked issues"]);
             const missing = [];
             const empty = [];
 
@@ -49,9 +50,10 @@ jobs:
 
               if (
                 cleaned.length < 4 ||
-                cleaned === "none" ||
+                (!allowNone.has(name) && cleaned === "none") ||
                 cleaned.includes("what changed in this pr") ||
                 cleaned.includes("why this change is needed") ||
+                cleaned.includes("what users will notice in release notes") ||
                 cleaned.includes("what you tested") ||
                 cleaned.includes("example: fixes #123")
               ) {

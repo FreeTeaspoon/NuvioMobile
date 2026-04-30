@@ -42,10 +42,15 @@ jobs:
             echo "::error::MARKETING_VERSION is missing from iosApp/Configuration/Version.xcconfig"
             exit 1
           fi
+          if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Fork releases must use x.x.x.N, got ${version}"
+            exit 1
+          fi
 
           tag="${version}"
+          upstream_tag="${version%.*}"
           notes_file="${RUNNER_TEMP}/release-notes.md"
-          official_release_json="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${tag}" 2>/dev/null || true)"
+          official_release_json="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${upstream_tag}" 2>/dev/null || true)"
           official_url=""
           prerelease="false"
 
@@ -54,17 +59,40 @@ jobs:
             prerelease="$(jq -r '.prerelease // false' <<<"${official_release_json}")"
             jq -r '.body // ""' <<<"${official_release_json}" > "${notes_file}"
           else
-            previous_tag="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
-            {
-              echo "### Fork Changes"
-              echo
-              if [ -n "${previous_tag}" ]; then
-                git log --no-merges --pretty=format:'- %s (%h)' "${previous_tag}..${GITHUB_SHA}"
-              else
-                git log --no-merges --pretty=format:'- %s (%h)' -n 20 "${GITHUB_SHA}"
-              fi
-              echo
-            } > "${notes_file}"
+            changelog_notes="${RUNNER_TEMP}/changelog-notes.md"
+            if [ -f CHANGELOG.md ] && awk -v version="${version}" '
+              /^##[[:space:]]+/ {
+                heading = $0
+                sub(/^##[[:space:]]+/, "", heading)
+                sub(/^\[/, "", heading)
+                sub(/\].*$/, "", heading)
+                sub(/[[:space:]].*$/, "", heading)
+                if (heading == version) {
+                  found = 1
+                  next
+                }
+                if (found) exit
+              }
+              found { print }
+              END { if (!found) exit 1 }
+            ' CHANGELOG.md > "${changelog_notes}" && [ -s "${changelog_notes}" ]; then
+              {
+                echo "### Release Notes"
+                cat "${changelog_notes}"
+              } > "${notes_file}"
+            else
+              previous_tag="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
+              {
+                echo "### Fork Changes"
+                echo
+                if [ -n "${previous_tag}" ]; then
+                  git log --no-merges --pretty=format:'- %s (%h)' "${previous_tag}..${GITHUB_SHA}"
+                else
+                  git log --no-merges --pretty=format:'- %s (%h)' -n 20 "${GITHUB_SHA}"
+                fi
+                echo
+              } > "${notes_file}"
+            fi
           fi
 
           {
@@ -73,7 +101,7 @@ jobs:
             echo "Fork build from ${GITHUB_REPOSITORY}:cmp-rewrite."
             if [ -n "${official_url}" ]; then
               echo "Official release source: ${official_url}"
-              echo "This APK is built from this fork after merging the official ${UPSTREAM_REPO} ${tag} release source, so fork changes are included."
+              echo "This APK is built from this fork after merging the official ${UPSTREAM_REPO} ${upstream_tag} release source, so fork changes are included."
             fi
             echo "Build commit: ${GITHUB_SHA}"
           } >> "${notes_file}"
