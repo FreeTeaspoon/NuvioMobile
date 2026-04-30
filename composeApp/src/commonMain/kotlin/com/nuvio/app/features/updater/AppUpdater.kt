@@ -56,7 +56,6 @@ import org.jetbrains.compose.resources.stringResource
 private const val gitHubOwner = "FreeTeaspoon"
 private const val gitHubRepo = "NuvioMobile"
 private const val gitHubApiBase = "https://api.github.com"
-private const val releaseChannelBranch = "cmp-rewrite"
 
 data class AppUpdate(
     val tag: String,
@@ -88,7 +87,6 @@ private data class GitHubReleaseDto(
     val draft: Boolean = false,
     val prerelease: Boolean = false,
     @SerialName("html_url") val htmlUrl: String? = null,
-    @SerialName("target_commitish") val targetCommitish: String? = null,
     val assets: List<GitHubAssetDto> = emptyList(),
 )
 
@@ -100,16 +98,22 @@ private data class GitHubAssetDto(
     @SerialName("content_type") val contentType: String? = null,
 )
 
+private data class GitHubReleaseCandidate(
+    val release: GitHubReleaseDto,
+    val asset: GitHubAssetDto,
+    val tag: String,
+)
+
 private val appUpdaterJson = Json {
     ignoreUnknownKeys = true
     isLenient = true
 }
 
-private class NoChannelReleaseException : IllegalStateException(
-    "No cmp-rewrite release has been published yet.",
+private class NoForkUpdateReleaseException : IllegalStateException(
+    "No update APK has been published for this fork yet.",
 )
 
-private object VersionUtils {
+internal object VersionUtils {
     fun normalize(raw: String?): String {
         if (raw.isNullOrBlank()) return ""
         return raw.trim().removePrefix("v").removePrefix("V")
@@ -126,28 +130,40 @@ private object VersionUtils {
         return parts.takeIf { it.isNotEmpty() }
     }
 
-    fun isRemoteNewer(remote: String?, local: String?): Boolean {
-        val remoteParts = parseVersionParts(remote)
-        val localParts = parseVersionParts(local)
+    fun compare(left: String?, right: String?): Int {
+        val leftParts = parseVersionParts(left)
+        val rightParts = parseVersionParts(right)
 
-        if (remoteParts == null || localParts == null) {
+        if (leftParts == null || rightParts == null) {
+            return when {
+                leftParts != null -> 1
+                rightParts != null -> -1
+                else -> normalize(left).compareTo(normalize(right))
+            }
+        }
+
+        val maxSize = maxOf(leftParts.size, rightParts.size)
+        for (index in 0 until maxSize) {
+            val leftValue = leftParts.getOrElse(index) { 0 }
+            val rightValue = rightParts.getOrElse(index) { 0 }
+            if (leftValue != rightValue) return leftValue.compareTo(rightValue)
+        }
+        return 0
+    }
+
+    fun isRemoteNewer(remote: String?, local: String?): Boolean {
+        if (parseVersionParts(remote) == null || parseVersionParts(local) == null) {
             val remoteValue = normalize(remote)
             val localValue = normalize(local)
             return remoteValue.isNotBlank() && localValue.isNotBlank() && remoteValue != localValue
         }
 
-        val maxSize = maxOf(remoteParts.size, localParts.size)
-        for (index in 0 until maxSize) {
-            val remoteValue = remoteParts.getOrElse(index) { 0 }
-            val localValue = localParts.getOrElse(index) { 0 }
-            if (remoteValue != localValue) return remoteValue > localValue
-        }
-        return false
+        return compare(remote, local) > 0
     }
 }
 
-private object AppUpdaterRepository {
-    suspend fun getLatestChannelUpdate(): Result<AppUpdate> = runCatching {
+internal object AppUpdaterRepository {
+    suspend fun getLatestForkUpdate(): Result<AppUpdate> = runCatching {
         val response = httpRequestRaw(
             method = "GET",
             url = "$gitHubApiBase/repos/$gitHubOwner/$gitHubRepo/releases?per_page=20",
@@ -161,37 +177,32 @@ private object AppUpdaterRepository {
             error("GitHub releases API error: ${response.status}")
         }
 
-        val releases = appUpdaterJson.decodeFromString<List<GitHubReleaseDto>>(response.body)
-        val release = releases.firstOrNull { it.matchesRequestedChannel() && !it.draft && !it.prerelease }
-            ?: throw NoChannelReleaseException()
-
-        val tag = release.tagName?.takeIf { it.isNotBlank() }
-            ?: release.name?.takeIf { it.isNotBlank() }
-            ?: error("Release has no tag or name")
-
-        val asset = chooseBestApkAsset(release.assets)
-            ?: error("No APK asset found in the cmp-rewrite release")
-
-        AppUpdate(
-            tag = tag,
-            title = release.name?.takeIf { it.isNotBlank() } ?: tag,
-            notes = release.body.orEmpty(),
-            releaseUrl = release.htmlUrl,
-            assetName = asset.name,
-            assetUrl = asset.browserDownloadUrl,
-            assetSizeBytes = asset.size,
-        )
+        parseLatestForkUpdate(response.body)
     }
 
-    private fun GitHubReleaseDto.matchesRequestedChannel(): Boolean {
-        val channel = releaseChannelBranch
-        if (targetCommitish?.trim()?.equals(channel, ignoreCase = true) == true) {
-            return true
-        }
+    internal fun parseLatestForkUpdate(responseBody: String): AppUpdate {
+        val releases = appUpdaterJson.decodeFromString<List<GitHubReleaseDto>>(responseBody)
+        val candidate = releases.asSequence()
+            .filter { release -> !release.draft && !release.prerelease }
+            .mapNotNull { release ->
+                val asset = chooseBestApkAsset(release.assets) ?: return@mapNotNull null
+                val tag = release.tagName?.takeIf { it.isNotBlank() }
+                    ?: release.name?.takeIf { it.isNotBlank() }
+                    ?: return@mapNotNull null
+                GitHubReleaseCandidate(release, asset, tag)
+            }
+            .maxWithOrNull { left, right -> VersionUtils.compare(left.tag, right.tag) }
+            ?: throw NoForkUpdateReleaseException()
 
-        return listOf(tagName, name)
-            .filterNotNull()
-            .any { value -> value.contains(channel, ignoreCase = true) }
+        return AppUpdate(
+            tag = candidate.tag,
+            title = candidate.release.name?.takeIf { it.isNotBlank() } ?: candidate.tag,
+            notes = candidate.release.body.orEmpty(),
+            releaseUrl = candidate.release.htmlUrl,
+            assetName = candidate.asset.name,
+            assetUrl = candidate.asset.browserDownloadUrl,
+            assetSizeBytes = candidate.asset.size,
+        )
     }
 
     private fun chooseBestApkAsset(assets: List<GitHubAssetDto>): GitHubAssetDto? {
@@ -253,7 +264,7 @@ class AppUpdaterController internal constructor(
             }
 
             val ignoredTag = AppUpdaterPlatform.getIgnoredTag()
-            val result = AppUpdaterRepository.getLatestChannelUpdate()
+            val result = AppUpdaterRepository.getLatestForkUpdate()
 
             result.onSuccess { update ->
                 val remoteNewer = VersionUtils.isRemoteNewer(update.tag, AppVersionConfig.VERSION_NAME)
@@ -286,9 +297,9 @@ class AppUpdaterController internal constructor(
                         downloadedApkPath = null,
                         update = null,
                         isUpdateAvailable = false,
-                        showDialog = force && error !is NoChannelReleaseException,
+                        showDialog = force && error !is NoForkUpdateReleaseException,
                         showUnknownSourcesDialog = false,
-                        errorMessage = if (force && error !is NoChannelReleaseException) {
+                        errorMessage = if (force && error !is NoForkUpdateReleaseException) {
                             error.message ?: getString(Res.string.updates_check_failed)
                         } else {
                             null
@@ -296,7 +307,7 @@ class AppUpdaterController internal constructor(
                     )
                 }
 
-                if (showNoUpdateFeedback || error is NoChannelReleaseException) {
+                if (showNoUpdateFeedback) {
                     NuvioToastController.show(error.message ?: getString(Res.string.updates_check_failed))
                 }
             }
