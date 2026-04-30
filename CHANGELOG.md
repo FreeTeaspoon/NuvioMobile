@@ -10,6 +10,12 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ### Fixed
 
+## 0.1.12.2
+
+### Fixed
+
+- Startup update checks now look at this fork's GitHub releases and show the update popup when a newer fork APK is available.
+
 ## 0.1.12.1
 
 ### Fixed
