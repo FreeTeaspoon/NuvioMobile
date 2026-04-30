@@ -2,6 +2,7 @@ package com.nuvio.app.features.player
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import kotlin.math.max
 
 interface PlayerEngineController {
     fun play()
@@ -68,6 +69,136 @@ internal fun inferPlaybackMimeType(
         filenameFromContentDisposition(headers.valueForHeader("Content-Disposition")),
         sourceUrl.substringBefore('?').substringBefore('#'),
     ).firstNotNullOfOrNull(::inferPlaybackMimeTypeFromName)
+}
+
+internal fun shouldPreferMpvForPlaybackSource(
+    sourceUrl: String,
+    responseHeaders: Map<String, String>? = emptyMap(),
+    sourceFilename: String? = null,
+): Boolean =
+    isDavLikePlaybackSource(sourceUrl = sourceUrl, sourceFilename = sourceFilename) &&
+        isMatroskaPlaybackSource(
+            sourceUrl = sourceUrl,
+            responseHeaders = responseHeaders,
+            sourceFilename = sourceFilename,
+        )
+
+internal fun shouldFallbackToMpvForPlaybackError(
+    sourceUrl: String,
+    responseHeaders: Map<String, String>? = emptyMap(),
+    sourceFilename: String? = null,
+    errorMessage: String?,
+): Boolean =
+    isMedia3MatroskaVarintLengthMaskError(errorMessage) &&
+        isDavLikePlaybackSource(sourceUrl = sourceUrl, sourceFilename = sourceFilename) &&
+        isMatroskaPlaybackSource(
+            sourceUrl = sourceUrl,
+            responseHeaders = responseHeaders,
+            sourceFilename = sourceFilename,
+        )
+
+internal fun shouldTreatMedia3VarintFailureAsEnded(
+    sourceUrl: String,
+    responseHeaders: Map<String, String>? = emptyMap(),
+    sourceFilename: String? = null,
+    errorMessage: String?,
+    snapshot: PlayerPlaybackSnapshot,
+): Boolean {
+    if (!shouldFallbackToMpvForPlaybackError(
+            sourceUrl = sourceUrl,
+            responseHeaders = responseHeaders,
+            sourceFilename = sourceFilename,
+            errorMessage = errorMessage,
+        )
+    ) {
+        return false
+    }
+
+    val durationMs = snapshot.durationMs.takeIf { it > 0L } ?: return false
+    val positionMs = snapshot.positionMs.coerceIn(0L, durationMs)
+    val remainingMs = durationMs - positionMs
+    val progress = positionMs.toDouble() / durationMs.toDouble()
+    return remainingMs <= Media3VarintTailCompletionRemainingMs ||
+        progress >= Media3VarintTailCompletionProgress
+}
+
+internal fun PlayerPlaybackSnapshot.asEndedPlaybackSnapshot(): PlayerPlaybackSnapshot {
+    val normalizedDurationMs = durationMs.coerceAtLeast(0L)
+    val normalizedPositionMs = if (normalizedDurationMs > 0L) {
+        normalizedDurationMs
+    } else {
+        positionMs.coerceAtLeast(0L)
+    }
+    return copy(
+        isLoading = false,
+        isPlaying = false,
+        isEnded = true,
+        positionMs = normalizedPositionMs,
+        bufferedPositionMs = max(bufferedPositionMs.coerceAtLeast(0L), normalizedPositionMs),
+    )
+}
+
+private const val Media3VarintLengthMaskMessage = "No valid varint length mask found"
+private const val Media3VarintTailCompletionRemainingMs = 10_000L
+private const val Media3VarintTailCompletionProgress = 0.995
+
+private fun isMedia3MatroskaVarintLengthMaskError(message: String?): Boolean =
+    message?.contains(Media3VarintLengthMaskMessage, ignoreCase = true) == true
+
+private fun isDavLikePlaybackSource(
+    sourceUrl: String,
+    sourceFilename: String?,
+): Boolean {
+    val normalized = "$sourceUrl ${sourceFilename.orEmpty()}".lowercase()
+    if (listOf("nzbdav", "altmount", "webdav", "usenet").any(normalized::contains)) {
+        return true
+    }
+
+    if (Regex("""^[a-z][a-z0-9+.-]*://[^/@]+:[^/@]+@""")
+            .containsMatchIn(sourceUrl.lowercase())
+    ) {
+        return true
+    }
+
+    return sourceUrlLooksExtensionless(sourceUrl) && sourceFilename.hasPlayableVideoExtension()
+}
+
+private fun isMatroskaPlaybackSource(
+    sourceUrl: String,
+    responseHeaders: Map<String, String>?,
+    sourceFilename: String?,
+): Boolean {
+    val mimeType = inferPlaybackMimeType(
+        sourceUrl = sourceUrl,
+        responseHeaders = responseHeaders,
+        sourceFilename = sourceFilename,
+    )?.lowercase()
+    return mimeType == "video/x-matroska" || mimeType == "video/webm"
+}
+
+private fun sourceUrlLooksExtensionless(sourceUrl: String): Boolean {
+    val path = sourceUrl.substringBefore('?').substringBefore('#')
+    val lastPathSegment = path.substringAfterLast('/')
+    return lastPathSegment.isNotBlank() && !lastPathSegment.contains('.')
+}
+
+private fun String?.hasPlayableVideoExtension(): Boolean {
+    val value = this?.lowercase() ?: return false
+    return listOf(
+        ".mkv",
+        ".mk3d",
+        ".webm",
+        ".mp4",
+        ".m4v",
+        ".mov",
+        ".avi",
+        ".ts",
+        ".m2ts",
+        ".mts",
+        ".mpg",
+        ".mpeg",
+        ".flv",
+    ).any(value::contains)
 }
 
 private val genericPlaybackContentTypes = setOf(
