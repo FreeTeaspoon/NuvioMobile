@@ -1,16 +1,13 @@
-name: Build cmp-rewrite Release
+name: Build Current Fork Release
 
 on:
-  push:
-    branches:
-      - cmp-rewrite
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: build-cmp-rewrite-release
+  group: build-current-fork-release
   cancel-in-progress: true
 
 env:
@@ -19,7 +16,7 @@ env:
 
 jobs:
   build:
-    name: Build signed fork APK and publish release
+    name: Build signed fork APK from current cmp-rewrite and publish release
     runs-on: ubuntu-latest
 
     steps:
@@ -42,19 +39,20 @@ jobs:
             echo "::error::MARKETING_VERSION is missing from iosApp/Configuration/Version.xcconfig"
             exit 1
           fi
-          if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Fork releases must use x.x.x.N, got ${version}"
+          if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "::error::Release version must use x.x.x or x.x.x.N, got ${version}"
             exit 1
           fi
 
           tag="${version}"
-          upstream_tag="${version%.*}"
           notes_file="${RUNNER_TEMP}/release-notes.md"
-          official_release_json="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${upstream_tag}" 2>/dev/null || true)"
+          upstream_tag="${version}"
+          official_release_json="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${upstream_tag}" 2>/dev/null || gh api "repos/${UPSTREAM_REPO}/releases/tags/v${upstream_tag}" 2>/dev/null || true)"
           official_url=""
           prerelease="false"
 
           if [ -n "${official_release_json}" ] && jq -e '.tag_name' <<<"${official_release_json}" >/dev/null 2>&1; then
+            upstream_tag="$(jq -r '.tag_name' <<<"${official_release_json}")"
             official_url="$(jq -r '.html_url // ""' <<<"${official_release_json}")"
             prerelease="$(jq -r '.prerelease // false' <<<"${official_release_json}")"
             jq -r '.body // ""' <<<"${official_release_json}" > "${notes_file}"
@@ -101,7 +99,7 @@ jobs:
             echo "Fork build from ${GITHUB_REPOSITORY}:cmp-rewrite."
             if [ -n "${official_url}" ]; then
               echo "Official release source: ${official_url}"
-              echo "This APK is built from this fork after merging the official ${UPSTREAM_REPO} ${upstream_tag} release source, so fork changes are included."
+              echo "This APK is built from this fork after syncing the official ${UPSTREAM_REPO} ${upstream_tag} release. Fork changes are included, while the app version and version code match the checked-in version file."
             fi
             echo "Build commit: ${GITHUB_SHA}"
           } >> "${notes_file}"
