@@ -14,6 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  UPSTREAM_REPO: NuvioMedia/NuvioMobile
   RELEASE_APK_NAME: kerry.nuvio.app.apk
 
 jobs:
@@ -31,6 +32,8 @@ jobs:
       - name: Read release version
         id: release
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -42,19 +45,42 @@ jobs:
 
           tag="${version}"
           notes_file="${RUNNER_TEMP}/release-notes.md"
+          official_release_json="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${tag}" 2>/dev/null || true)"
+          official_url=""
+          prerelease="false"
+
+          if [ -n "${official_release_json}" ] && jq -e '.tag_name' <<<"${official_release_json}" >/dev/null 2>&1; then
+            official_url="$(jq -r '.html_url // ""' <<<"${official_release_json}")"
+            prerelease="$(jq -r '.prerelease // false' <<<"${official_release_json}")"
+            jq -r '.body // ""' <<<"${official_release_json}" > "${notes_file}"
+          else
+            previous_tag="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
+            {
+              echo "### Fork Changes"
+              echo
+              if [ -n "${previous_tag}" ]; then
+                git log --no-merges --pretty=format:'- %s (%h)' "${previous_tag}..${GITHUB_SHA}"
+              else
+                git log --no-merges --pretty=format:'- %s (%h)' -n 20 "${GITHUB_SHA}"
+              fi
+              echo
+            } > "${notes_file}"
+          fi
+
           {
+            echo
+            echo "---"
             echo "Fork build from ${GITHUB_REPOSITORY}:cmp-rewrite."
-            echo
-            echo "Version: ${version}"
-            echo "Commit: ${GITHUB_SHA}"
-            echo
-            echo "Changes:"
-            echo "- Fix Android MPV resume playback so videos start from saved progress."
-            echo "- Keep the loading overlay visible until MPV has rendered the resumed frame."
-          } > "${notes_file}"
+            if [ -n "${official_url}" ]; then
+              echo "Official release source: ${official_url}"
+              echo "This APK is built from this fork after merging the official ${UPSTREAM_REPO} ${tag} release source, so fork changes are included."
+            fi
+            echo "Build commit: ${GITHUB_SHA}"
+          } >> "${notes_file}"
 
           echo "version=${version}" >> "${GITHUB_OUTPUT}"
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
           echo "notes_file=${notes_file}" >> "${GITHUB_OUTPUT}"
 
       - name: Set up JDK
@@ -137,17 +163,31 @@ jobs:
           git push --force origin "refs/tags/${tag}"
 
           if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            gh release edit "${tag}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --target "${GITHUB_SHA}" \
-              --title "${{ steps.release.outputs.version }}" \
+            edit_args=(
+              release edit "${tag}"
+              --repo "${GITHUB_REPOSITORY}"
+              --target "${GITHUB_SHA}"
+              --title "${{ steps.release.outputs.version }}"
               --notes-file "${notes_file}"
+            )
+            if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then
+              edit_args+=(--prerelease)
+            fi
+
+            gh "${edit_args[@]}"
             gh release upload "${tag}" dist/*.apk --repo "${GITHUB_REPOSITORY}" --clobber
           else
-            gh release create "${tag}" \
-              dist/*.apk \
-              --repo "${GITHUB_REPOSITORY}" \
-              --target "${GITHUB_SHA}" \
-              --title "${{ steps.release.outputs.version }}" \
+            create_args=(
+              release create "${tag}"
+              dist/*.apk
+              --repo "${GITHUB_REPOSITORY}"
+              --target "${GITHUB_SHA}"
+              --title "${{ steps.release.outputs.version }}"
               --notes-file "${notes_file}"
+            )
+            if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then
+              create_args+=(--prerelease)
+            fi
+
+            gh "${create_args[@]}"
           fi

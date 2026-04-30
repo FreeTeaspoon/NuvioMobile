@@ -68,27 +68,6 @@ jobs:
             exit 1
           fi
 
-          existing_release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${upstream_tag}" 2>/dev/null || true)"
-          if [ -n "${existing_release_json}" ]; then
-            apk_asset_ids="$(jq -r --arg desired "${RELEASE_APK_NAME}" '.assets[]? | select(.name | endswith(".apk")) | select(.name != $desired) | .id' <<<"${existing_release_json}")"
-
-            if [ -n "${apk_asset_ids}" ]; then
-              while IFS= read -r asset_id; do
-                [ -n "${asset_id}" ] || continue
-                gh api \
-                  --method PATCH \
-                  "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" \
-                  -f "name=${RELEASE_APK_NAME}" >/dev/null
-              done <<<"${apk_asset_ids}"
-              echo "Renamed existing APK release asset to ${RELEASE_APK_NAME}."
-            else
-              echo "Release ${upstream_tag} already exists in ${GITHUB_REPOSITORY}; APK asset name is already current or no APK asset exists."
-            fi
-
-            echo "skip=true" >> "${GITHUB_OUTPUT}"
-            exit 0
-          fi
-
           body_file="${RUNNER_TEMP}/release-body.md"
           release_name="${upstream_tag#v}"
           jq -r '.body // ""' <<<"${release_json}" > "${body_file}"
@@ -99,6 +78,52 @@ jobs:
             echo "Official release source: ${upstream_url}"
             echo "This APK is built from this fork after merging the official ${UPSTREAM_REPO} ${upstream_tag} release source, so fork changes are included."
           } >> "${body_file}"
+
+          existing_release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${upstream_tag}" 2>/dev/null || true)"
+          if [ -n "${existing_release_json}" ]; then
+            existing_release_id="$(jq -r '.id // empty' <<<"${existing_release_json}")"
+            desired_apk_count="$(jq -r --arg desired "${RELEASE_APK_NAME}" '[.assets[]? | select(.name == $desired)] | length' <<<"${existing_release_json}")"
+            apk_asset_ids="$(jq -r --arg desired "${RELEASE_APK_NAME}" '.assets[]? | select(.name | endswith(".apk")) | select(.name != $desired) | .id' <<<"${existing_release_json}")"
+            has_release_apk="false"
+
+            if [ "${desired_apk_count}" -gt 0 ]; then
+              has_release_apk="true"
+            fi
+
+            if [ -n "${apk_asset_ids}" ]; then
+              while IFS= read -r asset_id; do
+                [ -n "${asset_id}" ] || continue
+                gh api \
+                  --method PATCH \
+                  "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" \
+                  -f "name=${RELEASE_APK_NAME}" >/dev/null
+              done <<<"${apk_asset_ids}"
+              echo "Renamed existing APK release asset to ${RELEASE_APK_NAME}."
+              has_release_apk="true"
+            fi
+
+            if [ -n "${existing_release_id}" ]; then
+              release_patch="${RUNNER_TEMP}/release-patch.json"
+              jq -n \
+                --arg name "${release_name}" \
+                --rawfile body "${body_file}" \
+                --argjson prerelease "${prerelease}" \
+                '{name: $name, body: $body, prerelease: $prerelease}' > "${release_patch}"
+              gh api \
+                --method PATCH \
+                "repos/${GITHUB_REPOSITORY}/releases/${existing_release_id}" \
+                --input "${release_patch}" >/dev/null
+              echo "Updated release ${upstream_tag} title and notes from ${UPSTREAM_REPO}."
+            fi
+
+            if [ "${has_release_apk}" = "true" ]; then
+              echo "Release ${upstream_tag} already exists in ${GITHUB_REPOSITORY}; APK asset and notes are current."
+              echo "skip=true" >> "${GITHUB_OUTPUT}"
+              exit 0
+            else
+              echo "Release ${upstream_tag} exists in ${GITHUB_REPOSITORY} without an APK asset; rebuilding ${RELEASE_APK_NAME}."
+            fi
+          fi
 
           echo "skip=false" >> "${GITHUB_OUTPUT}"
           echo "tag=${upstream_tag}" >> "${GITHUB_OUTPUT}"
@@ -223,4 +248,20 @@ jobs:
             args+=(--prerelease)
           fi
 
-          gh "${args[@]}"
+          if gh release view "${{ steps.release.outputs.tag }}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            edit_args=(
+              release edit "${{ steps.release.outputs.tag }}"
+              --repo "${GITHUB_REPOSITORY}"
+              --target "${{ steps.sync_source.outputs.build_commit }}"
+              --title "${{ steps.release.outputs.name }}"
+              --notes-file "${{ steps.release.outputs.body_file }}"
+            )
+            if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then
+              edit_args+=(--prerelease)
+            fi
+
+            gh "${edit_args[@]}"
+            gh release upload "${{ steps.release.outputs.tag }}" dist/*.apk --repo "${GITHUB_REPOSITORY}" --clobber
+          else
+            gh "${args[@]}"
+          fi
