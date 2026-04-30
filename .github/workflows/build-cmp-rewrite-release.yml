@@ -186,32 +186,33 @@ jobs:
           tag="${{ steps.release.outputs.tag }}"
           notes_file="${{ steps.release.outputs.notes_file }}"
 
-          if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            edit_args=(
-              release edit "${tag}"
-              --repo "${GITHUB_REPOSITORY}"
-              --target "${GITHUB_SHA}"
-              --title "${{ steps.release.outputs.version }}"
-              --notes-file "${notes_file}"
-            )
-            if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then
-              edit_args+=(--prerelease)
-            fi
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" 2>/dev/null || true)"
+          release_file="${RUNNER_TEMP}/release.json"
 
-            gh "${edit_args[@]}"
-            gh release upload "${tag}" dist/*.apk --repo "${GITHUB_REPOSITORY}" --clobber
+          if [ -n "${release_json}" ] && jq -e '.id' <<<"${release_json}" >/dev/null 2>&1; then
+            release_id="$(jq -r '.id' <<<"${release_json}")"
+            jq -n \
+              --arg name "${{ steps.release.outputs.version }}" \
+              --arg target_commitish "${GITHUB_SHA}" \
+              --rawfile body "${notes_file}" \
+              --argjson prerelease "${{ steps.release.outputs.prerelease }}" \
+              '{name: $name, target_commitish: $target_commitish, body: $body, prerelease: $prerelease}' > "${release_file}"
+            gh api \
+              --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+              --input "${release_file}" >/dev/null
           else
-            create_args=(
-              release create "${tag}"
-              dist/*.apk
-              --repo "${GITHUB_REPOSITORY}"
-              --target "${GITHUB_SHA}"
-              --title "${{ steps.release.outputs.version }}"
-              --notes-file "${notes_file}"
-            )
-            if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then
-              create_args+=(--prerelease)
-            fi
-
-            gh "${create_args[@]}"
+            jq -n \
+              --arg tag_name "${tag}" \
+              --arg target_commitish "${GITHUB_SHA}" \
+              --arg name "${{ steps.release.outputs.version }}" \
+              --rawfile body "${notes_file}" \
+              --argjson prerelease "${{ steps.release.outputs.prerelease }}" \
+              '{tag_name: $tag_name, target_commitish: $target_commitish, name: $name, body: $body, draft: false, prerelease: $prerelease}' > "${release_file}"
+            gh api \
+              --method POST \
+              "repos/${GITHUB_REPOSITORY}/releases" \
+              --input "${release_file}" >/dev/null
           fi
+
+          gh release upload "${tag}" dist/*.apk --repo "${GITHUB_REPOSITORY}" --clobber
