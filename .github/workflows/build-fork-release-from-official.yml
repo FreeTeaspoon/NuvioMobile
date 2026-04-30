@@ -312,33 +312,34 @@ jobs:
         run: |
           set -euo pipefail
 
-          args=(
-            release create "${{ steps.release.outputs.tag }}"
-            dist/*.apk
-            --repo "${GITHUB_REPOSITORY}"
-            --target "${{ steps.sync_source.outputs.build_commit }}"
-            --title "${{ steps.release.outputs.name }}"
-            --notes-file "${{ steps.release.outputs.body_file }}"
-          )
+          tag="${{ steps.release.outputs.tag }}"
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" 2>/dev/null || true)"
+          release_file="${RUNNER_TEMP}/release.json"
 
-          if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then
-            args+=(--prerelease)
-          fi
-
-          if gh release view "${{ steps.release.outputs.tag }}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            edit_args=(
-              release edit "${{ steps.release.outputs.tag }}"
-              --repo "${GITHUB_REPOSITORY}"
-              --target "${{ steps.sync_source.outputs.build_commit }}"
-              --title "${{ steps.release.outputs.name }}"
-              --notes-file "${{ steps.release.outputs.body_file }}"
-            )
-            if [ "${{ steps.release.outputs.prerelease }}" = "true" ]; then
-              edit_args+=(--prerelease)
-            fi
-
-            gh "${edit_args[@]}"
-            gh release upload "${{ steps.release.outputs.tag }}" dist/*.apk --repo "${GITHUB_REPOSITORY}" --clobber
+          if [ -n "${release_json}" ] && jq -e '.id' <<<"${release_json}" >/dev/null 2>&1; then
+            release_id="$(jq -r '.id' <<<"${release_json}")"
+            jq -n \
+              --arg name "${{ steps.release.outputs.name }}" \
+              --arg target_commitish "${{ steps.sync_source.outputs.build_commit }}" \
+              --rawfile body "${{ steps.release.outputs.body_file }}" \
+              --argjson prerelease "${{ steps.release.outputs.prerelease }}" \
+              '{name: $name, target_commitish: $target_commitish, body: $body, prerelease: $prerelease}' > "${release_file}"
+            gh api \
+              --method PATCH \
+              "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+              --input "${release_file}" >/dev/null
           else
-            gh "${args[@]}"
+            jq -n \
+              --arg tag_name "${tag}" \
+              --arg target_commitish "${{ steps.sync_source.outputs.build_commit }}" \
+              --arg name "${{ steps.release.outputs.name }}" \
+              --rawfile body "${{ steps.release.outputs.body_file }}" \
+              --argjson prerelease "${{ steps.release.outputs.prerelease }}" \
+              '{tag_name: $tag_name, target_commitish: $target_commitish, name: $name, body: $body, draft: false, prerelease: $prerelease}' > "${release_file}"
+            gh api \
+              --method POST \
+              "repos/${GITHUB_REPOSITORY}/releases" \
+              --input "${release_file}" >/dev/null
           fi
+
+          gh release upload "${tag}" dist/*.apk --repo "${GITHUB_REPOSITORY}" --clobber
