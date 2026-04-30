@@ -1,10 +1,10 @@
-name: Build Fork Release From Official
+name: Sync, Build, and Release Official Version
 
 on:
   workflow_dispatch:
     inputs:
       upstream_tag:
-        description: "Optional official release tag to build from. Leave blank for latest."
+        description: "Official release tag to sync, build, and publish. Leave blank for latest."
         required: false
         type: string
   schedule:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: build-fork-release-from-official
+  group: sync-build-release-official-version
   cancel-in-progress: true
 
 env:
@@ -24,7 +24,7 @@ env:
 
 jobs:
   build:
-    name: Build fork APK and publish release
+    name: Sync official release, build fork APK, and publish release
     runs-on: ubuntu-latest
 
     steps:
@@ -44,7 +44,7 @@ jobs:
 
           git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
 
-      - name: Read official release
+      - name: Read official release metadata
         id: release
         shell: bash
         env:
@@ -70,12 +70,11 @@ jobs:
 
           body_file="${RUNNER_TEMP}/release-body.md"
           upstream_version="${upstream_tag#v}"
-          fork_version="${upstream_version}.1"
-          fork_tag="${fork_version}"
+          fork_tag="${upstream_tag}"
           jq -r '.body // ""' <<<"${release_json}" > "${body_file}"
 
           changelog_notes="${RUNNER_TEMP}/changelog-notes.md"
-          if [ -f CHANGELOG.md ] && awk -v version="${fork_version}" '
+          if [ -f CHANGELOG.md ] && awk -v version="${upstream_version}" '
             /^##[[:space:]]+/ {
               heading = $0
               sub(/^##[[:space:]]+/, "", heading)
@@ -103,76 +102,53 @@ jobs:
             echo "---"
             echo "Fork build from ${GITHUB_REPOSITORY}:${TARGET_BRANCH}."
             echo "Official release source: ${upstream_url}"
-            echo "This APK is built from this fork after merging the official ${UPSTREAM_REPO} ${upstream_tag} release source, so fork changes are included."
+            echo "This APK is built from this fork after syncing ${UPSTREAM_REPO}:${TARGET_BRANCH} for the official ${upstream_tag} release. Fork changes are included, while the app version and version code match the official branch."
           } >> "${body_file}"
-
-          existing_release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${fork_tag}" 2>/dev/null || true)"
-          if [ -n "${existing_release_json}" ]; then
-            existing_release_id="$(jq -r '.id // empty' <<<"${existing_release_json}")"
-            desired_apk_count="$(jq -r --arg desired "${RELEASE_APK_NAME}" '[.assets[]? | select(.name == $desired)] | length' <<<"${existing_release_json}")"
-            apk_asset_ids="$(jq -r --arg desired "${RELEASE_APK_NAME}" '.assets[]? | select(.name | endswith(".apk")) | select(.name != $desired) | .id' <<<"${existing_release_json}")"
-            has_release_apk="false"
-
-            if [ "${desired_apk_count}" -gt 0 ]; then
-              has_release_apk="true"
-            fi
-
-            if [ -n "${apk_asset_ids}" ]; then
-              while IFS= read -r asset_id; do
-                [ -n "${asset_id}" ] || continue
-                gh api \
-                  --method PATCH \
-                  "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" \
-                  -f "name=${RELEASE_APK_NAME}" >/dev/null
-              done <<<"${apk_asset_ids}"
-              echo "Renamed existing APK release asset to ${RELEASE_APK_NAME}."
-              has_release_apk="true"
-            fi
-
-            if [ -n "${existing_release_id}" ]; then
-              release_patch="${RUNNER_TEMP}/release-patch.json"
-              jq -n \
-                --arg name "${fork_version}" \
-                --rawfile body "${body_file}" \
-                --argjson prerelease "${prerelease}" \
-                '{name: $name, body: $body, prerelease: $prerelease}' > "${release_patch}"
-              gh api \
-                --method PATCH \
-                "repos/${GITHUB_REPOSITORY}/releases/${existing_release_id}" \
-                --input "${release_patch}" >/dev/null
-              echo "Updated release ${fork_tag} title and notes from ${UPSTREAM_REPO} ${upstream_tag}."
-            fi
-
-            if [ "${has_release_apk}" = "true" ]; then
-              echo "Release ${fork_tag} already exists in ${GITHUB_REPOSITORY}; APK asset and notes are current."
-              echo "skip=true" >> "${GITHUB_OUTPUT}"
-              exit 0
-            else
-              echo "Release ${fork_tag} exists in ${GITHUB_REPOSITORY} without an APK asset; rebuilding ${RELEASE_APK_NAME}."
-            fi
-          fi
 
           echo "skip=false" >> "${GITHUB_OUTPUT}"
           echo "upstream_tag=${upstream_tag}" >> "${GITHUB_OUTPUT}"
+          echo "upstream_version=${upstream_version}" >> "${GITHUB_OUTPUT}"
           echo "tag=${fork_tag}" >> "${GITHUB_OUTPUT}"
-          echo "name=${fork_version}" >> "${GITHUB_OUTPUT}"
+          echo "name=${upstream_version}" >> "${GITHUB_OUTPUT}"
           echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
           echo "body_file=${body_file}" >> "${GITHUB_OUTPUT}"
 
-      - name: Sync official release source
+      - name: Sync official release source and version
         id: sync_source
-        if: steps.release.outputs.skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
 
           upstream_tag="${{ steps.release.outputs.upstream_tag }}"
-          official_ref="refs/remotes/upstream/release-tags/${upstream_tag}"
+          upstream_version="${{ steps.release.outputs.upstream_version }}"
+          official_tag_ref="refs/remotes/upstream/release-tags/${upstream_tag}"
+          official_branch_ref="refs/remotes/upstream/${TARGET_BRANCH}"
+          version_file="iosApp/Configuration/Version.xcconfig"
 
-          git fetch upstream "refs/tags/${upstream_tag}:${official_ref}"
+          git fetch upstream "refs/heads/${TARGET_BRANCH}:${official_branch_ref}" "refs/tags/${upstream_tag}:${official_tag_ref}"
 
           before="$(git rev-parse HEAD)"
-          git merge --no-edit "${official_ref}"
+          git merge --no-edit "${official_branch_ref}"
+
+          git show "${official_branch_ref}:${version_file}" > "${version_file}"
+          official_marketing_version="$(sed -n 's/^MARKETING_VERSION=//p' "${version_file}" | head -n 1)"
+          official_project_version="$(sed -n 's/^CURRENT_PROJECT_VERSION=//p' "${version_file}" | head -n 1)"
+
+          if [ "${official_marketing_version}" != "${upstream_version}" ]; then
+            echo "::error::Official ${TARGET_BRANCH} ${version_file} MARKETING_VERSION (${official_marketing_version}) does not match release tag ${upstream_tag}."
+            exit 1
+          fi
+
+          if [ -z "${official_project_version}" ]; then
+            echo "::error::Official ${version_file} is missing CURRENT_PROJECT_VERSION."
+            exit 1
+          fi
+
+          if ! git diff --quiet -- "${version_file}"; then
+            git add "${version_file}"
+            git commit -m "Sync app version to official ${upstream_tag}"
+          fi
+
           after="$(git rev-parse HEAD)"
 
           if [ "${before}" != "${after}" ]; then
@@ -183,23 +159,84 @@ jobs:
 
           echo "build_commit=${after}" >> "${GITHUB_OUTPUT}"
 
+      - name: Check existing fork release
+        id: existing_release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          tag="${{ steps.release.outputs.tag }}"
+          release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" 2>/dev/null || true)"
+          if [ -z "${release_json}" ] || ! jq -e '.id' <<<"${release_json}" >/dev/null 2>&1; then
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          release_id="$(jq -r '.id' <<<"${release_json}")"
+          existing_target="$(jq -r '.target_commitish // ""' <<<"${release_json}")"
+          build_commit="${{ steps.sync_source.outputs.build_commit }}"
+          desired_apk_count="$(jq -r --arg desired "${RELEASE_APK_NAME}" '[.assets[]? | select(.name == $desired)] | length' <<<"${release_json}")"
+          apk_asset_ids="$(jq -r --arg desired "${RELEASE_APK_NAME}" '.assets[]? | select(.name | endswith(".apk")) | select(.name != $desired) | .id' <<<"${release_json}")"
+          has_release_apk="false"
+
+          if [ "${desired_apk_count}" -gt 0 ]; then
+            has_release_apk="true"
+          fi
+
+          if [ -n "${apk_asset_ids}" ]; then
+            while IFS= read -r asset_id; do
+              [ -n "${asset_id}" ] || continue
+              gh api \
+                --method PATCH \
+                "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" \
+                -f "name=${RELEASE_APK_NAME}" >/dev/null
+            done <<<"${apk_asset_ids}"
+            echo "Renamed existing APK release asset to ${RELEASE_APK_NAME}."
+            has_release_apk="true"
+          fi
+
+          release_patch="${RUNNER_TEMP}/release-patch.json"
+          jq -n \
+            --arg name "${{ steps.release.outputs.name }}" \
+            --arg target_commitish "${build_commit}" \
+            --rawfile body "${{ steps.release.outputs.body_file }}" \
+            --argjson prerelease "${{ steps.release.outputs.prerelease }}" \
+            '{name: $name, target_commitish: $target_commitish, body: $body, prerelease: $prerelease}' > "${release_patch}"
+          gh api \
+            --method PATCH \
+            "repos/${GITHUB_REPOSITORY}/releases/${release_id}" \
+            --input "${release_patch}" >/dev/null
+
+          if [ "${has_release_apk}" = "true" ] && [ "${existing_target}" = "${build_commit}" ]; then
+            echo "Release ${tag} already exists with ${RELEASE_APK_NAME}; release title, notes, and target are current."
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+          elif [ "${has_release_apk}" = "true" ]; then
+            echo "Release ${tag} exists with an APK, but it targets ${existing_target}; rebuilding for ${build_commit}."
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "Release ${tag} exists without ${RELEASE_APK_NAME}; rebuilding APK."
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Set up JDK
-        if: steps.release.outputs.skip != 'true'
+        if: steps.existing_release.outputs.skip != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Set up Gradle
-        if: steps.release.outputs.skip != 'true'
+        if: steps.existing_release.outputs.skip != 'true'
         uses: gradle/actions/setup-gradle@v4
 
       - name: Set up Android SDK
-        if: steps.release.outputs.skip != 'true'
+        if: steps.existing_release.outputs.skip != 'true'
         uses: android-actions/setup-android@v3
 
       - name: Write local build config
-        if: steps.release.outputs.skip != 'true'
+        if: steps.existing_release.outputs.skip != 'true'
         shell: bash
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
@@ -235,12 +272,12 @@ jobs:
           } > local.properties
 
       - name: Build full release APK
-        if: steps.release.outputs.skip != 'true'
+        if: steps.existing_release.outputs.skip != 'true'
         shell: bash
         run: ./gradlew --console=plain :composeApp:assembleFullRelease -Pnuvio.release.abiSplit=true
 
       - name: Stage release asset
-        if: steps.release.outputs.skip != 'true'
+        if: steps.existing_release.outputs.skip != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -256,7 +293,7 @@ jobs:
           ls -lh dist
 
       - name: Publish fork release
-        if: steps.release.outputs.skip != 'true'
+        if: steps.existing_release.outputs.skip != 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

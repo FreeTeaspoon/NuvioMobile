@@ -1,15 +1,13 @@
-name: Sync Official Repo
+name: Manual Sync Official Branch
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 */6 * * *"
 
 permissions:
   contents: write
 
 concurrency:
-  group: sync-official-repo
+  group: manual-sync-official-branch
   cancel-in-progress: false
 
 env:
@@ -18,7 +16,7 @@ env:
 
 jobs:
   sync:
-    name: Merge upstream branch
+    name: Merge official cmp-rewrite branch without publishing a release
     runs-on: ubuntu-latest
 
     steps:
