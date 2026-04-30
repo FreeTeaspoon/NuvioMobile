@@ -23,6 +23,42 @@ class DetailRatingLinksTest {
     }
 
     @Test
+    fun `parents guide opens direct page when imdb id exists`() {
+        val meta = meta(id = "tt0840196")
+
+        assertEquals(
+            "https://www.imdb.com/title/tt0840196/parentalguide/",
+            buildImdbParentsGuideUrl(meta),
+        )
+    }
+
+    @Test
+    fun `parents guide extracts imdb id from metadata links`() {
+        val meta = meta(
+            id = "tmdb:123",
+            links = listOf(
+                MetaLink(
+                    name = "IMDb",
+                    category = "metadata",
+                    url = "https://www.imdb.com/title/tt0840196/",
+                ),
+            ),
+        )
+
+        assertEquals(
+            "https://www.imdb.com/title/tt0840196/parentalguide/",
+            buildImdbParentsGuideUrl(meta),
+        )
+    }
+
+    @Test
+    fun `parents guide returns null without imdb id`() {
+        val meta = meta(id = "tmdb:123", name = "Example")
+
+        assertNull(buildImdbParentsGuideUrl(meta))
+    }
+
+    @Test
     fun `imdb source falls back to title and year search without imdb id`() {
         val meta = meta(id = "series:123", name = "Skins", releaseInfo = "2007-01-25")
 

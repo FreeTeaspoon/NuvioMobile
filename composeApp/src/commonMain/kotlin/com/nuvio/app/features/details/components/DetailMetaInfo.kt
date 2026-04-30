@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nuvio.app.features.details.buildImdbParentsGuideUrl
 import com.nuvio.app.features.details.buildRatingProviderUrl
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaExternalRating
@@ -118,7 +119,12 @@ fun DetailMetaInfo(
                     )
                 }
                 ageBadge?.let { badge ->
-                    DetailHeroMetaBadge(text = badge)
+                    val parentsGuideUrl = remember(meta) { buildImdbParentsGuideUrl(meta) }
+                    DetailHeroMetaBadge(
+                        text = badge,
+                        onClick = parentsGuideUrl?.let { url -> { openRatingUrl(url) } },
+                        onClickLabel = "Open IMDb Parents Guide",
+                    )
                 }
                 if (meta.imdbRating != null && !hasMdbImdbRating) {
                     val imdbUrl = remember(meta) { buildRatingProviderUrl(meta, PROVIDER_IMDB) }
@@ -304,12 +310,25 @@ private fun MetaLabelValueRow(
 private fun DetailHeroMetaBadge(
     text: String,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
 ) {
+    val badgeShape = RoundedCornerShape(6.dp)
     Box(
-        modifier = Modifier
+        modifier = (if (onClick != null) {
+            Modifier
+                .clip(badgeShape)
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = onClickLabel,
+                    onClick = onClick,
+                )
+        } else {
+            Modifier
+        })
             .border(
                 border = BorderStroke(1.dp, contentColor.copy(alpha = 0.55f)),
-                shape = RoundedCornerShape(6.dp),
+                shape = badgeShape,
             )
             .padding(horizontal = 8.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
