@@ -92,6 +92,7 @@ class TmdbMetadataServiceTest {
                 thumbnail = "https://example.com/thumb.jpg",
                 airDate = "2024-01-01",
                 runtimeMinutes = 58,
+                rating = 8.26,
             ),
         )
 
@@ -113,6 +114,63 @@ class TmdbMetadataServiceTest {
         assertEquals(listOf("HBO"), result.networks.map { it.name })
         assertEquals("Pilot", result.videos.first().title)
         assertEquals(58, result.videos.first().runtime)
+        assertEquals("8.3", result.videos.first().rating)
+    }
+
+    @Test
+    fun `applyEnrichment copies episode vote average when episodes enabled`() {
+        val base = episodeMeta(rating = null)
+
+        val result = TmdbMetadataService.applyEnrichment(
+            meta = base,
+            enrichment = emptyEnrichment(),
+            episodeMap = mapOf((1 to 1) to episodeEnrichment(rating = 7.86)),
+            settings = TmdbSettings(enabled = true, useEpisodes = true),
+        )
+
+        assertEquals("7.9", result.videos.single().rating)
+    }
+
+    @Test
+    fun `applyEnrichment leaves episode rating unchanged when episodes disabled`() {
+        val base = episodeMeta(rating = "8.1")
+
+        val result = TmdbMetadataService.applyEnrichment(
+            meta = base,
+            enrichment = emptyEnrichment(),
+            episodeMap = mapOf((1 to 1) to episodeEnrichment(rating = 7.86)),
+            settings = TmdbSettings(enabled = true, useEpisodes = false),
+        )
+
+        assertEquals("8.1", result.videos.single().rating)
+    }
+
+    @Test
+    fun `applyEnrichment keeps addon episode rating ahead of tmdb vote average`() {
+        val base = episodeMeta(rating = "8.1")
+
+        val result = TmdbMetadataService.applyEnrichment(
+            meta = base,
+            enrichment = emptyEnrichment(),
+            episodeMap = mapOf((1 to 1) to episodeEnrichment(rating = 7.86)),
+            settings = TmdbSettings(enabled = true, useEpisodes = true),
+        )
+
+        assertEquals("8.1", result.videos.single().rating)
+    }
+
+    @Test
+    fun `applyEnrichment does not overwrite addon episode rating with zero tmdb rating`() {
+        val base = episodeMeta(rating = "8.1")
+
+        val result = TmdbMetadataService.applyEnrichment(
+            meta = base,
+            enrichment = emptyEnrichment(),
+            episodeMap = mapOf((1 to 1) to episodeEnrichment(rating = 0.0)),
+            settings = TmdbSettings(enabled = true, useEpisodes = true),
+        )
+
+        assertEquals("8.1", result.videos.single().rating)
     }
 
     @Test
@@ -173,4 +231,52 @@ class TmdbMetadataServiceTest {
         assertEquals(base.cast, result.cast)
         assertEquals(base.productionCompanies, result.productionCompanies)
     }
+
+    private fun episodeMeta(rating: String?): MetaDetails =
+        MetaDetails(
+            id = "tt1234567",
+            type = "series",
+            name = "Original",
+            videos = listOf(
+                MetaVideo(
+                    id = "ep1",
+                    title = "Episode 1",
+                    season = 1,
+                    episode = 1,
+                    rating = rating,
+                ),
+            ),
+        )
+
+    private fun episodeEnrichment(rating: Double?): TmdbEpisodeEnrichment =
+        TmdbEpisodeEnrichment(
+            title = "Episode 1",
+            overview = null,
+            thumbnail = null,
+            airDate = null,
+            runtimeMinutes = null,
+            rating = rating,
+        )
+
+    private fun emptyEnrichment(): TmdbEnrichment =
+        TmdbEnrichment(
+            localizedTitle = null,
+            description = null,
+            genres = emptyList(),
+            backdrop = null,
+            logo = null,
+            poster = null,
+            people = emptyList(),
+            director = emptyList(),
+            writer = emptyList(),
+            releaseInfo = null,
+            rating = null,
+            runtimeMinutes = null,
+            ageRating = null,
+            status = null,
+            countries = emptyList(),
+            language = null,
+            productionCompanies = emptyList(),
+            networks = emptyList(),
+        )
 }
