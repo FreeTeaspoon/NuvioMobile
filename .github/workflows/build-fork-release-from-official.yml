@@ -313,6 +313,11 @@ jobs:
           set -euo pipefail
 
           tag="${{ steps.release.outputs.tag }}"
+          build_commit="${{ steps.sync_source.outputs.build_commit }}"
+
+          git tag -f "${tag}" "${build_commit}"
+          git push --force origin "refs/tags/${tag}"
+
           release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" 2>/dev/null || true)"
           release_file="${RUNNER_TEMP}/release.json"
 
@@ -320,7 +325,7 @@ jobs:
             release_id="$(jq -r '.id' <<<"${release_json}")"
             jq -n \
               --arg name "${{ steps.release.outputs.name }}" \
-              --arg target_commitish "${{ steps.sync_source.outputs.build_commit }}" \
+              --arg target_commitish "${build_commit}" \
               --rawfile body "${{ steps.release.outputs.body_file }}" \
               --argjson prerelease "${{ steps.release.outputs.prerelease }}" \
               '{name: $name, target_commitish: $target_commitish, body: $body, prerelease: $prerelease}' > "${release_file}"
@@ -331,7 +336,7 @@ jobs:
           else
             jq -n \
               --arg tag_name "${tag}" \
-              --arg target_commitish "${{ steps.sync_source.outputs.build_commit }}" \
+              --arg target_commitish "${build_commit}" \
               --arg name "${{ steps.release.outputs.name }}" \
               --rawfile body "${{ steps.release.outputs.body_file }}" \
               --argjson prerelease "${{ steps.release.outputs.prerelease }}" \

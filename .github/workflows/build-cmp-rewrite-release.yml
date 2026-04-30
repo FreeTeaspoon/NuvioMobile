@@ -186,6 +186,9 @@ jobs:
           tag="${{ steps.release.outputs.tag }}"
           notes_file="${{ steps.release.outputs.notes_file }}"
 
+          git tag -f "${tag}" "${GITHUB_SHA}"
+          git push --force origin "refs/tags/${tag}"
+
           release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" 2>/dev/null || true)"
           release_file="${RUNNER_TEMP}/release.json"
 
