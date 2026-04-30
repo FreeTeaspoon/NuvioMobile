@@ -87,6 +87,10 @@ internal fun buildRatingProviderUrl(meta: MetaDetails, source: String): String? 
     }
 }
 
+internal fun buildImdbParentsGuideUrl(meta: MetaDetails): String? =
+    meta.extractImdbId()
+        ?.let { imdbId -> "https://www.imdb.com/title/$imdbId/parentalguide/" }
+
 internal fun normalizeRatingProviderUrl(rawUrl: String): String? {
     val trimmed = rawUrl
         .trim()
