@@ -25,12 +25,13 @@ jobs:
         with:
           ref: cmp-rewrite
           fetch-depth: 0
+          token: ${{ secrets.SYNC_RELEASE_TOKEN || github.token }}
 
       - name: Read release version
         id: release
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_RELEASE_TOKEN || github.token }}
         run: |
           set -euo pipefail
 
@@ -178,15 +179,12 @@ jobs:
       - name: Publish or replace release
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_RELEASE_TOKEN || github.token }}
         run: |
           set -euo pipefail
 
           tag="${{ steps.release.outputs.tag }}"
           notes_file="${{ steps.release.outputs.notes_file }}"
-
-          git tag -f "${tag}" "${GITHUB_SHA}"
-          git push --force origin "refs/tags/${tag}"
 
           if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             edit_args=(

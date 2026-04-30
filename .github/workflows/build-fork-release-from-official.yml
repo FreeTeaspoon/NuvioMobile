@@ -33,6 +33,7 @@ jobs:
         with:
           ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
+          token: ${{ secrets.SYNC_RELEASE_TOKEN || github.token }}
 
       - name: Prepare git remotes
         shell: bash
@@ -48,7 +49,7 @@ jobs:
         id: release
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_RELEASE_TOKEN || github.token }}
           REQUESTED_TAG: ${{ github.event.inputs.upstream_tag || '' }}
         run: |
           set -euo pipefail
@@ -163,7 +164,7 @@ jobs:
         id: existing_release
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_RELEASE_TOKEN || github.token }}
         run: |
           set -euo pipefail
 
@@ -296,7 +297,7 @@ jobs:
         if: steps.existing_release.outputs.skip != 'true'
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_RELEASE_TOKEN || github.token }}
         run: |
           set -euo pipefail
 
