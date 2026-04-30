@@ -125,6 +125,11 @@ jobs:
           official_tag_ref="refs/remotes/upstream/release-tags/${upstream_tag}"
           official_branch_ref="refs/remotes/upstream/${TARGET_BRANCH}"
           version_file="iosApp/Configuration/Version.xcconfig"
+          previous_project_version="$(sed -n 's/^CURRENT_PROJECT_VERSION=//p' "${version_file}" | head -n 1)"
+          if ! [[ "${previous_project_version}" =~ ^[0-9]+$ ]]; then
+            echo "::error::Current ${version_file} is missing a numeric CURRENT_PROJECT_VERSION."
+            exit 1
+          fi
 
           git fetch upstream "refs/heads/${TARGET_BRANCH}:${official_branch_ref}" "refs/tags/${upstream_tag}:${official_tag_ref}"
 
@@ -142,23 +147,35 @@ jobs:
             git commit --no-edit
           fi
 
-          git show "${official_branch_ref}:${version_file}" > "${version_file}"
-          official_marketing_version="$(sed -n 's/^MARKETING_VERSION=//p' "${version_file}" | head -n 1)"
-          official_project_version="$(sed -n 's/^CURRENT_PROJECT_VERSION=//p' "${version_file}" | head -n 1)"
+          official_version_file="${RUNNER_TEMP}/official-version.xcconfig"
+          git show "${official_branch_ref}:${version_file}" > "${official_version_file}"
+          official_marketing_version="$(sed -n 's/^MARKETING_VERSION=//p' "${official_version_file}" | head -n 1)"
+          official_project_version="$(sed -n 's/^CURRENT_PROJECT_VERSION=//p' "${official_version_file}" | head -n 1)"
 
           if [ "${official_marketing_version}" != "${upstream_version}" ]; then
             echo "::error::Official ${TARGET_BRANCH} ${version_file} MARKETING_VERSION (${official_marketing_version}) does not match release tag ${upstream_tag}."
             exit 1
           fi
 
-          if [ -z "${official_project_version}" ]; then
-            echo "::error::Official ${version_file} is missing CURRENT_PROJECT_VERSION."
+          if ! [[ "${official_project_version}" =~ ^[0-9]+$ ]]; then
+            echo "::error::Official ${version_file} is missing a numeric CURRENT_PROJECT_VERSION."
             exit 1
           fi
 
+          fork_project_version="${official_project_version}"
+          next_project_version=$((previous_project_version + 1))
+          if [ "${fork_project_version}" -le "${previous_project_version}" ]; then
+            fork_project_version="${next_project_version}"
+          fi
+
+          {
+            printf 'CURRENT_PROJECT_VERSION=%s\n' "${fork_project_version}"
+            printf 'MARKETING_VERSION=%s\n' "${official_marketing_version}"
+          } > "${version_file}"
+
           if ! git diff --quiet -- "${version_file}"; then
             git add "${version_file}"
-            git commit -m "Sync app version to official ${upstream_tag}"
+            git commit -m "Sync app version to ${official_marketing_version} (${fork_project_version})"
           fi
 
           after="$(git rev-parse HEAD)"
