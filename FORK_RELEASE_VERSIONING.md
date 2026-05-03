@@ -65,6 +65,12 @@ if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 ```
 
+The current-branch release workflow may read a three-part upstream app version
+from `MARKETING_VERSION`, but it must publish a four-part fork release tag by
+choosing the next available suffix for that base version. For example, if the
+app version is `0.1.13` and releases `0.1.13.1` and `0.1.13.2` already exist,
+the next automatic fork release is `0.1.13.3`.
+
 ## Upstream Release Notes
 
 When a workflow needs upstream release notes, derive the upstream tag by
