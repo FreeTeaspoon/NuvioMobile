@@ -38,19 +38,39 @@ jobs:
         run: |
           set -euo pipefail
 
-          version="$(sed -n 's/^MARKETING_VERSION=//p' iosApp/Configuration/Version.xcconfig | head -n 1)"
-          if [ -z "${version}" ]; then
+          app_version="$(sed -n 's/^MARKETING_VERSION=//p' iosApp/Configuration/Version.xcconfig | head -n 1)"
+          if [ -z "${app_version}" ]; then
             echo "::error::MARKETING_VERSION is missing from iosApp/Configuration/Version.xcconfig"
             exit 1
           fi
-          if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
-            echo "::error::Release version must use x.x.x or x.x.x.N, got ${version}"
+          if [[ "${app_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            base_version="${app_version}"
+          elif [[ "${app_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            base_version="${app_version%.*}"
+          else
+            echo "::error::Release version must use x.x.x or x.x.x.N, got ${app_version}"
             exit 1
           fi
 
-          tag="${version}"
+          git fetch --tags origin
+          next_suffix="$(
+            git tag -l "${base_version}.*" |
+              awk -F. '
+                {
+                  suffix = $NF + 0
+                  if (suffix > max) max = suffix
+                }
+                END { print max + 1 }
+              '
+          )"
+          if [ -z "${next_suffix}" ] || ! [[ "${next_suffix}" =~ ^[0-9]+$ ]]; then
+            echo "::error::Could not determine next fork release suffix for ${base_version}"
+            exit 1
+          fi
+
+          tag="${base_version}.${next_suffix}"
           notes_file="${RUNNER_TEMP}/release-notes.md"
-          upstream_tag="${version}"
+          upstream_tag="${base_version}"
           official_release_json="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${upstream_tag}" 2>/dev/null || gh api "repos/${UPSTREAM_REPO}/releases/tags/v${upstream_tag}" 2>/dev/null || true)"
           official_url=""
           prerelease="false"
@@ -62,14 +82,14 @@ jobs:
             jq -r '.body // ""' <<<"${official_release_json}" > "${notes_file}"
           else
             changelog_notes="${RUNNER_TEMP}/changelog-notes.md"
-            if [ -f CHANGELOG.md ] && awk -v version="${version}" '
+            if [ -f CHANGELOG.md ] && awk -v version="${tag}" -v base_version="${base_version}" '
               /^##[[:space:]]+/ {
                 heading = $0
                 sub(/^##[[:space:]]+/, "", heading)
                 sub(/^\[/, "", heading)
                 sub(/\].*$/, "", heading)
                 sub(/[[:space:]].*$/, "", heading)
-                if (heading == version) {
+                if (heading == version || heading == base_version) {
                   found = 1
                   next
                 }
@@ -108,7 +128,9 @@ jobs:
             echo "Build commit: ${GITHUB_SHA}"
           } >> "${notes_file}"
 
-          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "version=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "app_version=${app_version}" >> "${GITHUB_OUTPUT}"
+          echo "base_version=${base_version}" >> "${GITHUB_OUTPUT}"
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
           echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
           echo "notes_file=${notes_file}" >> "${GITHUB_OUTPUT}"
@@ -179,7 +201,7 @@ jobs:
           cp "${apk}" "dist/${RELEASE_APK_NAME}"
           ls -lh dist
 
-      - name: Publish or replace release
+      - name: Publish release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.SYNC_RELEASE_TOKEN || github.token }}
@@ -189,8 +211,13 @@ jobs:
           tag="${{ steps.release.outputs.tag }}"
           notes_file="${{ steps.release.outputs.notes_file }}"
 
-          git tag -f "${tag}" "${GITHUB_SHA}"
-          git push --force origin "refs/tags/${tag}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "::error::Release tag ${tag} already exists. Rerun the workflow to calculate the next fork suffix."
+            exit 1
+          fi
+
+          git tag "${tag}" "${GITHUB_SHA}"
+          git push origin "refs/tags/${tag}"
 
           release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" 2>/dev/null || true)"
           release_file="${RUNNER_TEMP}/release.json"
