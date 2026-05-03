@@ -183,7 +183,7 @@ jobs:
             echo "Fork build from ${GITHUB_REPOSITORY}:cmp-rewrite."
             if [ -n "${official_url}" ]; then
               echo "Official release source: ${official_url}"
-              echo "This APK is built from this fork after syncing the official ${UPSTREAM_REPO} ${upstream_tag} release. Fork changes are included, while the app version and version code match the checked-in version file."
+              echo "This APK is built from this fork after syncing the official ${UPSTREAM_REPO} ${upstream_tag} release. Fork changes are included, and the app version is stamped as ${tag}."
             fi
             echo "Build commit: ${GITHUB_SHA}"
           } >> "${notes_file}"
@@ -241,6 +241,23 @@ jobs:
             printf 'NUVIO_RELEASE_KEY_ALIAS=%s\n' "${ANDROID_RELEASE_KEY_ALIAS}"
             printf 'NUVIO_RELEASE_KEY_PASSWORD=%s\n' "${ANDROID_RELEASE_KEY_PASSWORD}"
           } > local.properties
+
+      - name: Stamp fork app version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version_file="iosApp/Configuration/Version.xcconfig"
+          project_version="$(sed -n 's/^CURRENT_PROJECT_VERSION=//p' "${version_file}" | head -n 1)"
+          if ! [[ "${project_version}" =~ ^[0-9]+$ ]]; then
+            echo "::error::Current ${version_file} is missing a numeric CURRENT_PROJECT_VERSION."
+            exit 1
+          fi
+
+          {
+            printf 'CURRENT_PROJECT_VERSION=%s\n' "${project_version}"
+            printf 'MARKETING_VERSION=%s\n' "${{ steps.release.outputs.tag }}"
+          } > "${version_file}"
 
       - name: Build full release APK
         shell: bash
