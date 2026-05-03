@@ -71,7 +71,27 @@ jobs:
 
           body_file="${RUNNER_TEMP}/release-body.md"
           upstream_version="${upstream_tag#v}"
-          fork_tag="${upstream_tag}"
+          if ! [[ "${upstream_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Official release tag must resolve to x.x.x, got ${upstream_tag}."
+            exit 1
+          fi
+
+          git fetch --tags origin
+          existing_suffix="$(
+            git tag -l "${upstream_version}.*" |
+              awk -F. '
+                {
+                  suffix = $NF + 0
+                  if (suffix > max) max = suffix
+                }
+                END { if (max > 0) print max }
+              '
+          )"
+          if [ -n "${existing_suffix}" ]; then
+            fork_tag="${upstream_version}.${existing_suffix}"
+          else
+            fork_tag="${upstream_version}.1"
+          fi
           jq -r '.body // ""' <<<"${release_json}" > "${body_file}"
 
           changelog_notes="${RUNNER_TEMP}/changelog-notes.md"
@@ -103,14 +123,14 @@ jobs:
             echo "---"
             echo "Fork build from ${GITHUB_REPOSITORY}:${TARGET_BRANCH}."
             echo "Official release source: ${upstream_url}"
-            echo "This APK is built from this fork after syncing ${UPSTREAM_REPO}:${TARGET_BRANCH} for the official ${upstream_tag} release. Fork changes are included, while the app version and version code match the official branch."
+            echo "This APK is built from this fork after syncing ${UPSTREAM_REPO}:${TARGET_BRANCH} for the official ${upstream_tag} release. Fork changes are included, and the app version is stamped as ${fork_tag}."
           } >> "${body_file}"
 
           echo "skip=false" >> "${GITHUB_OUTPUT}"
           echo "upstream_tag=${upstream_tag}" >> "${GITHUB_OUTPUT}"
           echo "upstream_version=${upstream_version}" >> "${GITHUB_OUTPUT}"
           echo "tag=${fork_tag}" >> "${GITHUB_OUTPUT}"
-          echo "name=${upstream_version}" >> "${GITHUB_OUTPUT}"
+          echo "name=${fork_tag}" >> "${GITHUB_OUTPUT}"
           echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
           echo "body_file=${body_file}" >> "${GITHUB_OUTPUT}"
 
@@ -122,6 +142,7 @@ jobs:
 
           upstream_tag="${{ steps.release.outputs.upstream_tag }}"
           upstream_version="${{ steps.release.outputs.upstream_version }}"
+          fork_tag="${{ steps.release.outputs.tag }}"
           official_tag_ref="refs/remotes/upstream/release-tags/${upstream_tag}"
           official_branch_ref="refs/remotes/upstream/${TARGET_BRANCH}"
           version_file="iosApp/Configuration/Version.xcconfig"
@@ -170,12 +191,12 @@ jobs:
 
           {
             printf 'CURRENT_PROJECT_VERSION=%s\n' "${fork_project_version}"
-            printf 'MARKETING_VERSION=%s\n' "${official_marketing_version}"
+            printf 'MARKETING_VERSION=%s\n' "${fork_tag}"
           } > "${version_file}"
 
           if ! git diff --quiet -- "${version_file}"; then
             git add "${version_file}"
-            git commit -m "Sync app version to ${official_marketing_version} (${fork_project_version})"
+            git commit -m "Sync app version to ${fork_tag} (${fork_project_version})"
           fi
 
           after="$(git rev-parse HEAD)"
