@@ -1,6 +1,9 @@
 name: Build Current Fork Release
 
 on:
+  push:
+    branches:
+      - cmp-rewrite
   workflow_dispatch:
 
 permissions:
