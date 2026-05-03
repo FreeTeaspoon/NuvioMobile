@@ -61,6 +61,9 @@ import java.net.URL
 import java.util.Locale
 
 private const val TAG = "NuvioPlayer"
+private const val PlaybackTargetBufferBytes = 192 * 1024 * 1024
+private const val PlaybackMaxBufferMs = 120_000
+private const val PlaybackBackBufferMs = 120_000
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -139,13 +142,14 @@ internal fun AndroidMedia3PlayerSurface(
         }
 
         val loadControl = DefaultLoadControl.Builder()
-            .setTargetBufferBytes(100 * 1024 * 1024)
+            .setTargetBufferBytes(PlaybackTargetBufferBytes)
             .setBufferDurationsMs(
                 DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
-                70_000,
+                PlaybackMaxBufferMs,
                 DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
                 5_000
             )
+            .setBackBuffer(PlaybackBackBufferMs, true)
             .build()
 
         val extractorsFactory = DefaultExtractorsFactory()
