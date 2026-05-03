@@ -29,6 +29,9 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val TAG = "NuvioMpvPlayer"
+private const val MpvCacheBytes = 192 * 1024 * 1024
+private const val MpvBackCacheBytes = 96 * 1024 * 1024
+private const val MpvForwardCacheSeconds = 120
 private const val DefaultUserAgent =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
@@ -502,11 +505,10 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         MPVLib.setOptionString("vd-lavc-film-grain", "cpu")
         MPVLib.setOptionString("ao", "audiotrack,opensles")
 
-        val cacheMegs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) 64 else 32
-        MPVLib.setOptionString("demuxer-max-bytes", "${cacheMegs * 1024 * 1024}")
-        MPVLib.setOptionString("demuxer-max-back-bytes", "${cacheMegs * 1024 * 1024}")
+        MPVLib.setOptionString("demuxer-max-bytes", MpvCacheBytes.toString())
+        MPVLib.setOptionString("demuxer-max-back-bytes", MpvBackCacheBytes.toString())
         MPVLib.setOptionString("cache", "yes")
-        MPVLib.setOptionString("cache-secs", "30")
+        MPVLib.setOptionString("cache-secs", MpvForwardCacheSeconds.toString())
         MPVLib.setOptionString("network-timeout", "60")
         MPVLib.setOptionString("ytdl", "no")
         applyHttpHeadersAsOptions(currentRequestHeaders)
