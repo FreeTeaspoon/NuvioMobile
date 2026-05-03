@@ -1162,7 +1162,6 @@
     <string name="downloads_enqueue_started">Download started</string>
     <string name="downloads_enqueue_unsupported_format">Unsupported stream format for downloads</string>
     <string name="downloads_go_to_downloads">Go to downloads</string>
-    <string name="streams_download_queued_title">Download queued</string>
     <string name="downloads_error_empty_body">Empty response body</string>
     <string name="downloads_error_http_failed">Request failed with HTTP %1$d</string>
     <string name="downloads_error_not_initialized">Download system is not initialized</string>
