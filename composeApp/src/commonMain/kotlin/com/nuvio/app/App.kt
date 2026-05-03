@@ -1415,6 +1415,9 @@ private fun MainAppContent(
                         resumeProgressFraction = launch.resumeProgressFraction,
                         manualSelection = launch.manualSelection,
                         startFromBeginning = launch.startFromBeginning,
+                        onOpenDownloads = {
+                            navController.navigate(DownloadsSettingsRoute)
+                        },
                         onStreamSelected = { stream, resolvedResumePositionMs, resolvedResumeProgressFraction ->
                             val sourceUrl = stream.directPlaybackUrl
                             if (sourceUrl != null) {

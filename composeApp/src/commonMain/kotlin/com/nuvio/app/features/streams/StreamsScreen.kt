@@ -77,8 +77,10 @@ import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.NuvioBottomSheetActionRow
 import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
+import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
+import com.nuvio.app.features.downloads.DownloadEnqueueResult
 import com.nuvio.app.features.downloads.DownloadsRepository
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -116,6 +118,7 @@ fun StreamsScreen(
     manualSelection: Boolean = false,
     startFromBeginning: Boolean = false,
     onStreamSelected: (stream: StreamItem, resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit = { _, _, _ -> },
+    onOpenDownloads: () -> Unit = {},
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -137,7 +140,11 @@ fun StreamsScreen(
     }
     val streamLinkCopiedText = stringResource(Res.string.streams_link_copied)
     val noDirectStreamLinkText = stringResource(Res.string.streams_no_direct_link)
+    val downloadQueuedTitle = stringResource(Res.string.downloads_enqueue_started)
+    val openDownloadsText = stringResource(Res.string.downloads_go_to_downloads)
+    val closeText = stringResource(Res.string.action_close)
     var streamActionsTarget by remember(videoId) { mutableStateOf<StreamItem?>(null) }
+    var downloadPromptMessage by remember { mutableStateOf<String?>(null) }
     var preferredFilterApplied by remember(videoId) { mutableStateOf(false) }
     val storedProgress = if (startFromBeginning) {
         null
@@ -348,7 +355,30 @@ fun StreamsScreen(
                     episodeThumbnail = episodeThumbnail,
                     stream = stream,
                 )
-                NuvioToastController.show(result.toastMessage())
+                val message = result.toastMessage()
+                when (result) {
+                    DownloadEnqueueResult.Started,
+                    DownloadEnqueueResult.Replaced,
+                    -> downloadPromptMessage = message
+                    DownloadEnqueueResult.MissingUrl,
+                    DownloadEnqueueResult.UnsupportedFormat,
+                    -> NuvioToastController.show(message)
+                }
+            },
+        )
+
+        NuvioStatusModal(
+            title = downloadQueuedTitle,
+            message = downloadPromptMessage.orEmpty(),
+            isVisible = downloadPromptMessage != null,
+            confirmText = openDownloadsText,
+            dismissText = closeText,
+            onConfirm = {
+                downloadPromptMessage = null
+                onOpenDownloads()
+            },
+            onDismiss = {
+                downloadPromptMessage = null
             },
         )
     }
