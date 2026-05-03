@@ -80,6 +80,52 @@ jobs:
             official_url="$(jq -r '.html_url // ""' <<<"${official_release_json}")"
             prerelease="$(jq -r '.prerelease // false' <<<"${official_release_json}")"
             jq -r '.body // ""' <<<"${official_release_json}" > "${notes_file}"
+            # Upstream body is identical for every fork tag with the same base version (e.g. 0.1.12.1 vs 0.1.12.2).
+            # Always append fork-specific notes so each GitHub release is distinct.
+            {
+              echo
+              echo "### This fork build (${tag})"
+              echo
+              fork_changelog="${RUNNER_TEMP}/fork-changelog-exact.md"
+              if [ -f CHANGELOG.md ] && awk -v version="${tag}" '
+                /^##[[:space:]]+/ {
+                  heading = $0
+                  sub(/^##[[:space:]]+/, "", heading)
+                  sub(/^\[/, "", heading)
+                  sub(/\].*$/, "", heading)
+                  sub(/[[:space:]].*$/, "", heading)
+                  if (heading == version) {
+                    found = 1
+                    next
+                  }
+                  if (found) exit
+                }
+                found { print }
+                END { if (!found) exit 1 }
+              ' CHANGELOG.md > "${fork_changelog}" && [ -s "${fork_changelog}" ]; then
+                cat "${fork_changelog}"
+              elif [ "${next_suffix}" -gt 1 ]; then
+                previous_fork="${base_version}.$((next_suffix - 1))"
+                if git rev-parse -q --verify "refs/tags/${previous_fork}" >/dev/null; then
+                  # Do not fail the step if the revision range is invalid under set -e.
+                  fork_commits="$(
+                    git log --no-merges --pretty=format:'- %s (%h)' "${previous_fork}..${GITHUB_SHA}" 2>/dev/null || true
+                  )"
+                  if [ -n "${fork_commits}" ]; then
+                    printf '%s\n' "${fork_commits}"
+                  else
+                    echo "No commit list since ${previous_fork} (empty range or unavailable history)."
+                  fi
+                  echo
+                else
+                  echo "Additional fork builds for upstream ${upstream_tag} reuse the official release notes above. This is tag ${tag}; compare to the previous fork tag ${previous_fork} in git for commit-level changes."
+                  echo
+                fi
+              else
+                echo "First fork build published for upstream release ${upstream_tag}."
+                echo
+              fi
+            } >> "${notes_file}"
           else
             changelog_notes="${RUNNER_TEMP}/changelog-notes.md"
             if [ -f CHANGELOG.md ] && awk -v version="${tag}" -v base_version="${base_version}" '
@@ -108,9 +154,23 @@ jobs:
                 echo "### Fork Changes"
                 echo
                 if [ -n "${previous_tag}" ]; then
-                  git log --no-merges --pretty=format:'- %s (%h)' "${previous_tag}..${GITHUB_SHA}"
+                  fork_commits="$(
+                    git log --no-merges --pretty=format:'- %s (%h)' "${previous_tag}..${GITHUB_SHA}" 2>/dev/null || true
+                  )"
+                  if [ -n "${fork_commits}" ]; then
+                    printf '%s\n' "${fork_commits}"
+                  else
+                    echo "(Could not list commits since ${previous_tag}.)"
+                  fi
                 else
-                  git log --no-merges --pretty=format:'- %s (%h)' -n 20 "${GITHUB_SHA}"
+                  fork_commits="$(
+                    git log --no-merges --pretty=format:'- %s (%h)' -n 20 "${GITHUB_SHA}" 2>/dev/null || true
+                  )"
+                  if [ -n "${fork_commits}" ]; then
+                    printf '%s\n' "${fork_commits}"
+                  else
+                    echo "(Could not list recent commits.)"
+                  fi
                 fi
                 echo
               } > "${notes_file}"
