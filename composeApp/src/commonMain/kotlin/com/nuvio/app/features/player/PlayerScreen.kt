@@ -237,7 +237,6 @@ fun PlayerScreen(
             activeEpisodeNumber,
         ) { mutableStateOf(false) }
         var hasSentCompletionScrobbleForCurrentItem by remember(
-            activeSourceUrl,
             activeVideoId,
             activeSeasonNumber,
             activeEpisodeNumber,
@@ -394,7 +393,6 @@ fun PlayerScreen(
             val progressPercent = currentPlaybackProgressPercent()
             if (progressPercent >= 1f && progressPercent < 80f) {
                 emitTraktScrobbleStop(progressPercent)
-                hasSentCompletionScrobbleForCurrentItem = false
                 return
             }
 
@@ -884,7 +882,7 @@ fun PlayerScreen(
         }
 
         fun switchToDownloadedEpisode(downloadItem: DownloadItem, episode: MetaVideo) {
-            val localFileUri = downloadItem.localFileUri ?: return
+            val localFileUri = DownloadsRepository.playableLocalFileUri(downloadItem) ?: return
             showNextEpisodeCard = false
             showSourcesPanel = false
             showEpisodesPanel = false
@@ -1246,6 +1244,7 @@ fun PlayerScreen(
             initialSeekApplied,
             playbackSnapshot.positionMs,
             playbackSnapshot.isPlaying,
+            playbackSnapshot.isLoading,
             playbackSnapshot.isEnded,
             playbackSnapshot.durationMs,
         ) {
@@ -1255,13 +1254,12 @@ fun PlayerScreen(
             }
 
             if (playbackSnapshot.isEnded) {
-                hasSentCompletionScrobbleForCurrentItem = false
                 flushWatchProgress()
                 previousIsPlaying = false
                 return@LaunchedEffect
             }
 
-            if (previousIsPlaying && !playbackSnapshot.isPlaying) {
+            if (previousIsPlaying && !playbackSnapshot.isPlaying && !playbackSnapshot.isLoading) {
                 flushWatchProgress()
             }
 
@@ -1269,7 +1267,9 @@ fun PlayerScreen(
                 emitTraktScrobbleStart()
             }
 
-            previousIsPlaying = playbackSnapshot.isPlaying
+            if (!playbackSnapshot.isLoading) {
+                previousIsPlaying = playbackSnapshot.isPlaying
+            }
 
             if (!playbackSnapshot.isPlaying) {
                 return@LaunchedEffect

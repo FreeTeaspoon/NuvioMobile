@@ -16,8 +16,9 @@ enum class AppLanguage(
     val labelRes: StringResource,
 ) {
     ENGLISH("en", Res.string.lang_english),
-	FRENCH("fr", Res.string.lang_french),
+    FRENCH("fr", Res.string.lang_french),
     SPANISH("es", Res.string.lang_spanish),
+    PORTUGUESE("pt", Res.string.lang_portuguese_portugal),
     TURKISH("tr", Res.string.lang_turkish),
     ITALIAN("it", Res.string.lang_italian),
     GREEK("el", Res.string.lang_greek),
