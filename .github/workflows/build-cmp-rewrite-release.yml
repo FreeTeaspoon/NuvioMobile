@@ -107,7 +107,15 @@ jobs:
               elif [ "${next_suffix}" -gt 1 ]; then
                 previous_fork="${base_version}.$((next_suffix - 1))"
                 if git rev-parse -q --verify "refs/tags/${previous_fork}" >/dev/null; then
-                  git log --no-merges --pretty=format:'- %s (%h)' "${previous_fork}..${GITHUB_SHA}"
+                  # Do not fail the step if the revision range is invalid under set -e.
+                  fork_commits="$(
+                    git log --no-merges --pretty=format:'- %s (%h)' "${previous_fork}..${GITHUB_SHA}" 2>/dev/null || true
+                  )"
+                  if [ -n "${fork_commits}" ]; then
+                    printf '%s\n' "${fork_commits}"
+                  else
+                    echo "No commit list since ${previous_fork} (empty range or unavailable history)."
+                  fi
                   echo
                 else
                   echo "Additional fork builds for upstream ${upstream_tag} reuse the official release notes above. This is tag ${tag}; compare to the previous fork tag ${previous_fork} in git for commit-level changes."
@@ -146,9 +154,23 @@ jobs:
                 echo "### Fork Changes"
                 echo
                 if [ -n "${previous_tag}" ]; then
-                  git log --no-merges --pretty=format:'- %s (%h)' "${previous_tag}..${GITHUB_SHA}"
+                  fork_commits="$(
+                    git log --no-merges --pretty=format:'- %s (%h)' "${previous_tag}..${GITHUB_SHA}" 2>/dev/null || true
+                  )"
+                  if [ -n "${fork_commits}" ]; then
+                    printf '%s\n' "${fork_commits}"
+                  else
+                    echo "(Could not list commits since ${previous_tag}.)"
+                  fi
                 else
-                  git log --no-merges --pretty=format:'- %s (%h)' -n 20 "${GITHUB_SHA}"
+                  fork_commits="$(
+                    git log --no-merges --pretty=format:'- %s (%h)' -n 20 "${GITHUB_SHA}" 2>/dev/null || true
+                  )"
+                  if [ -n "${fork_commits}" ]; then
+                    printf '%s\n' "${fork_commits}"
+                  else
+                    echo "(Could not list recent commits.)"
+                  fi
                 fi
                 echo
               } > "${notes_file}"
