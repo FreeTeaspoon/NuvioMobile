@@ -210,9 +210,12 @@ fun PlayerScreen(
             (playbackSnapshot.isPlaying || (shouldPlay && playbackSnapshot.isLoading))
         EnterImmersivePlayerMode(keepScreenAwake = keepScreenAwake)
         var scrubbingPositionMs by remember { mutableStateOf<Long?>(null) }
+        var isScrubbing by remember { mutableStateOf(false) }
+        var pendingScrubTargetMs by remember { mutableStateOf<Long?>(null) }
         var pausedOverlayVisible by remember { mutableStateOf(false) }
         var gestureFeedback by remember { mutableStateOf<GestureFeedbackState?>(null) }
         var liveGestureFeedback by remember { mutableStateOf<GestureFeedbackState?>(null) }
+        var liveHorizontalSeekTargetMs by remember { mutableStateOf<Long?>(null) }
         var renderedGestureFeedback by remember { mutableStateOf<GestureFeedbackState?>(null) }
         var lockedOverlayVisible by remember { mutableStateOf(false) }
         var gestureMessageJob by remember { mutableStateOf<Job?>(null) }
@@ -244,7 +247,11 @@ fun PlayerScreen(
             activeEpisodeNumber,
         ) { mutableStateOf(false) }
         val backdropArtwork = background ?: poster
-        val displayedPositionMs = scrubbingPositionMs ?: playbackSnapshot.positionMs
+        val displayedPositionMs = resolveDisplayedPlaybackPosition(
+            scrubbingPositionMs = scrubbingPositionMs,
+            pendingScrubTargetMs = pendingScrubTargetMs,
+            snapshotPositionMs = playbackSnapshot.positionMs,
+        )
         val isEpisode = activeSeasonNumber != null && activeEpisodeNumber != null
         val currentGestureFeedback = liveGestureFeedback ?: gestureFeedback
         val latestPlaybackSnapshotState = rememberUpdatedState(playbackSnapshot)
@@ -522,6 +529,7 @@ fun PlayerScreen(
         }
 
         fun clearLiveGestureFeedback() {
+            liveHorizontalSeekTargetMs = null
             liveGestureFeedback = null
         }
 
@@ -536,9 +544,12 @@ fun PlayerScreen(
             lockedOverlayVisible = false
             pausedOverlayVisible = false
             scrubbingPositionMs = null
+            pendingScrubTargetMs = null
+            isScrubbing = false
             gestureMessageJob?.cancel()
             gestureFeedback = null
             liveGestureFeedback = null
+            liveHorizontalSeekTargetMs = null
             renderedGestureFeedback = null
             showAudioModal = false
             showSubtitleModal = false
@@ -574,9 +585,13 @@ fun PlayerScreen(
             )
         }
 
-        fun showHorizontalSeekPreview(previewPositionMs: Long, baselinePositionMs: Long) {
-            val deltaMs = previewPositionMs - baselinePositionMs
-            val direction = if (deltaMs < 0L) PlayerSeekDirection.Backward else PlayerSeekDirection.Forward
+        fun showHorizontalSeekPreview(previewPositionMs: Long, currentPositionMs: Long) {
+            liveHorizontalSeekTargetMs = previewPositionMs
+            val deltaSeconds = calculateHorizontalSeekDeltaSeconds(
+                targetPositionMs = previewPositionMs,
+                currentPositionMs = currentPositionMs,
+            )
+            val direction = if (deltaSeconds < 0) PlayerSeekDirection.Backward else PlayerSeekDirection.Forward
             liveGestureFeedback = GestureFeedbackState(
                 message = formatPlaybackTime(previewPositionMs),
                 icon = if (direction == PlayerSeekDirection.Forward) {
@@ -584,18 +599,23 @@ fun PlayerScreen(
                 } else {
                     GestureFeedbackIcon.SeekBackward
                 },
-                secondaryMessageRes = if (deltaMs >= 0L) {
+                secondaryMessageRes = if (deltaSeconds >= 0) {
                     Res.string.compose_player_seek_delta_forward
                 } else {
                     Res.string.compose_player_seek_delta_backward
                 },
-                secondaryMessageArgs = listOf((abs(deltaMs) / 1000f).roundToInt()),
+                secondaryMessageArgs = listOf(abs(deltaSeconds)),
                 secondaryMessageColor = if (direction == PlayerSeekDirection.Forward) {
                     Color(0xFF6EE7A8)
                 } else {
                     Color(0xFFFF9A76)
                 },
             )
+        }
+
+        LaunchedEffect(liveHorizontalSeekTargetMs, playbackSnapshot.positionMs) {
+            val targetMs = liveHorizontalSeekTargetMs ?: return@LaunchedEffect
+            showHorizontalSeekPreview(targetMs, playbackSnapshot.positionMs.coerceAtLeast(0L))
         }
 
         fun showBrightnessFeedback(level: Float) {
@@ -1096,7 +1116,10 @@ fun PlayerScreen(
             playerControllerSourceUrl = null
             playbackSnapshot = PlayerPlaybackSnapshot()
             scrubbingPositionMs = null
+            pendingScrubTargetMs = null
+            isScrubbing = false
             liveGestureFeedback = null
+            liveHorizontalSeekTargetMs = null
             renderedGestureFeedback = null
             lockedOverlayVisible = false
             initialLoadCompleted = false
@@ -1217,12 +1240,27 @@ fun PlayerScreen(
             initialSeekApplied = true
         }
 
-        LaunchedEffect(controlsVisible, playbackSnapshot.isPlaying, playbackSnapshot.isLoading, errorMessage) {
-            if (!controlsVisible || !playbackSnapshot.isPlaying || playbackSnapshot.isLoading || errorMessage != null) {
+        LaunchedEffect(controlsVisible, playbackSnapshot.isPlaying, playbackSnapshot.isLoading, isScrubbing, errorMessage) {
+            if (!controlsVisible || !playbackSnapshot.isPlaying || playbackSnapshot.isLoading || isScrubbing || errorMessage != null) {
                 return@LaunchedEffect
             }
             delay(3500)
             controlsVisible = false
+        }
+
+        LaunchedEffect(pendingScrubTargetMs, playbackSnapshot.positionMs, playbackSnapshot.durationMs) {
+            val targetMs = pendingScrubTargetMs ?: return@LaunchedEffect
+            if (!shouldHoldPendingScrubDisplay(targetMs, playbackSnapshot)) {
+                pendingScrubTargetMs = null
+                scrubbingPositionMs = null
+            }
+        }
+
+        LaunchedEffect(pendingScrubTargetMs) {
+            pendingScrubTargetMs ?: return@LaunchedEffect
+            delay(PendingScrubDisplayTimeoutMs)
+            pendingScrubTargetMs = null
+            scrubbingPositionMs = null
         }
 
         LaunchedEffect(playerControlsLocked, lockedOverlayVisible) {
@@ -1532,7 +1570,7 @@ fun PlayerScreen(
                                         ?: unclampedPreviewMs.coerceAtLeast(0L)
                                     showHorizontalSeekPreviewState.value(
                                         horizontalSeekPreviewMs,
-                                        horizontalSeekBaselineMs,
+                                        currentPositionMsState.value,
                                     )
                                 }
 
@@ -1578,7 +1616,7 @@ fun PlayerScreen(
                 },
                 onSnapshot = { snapshot ->
                     playbackSnapshot = snapshot
-                    if (!snapshot.isLoading && initialSeekApplied) {
+                    if (isPlaybackReadyForOpeningOverlay(snapshot, initialSeekApplied)) {
                         initialLoadCompleted = true
                     }
                     if (snapshot.isEnded) {
@@ -1623,7 +1661,7 @@ fun PlayerScreen(
             }
 
             AnimatedVisibility(
-                visible = controlsVisible && !playerControlsLocked,
+                visible = controlsVisible && !playerControlsLocked && (initialLoadCompleted || errorMessage != null),
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {
@@ -1662,10 +1700,27 @@ fun PlayerScreen(
                     },
                     onSourcesClick = if (activeVideoId != null) {{ openSourcesPanel() }} else null,
                     onEpisodesClick = if (isSeries) {{ openEpisodesPanel() }} else null,
-                    onScrubChange = { positionMs -> scrubbingPositionMs = positionMs },
+                    onScrubActiveChanged = { active ->
+                        isScrubbing = active
+                        if (active) {
+                            controlsVisible = true
+                            pendingScrubTargetMs = null
+                        }
+                    },
+                    onScrubChange = { positionMs ->
+                        scrubbingPositionMs = positionMs
+                        controlsVisible = true
+                    },
                     onScrubFinished = { positionMs ->
-                        scrubbingPositionMs = null
-                        playerController?.seekTo(positionMs)
+                        val targetMs = resolveFinishedScrubTarget(
+                            latestScrubPositionMs = positionMs,
+                            durationMs = playbackSnapshot.durationMs,
+                        )
+                        pendingScrubTargetMs = targetMs
+                        scrubbingPositionMs = targetMs
+                        isScrubbing = false
+                        controlsVisible = true
+                        playerController?.seekTo(targetMs)
                     },
                     horizontalSafePadding = horizontalSafePadding,
                     modifier = Modifier.fillMaxSize(),
@@ -1690,7 +1745,7 @@ fun PlayerScreen(
             AnimatedVisibility(
                 visible = playerSettingsUiState.showLoadingOverlay &&
                     errorMessage == null &&
-                    (!initialLoadCompleted || !initialSeekApplied),
+                    !initialLoadCompleted,
                 enter = fadeIn(),
                 exit = fadeOut(),
             ) {

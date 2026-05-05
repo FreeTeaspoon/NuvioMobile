@@ -562,7 +562,7 @@ private fun ExoPlayer.snapshot(): PlayerPlaybackSnapshot =
 private fun PlayerPlaybackSnapshot.keepLoadingUntilFirstFrame(
     hasRenderedFirstFrame: Boolean,
 ): PlayerPlaybackSnapshot =
-    if (hasRenderedFirstFrame || isEnded) {
+    if ((hasRenderedFirstFrame && durationMs > 0L) || isEnded) {
         this
     } else {
         copy(isLoading = true)

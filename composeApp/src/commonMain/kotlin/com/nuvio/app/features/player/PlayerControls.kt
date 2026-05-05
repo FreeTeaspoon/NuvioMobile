@@ -37,6 +37,11 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -113,6 +118,7 @@ internal fun PlayerControlsShell(
     onAudioClick: () -> Unit,
     onSourcesClick: (() -> Unit)? = null,
     onEpisodesClick: (() -> Unit)? = null,
+    onScrubActiveChanged: (Boolean) -> Unit,
     onScrubChange: (Long) -> Unit,
     onScrubFinished: (Long) -> Unit,
     horizontalSafePadding: androidx.compose.ui.unit.Dp,
@@ -200,6 +206,7 @@ internal fun PlayerControlsShell(
                 onAudioClick = onAudioClick,
                 onSourcesClick = onSourcesClick,
                 onEpisodesClick = onEpisodesClick,
+                onScrubActiveChanged = onScrubActiveChanged,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
@@ -455,12 +462,23 @@ private fun ProgressControls(
     onAudioClick: () -> Unit,
     onSourcesClick: (() -> Unit)? = null,
     onEpisodesClick: (() -> Unit)? = null,
+    onScrubActiveChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val durationMs = playbackSnapshot.durationMs.coerceAtLeast(1L)
     val aspectRatioPainter = appIconPainter(AppIconResource.PlayerAspectRatio)
     val subtitlesPainter = appIconPainter(AppIconResource.PlayerSubtitles)
     val audioPainter = appIconPainter(AppIconResource.PlayerAudioFilled)
+    var scrubActive by remember { mutableStateOf(false) }
+    var latestScrubPositionMs by remember {
+        mutableStateOf(displayedPositionMs.coerceIn(0L, durationMs))
+    }
+
+    LaunchedEffect(displayedPositionMs, durationMs, scrubActive) {
+        if (!scrubActive) {
+            latestScrubPositionMs = displayedPositionMs.coerceIn(0L, durationMs)
+        }
+    }
 
     Column(modifier = modifier) {
         PlayerSeekBar(
@@ -470,8 +488,26 @@ private fun ProgressControls(
             sliderTouchHeight = metrics.sliderTouchHeight,
             sliderScaleY = metrics.sliderScaleY,
             value = displayedPositionMs.coerceIn(0L, durationMs).toFloat(),
-            onValueChange = { value -> onScrubChange(value.toLong()) },
-            onValueChangeFinished = { onScrubFinished(displayedPositionMs.coerceIn(0L, durationMs)) },
+            onValueChange = { value ->
+                val positionMs = resolveFinishedScrubTarget(
+                    latestScrubPositionMs = value.toLong(),
+                    durationMs = durationMs,
+                )
+                latestScrubPositionMs = positionMs
+                scrubActive = true
+                onScrubActiveChanged(true)
+                onScrubChange(positionMs)
+            },
+            onValueChangeFinished = {
+                scrubActive = false
+                onScrubActiveChanged(false)
+                onScrubFinished(
+                    resolveFinishedScrubTarget(
+                        latestScrubPositionMs = latestScrubPositionMs,
+                        durationMs = durationMs,
+                    ),
+                )
+            },
             valueRange = 0f..durationMs.toFloat(),
         )
         Row(

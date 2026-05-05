@@ -79,4 +79,86 @@ class PlayerStartupRulesTest {
 
         assertEquals(InitialSeekTarget.None, result)
     }
+
+    @Test
+    fun openingOverlayWaitsForKnownDuration() {
+        val snapshot = PlayerPlaybackSnapshot(
+            isLoading = false,
+            durationMs = 0L,
+        )
+
+        assertFalse(
+            isPlaybackReadyForOpeningOverlay(
+                snapshot = snapshot,
+                initialSeekApplied = true,
+            )
+        )
+    }
+
+    @Test
+    fun openingOverlayCompletesAfterSeekLoadingAndDurationAreReady() {
+        val snapshot = PlayerPlaybackSnapshot(
+            isLoading = false,
+            durationMs = 120_000L,
+        )
+
+        assertTrue(
+            isPlaybackReadyForOpeningOverlay(
+                snapshot = snapshot,
+                initialSeekApplied = true,
+            )
+        )
+        assertFalse(
+            isPlaybackReadyForOpeningOverlay(
+                snapshot = snapshot,
+                initialSeekApplied = false,
+            )
+        )
+    }
+
+    @Test
+    fun finishedScrubTargetUsesLatestDragValue() {
+        assertEquals(
+            75_000L,
+            resolveFinishedScrubTarget(
+                latestScrubPositionMs = 75_000L,
+                durationMs = 120_000L,
+            )
+        )
+    }
+
+    @Test
+    fun pendingScrubDisplayOverridesStaleSnapshotUntilSettled() {
+        val staleSnapshot = PlayerPlaybackSnapshot(
+            durationMs = 120_000L,
+            positionMs = 15_000L,
+        )
+
+        assertEquals(
+            75_000L,
+            resolveDisplayedPlaybackPosition(
+                scrubbingPositionMs = null,
+                pendingScrubTargetMs = 75_000L,
+                snapshotPositionMs = staleSnapshot.positionMs,
+            )
+        )
+        assertTrue(shouldHoldPendingScrubDisplay(75_000L, staleSnapshot))
+
+        val settledSnapshot = staleSnapshot.copy(positionMs = 74_000L)
+        assertFalse(shouldHoldPendingScrubDisplay(75_000L, settledSnapshot))
+    }
+
+    @Test
+    fun horizontalSeekForwardDeltaCountsDownAgainstPlayback() {
+        assertEquals(3, calculateHorizontalSeekDeltaSeconds(targetPositionMs = 13_000L, currentPositionMs = 10_000L))
+        assertEquals(2, calculateHorizontalSeekDeltaSeconds(targetPositionMs = 13_000L, currentPositionMs = 11_000L))
+        assertEquals(1, calculateHorizontalSeekDeltaSeconds(targetPositionMs = 13_000L, currentPositionMs = 12_000L))
+        assertEquals(0, calculateHorizontalSeekDeltaSeconds(targetPositionMs = 13_000L, currentPositionMs = 13_000L))
+    }
+
+    @Test
+    fun horizontalSeekBackwardKeepsFixedTargetAgainstPlayback() {
+        assertEquals(-3, calculateHorizontalSeekDeltaSeconds(targetPositionMs = 7_000L, currentPositionMs = 10_000L))
+        assertEquals(-6, calculateHorizontalSeekDeltaSeconds(targetPositionMs = 7_000L, currentPositionMs = 13_000L))
+    }
 }
