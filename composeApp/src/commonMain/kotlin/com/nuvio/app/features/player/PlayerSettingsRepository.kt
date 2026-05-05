@@ -33,8 +33,6 @@ data class PlayerSettingsUiState(
     val skipIntroEnabled: Boolean = true,
     val animeSkipEnabled: Boolean = false,
     val animeSkipClientId: String = "",
-    val introDbApiKey: String = "",
-    val introSubmitEnabled: Boolean = false,
     val streamAutoPlayNextEpisodeEnabled: Boolean = false,
     val streamAutoPlayPreferBingeGroup: Boolean = true,
     val nextEpisodeThresholdMode: NextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
@@ -73,8 +71,6 @@ object PlayerSettingsRepository {
     private var skipIntroEnabled = true
     private var animeSkipEnabled = false
     private var animeSkipClientId = ""
-    private var introDbApiKey = ""
-    private var introSubmitEnabled = false
     private var streamAutoPlayNextEpisodeEnabled = false
     private var streamAutoPlayPreferBingeGroup = true
     private var nextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE
@@ -118,8 +114,6 @@ object PlayerSettingsRepository {
         skipIntroEnabled = true
         animeSkipEnabled = false
         animeSkipClientId = ""
-        introDbApiKey = ""
-        introSubmitEnabled = false
         streamAutoPlayNextEpisodeEnabled = false
         streamAutoPlayPreferBingeGroup = true
         nextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE
@@ -191,8 +185,6 @@ object PlayerSettingsRepository {
         skipIntroEnabled = PlayerSettingsStorage.loadSkipIntroEnabled() ?: true
         animeSkipEnabled = PlayerSettingsStorage.loadAnimeSkipEnabled() ?: false
         animeSkipClientId = PlayerSettingsStorage.loadAnimeSkipClientId() ?: ""
-        introDbApiKey = PlayerSettingsStorage.loadIntroDbApiKey() ?: ""
-        introSubmitEnabled = PlayerSettingsStorage.loadIntroSubmitEnabled() ?: false
         streamAutoPlayNextEpisodeEnabled = PlayerSettingsStorage.loadStreamAutoPlayNextEpisodeEnabled() ?: false
         streamAutoPlayPreferBingeGroup = PlayerSettingsStorage.loadStreamAutoPlayPreferBingeGroup() ?: true
         nextEpisodeThresholdMode = PlayerSettingsStorage.loadNextEpisodeThresholdMode()
@@ -408,22 +400,6 @@ object PlayerSettingsRepository {
         PlayerSettingsStorage.saveAnimeSkipClientId(clientId)
     }
 
-    fun setIntroDbApiKey(apiKey: String) {
-        ensureLoaded()
-        if (introDbApiKey == apiKey) return
-        introDbApiKey = apiKey
-        publish()
-        PlayerSettingsStorage.saveIntroDbApiKey(apiKey)
-    }
-
-    fun setIntroSubmitEnabled(enabled: Boolean) {
-        ensureLoaded()
-        if (introSubmitEnabled == enabled) return
-        introSubmitEnabled = enabled
-        publish()
-        PlayerSettingsStorage.saveIntroSubmitEnabled(enabled)
-    }
-
     fun setStreamAutoPlayNextEpisodeEnabled(enabled: Boolean) {
         ensureLoaded()
         if (streamAutoPlayNextEpisodeEnabled == enabled) return
@@ -509,8 +485,6 @@ object PlayerSettingsRepository {
             skipIntroEnabled = skipIntroEnabled,
             animeSkipEnabled = animeSkipEnabled,
             animeSkipClientId = animeSkipClientId,
-            introDbApiKey = introDbApiKey,
-            introSubmitEnabled = introSubmitEnabled,
             streamAutoPlayNextEpisodeEnabled = streamAutoPlayNextEpisodeEnabled,
             streamAutoPlayPreferBingeGroup = streamAutoPlayPreferBingeGroup,
             nextEpisodeThresholdMode = nextEpisodeThresholdMode,

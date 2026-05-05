@@ -1,47 +1,77 @@
 package com.nuvio.app.core.ui
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.nuvio.app.core.ui.installerx.FloatingBottomBar
+import com.nuvio.app.core.ui.installerx.FloatingBottomBarItem
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+
+val NuvioNavigationBarScrollClearance = 104.dp
 
 @Composable
 fun NuvioNavigationBar(
     modifier: Modifier = Modifier,
+    selectedIndex: Int? = null,
+    itemCount: Int? = null,
+    backdrop: Backdrop = rememberLayerBackdrop(),
+    onSelectedIndexChange: ((Int) -> Unit)? = null,
     content: @Composable NuvioNavigationBarScope.() -> Unit,
 ) {
-    Column(modifier.fillMaxWidth()) {
-        HorizontalDivider(
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant,
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(nuvioBottomNavigationBarInsets().asPaddingValues())
-                .padding(horizontal = 4.dp, vertical = nuvioBottomNavigationExtraVerticalPadding),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+    val count = itemCount?.takeIf { it > 0 } ?: 1
+    val selected = selectedIndex?.coerceIn(0, count - 1) ?: 0
+    val isInLightTheme = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val accentColor = MaterialTheme.colorScheme.primary
+    val containerColor = if (isInLightTheme) {
+        Color.White.copy(alpha = 0.36f)
+    } else {
+        Color.Black.copy(alpha = 0.36f)
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(nuvioBottomNavigationBarInsets().asPaddingValues())
+            .padding(
+                start = 18.dp,
+                end = 18.dp,
+                top = 8.dp,
+                bottom = nuvioBottomNavigationExtraVerticalPadding + 8.dp,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        FloatingBottomBar(
+            modifier = Modifier.width(288.dp),
+            selectedIndex = { selected },
+            onSelected = { index -> onSelectedIndexChange?.invoke(index) },
+            backdrop = backdrop,
+            tabsCount = count,
+            isBlurEnabled = true,
+            isInLightTheme = isInLightTheme,
+            accentColor = Color.White,
+            containerColor = containerColor,
+            indicatorRestColor = Color.White.copy(alpha = 0.10f),
+            indicatorPressedOverlayColor = Color.Black.copy(alpha = 0.03f),
+            pressedIndicatorScrimColor = Color.Black.copy(alpha = 0.28f),
+            highlightColor = accentColor.copy(alpha = 0.18f),
         ) {
             NuvioNavigationBarScopeImpl(this).content()
         }
@@ -77,7 +107,7 @@ interface NuvioNavigationBarScope {
 }
 
 private class NuvioNavigationBarScopeImpl(
-    private val rowScope: androidx.compose.foundation.layout.RowScope,
+    private val rowScope: RowScope,
 ) : NuvioNavigationBarScope {
 
     @Composable
@@ -88,29 +118,22 @@ private class NuvioNavigationBarScopeImpl(
         contentDescription: String?,
         modifier: Modifier,
     ) {
-        val iconColor by animateColorAsState(
-            targetValue = if (selected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         with(rowScope) {
-            Icon(
-                modifier = modifier
-                    .widthIn(max = 150.dp)
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .clip(RoundedCornerShape(16.dp))
-                    .selectable(
-                        selected = selected,
-                        enabled = true,
-                        role = Role.Tab,
-                        onClick = onClick,
+            FloatingBottomBarItem(
+                onClick = onClick,
+                modifier = modifier,
+            ) {
+                NavIcon(
+                    selected = selected,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = contentDescription,
+                        tint = it,
+                        modifier = Modifier.size(28.dp),
                     )
-                    .padding(10.dp)
-                    .size(28.dp),
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = iconColor,
-            )
+                }
+            }
         }
     }
 
@@ -122,29 +145,22 @@ private class NuvioNavigationBarScopeImpl(
         contentDescription: String?,
         modifier: Modifier,
     ) {
-        val iconColor by animateColorAsState(
-            targetValue = if (selected) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         with(rowScope) {
-            Icon(
-                modifier = modifier
-                    .widthIn(max = 150.dp)
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .clip(RoundedCornerShape(16.dp))
-                    .selectable(
-                        selected = selected,
-                        enabled = true,
-                        role = Role.Tab,
-                        onClick = onClick,
+            FloatingBottomBarItem(
+                onClick = onClick,
+                modifier = modifier,
+            ) {
+                NavIcon(
+                    selected = selected,
+                ) {
+                    Icon(
+                        painter = painterResource(icon),
+                        contentDescription = contentDescription,
+                        tint = it,
+                        modifier = Modifier.size(28.dp),
                     )
-                    .padding(10.dp)
-                    .size(28.dp),
-                painter = painterResource(icon),
-                contentDescription = contentDescription,
-                tint = iconColor,
-            )
+                }
+            }
         }
     }
 
@@ -156,23 +172,40 @@ private class NuvioNavigationBarScopeImpl(
         content: @Composable () -> Unit,
     ) {
         with(rowScope) {
-            Box(
-                modifier = modifier
-                    .widthIn(max = 150.dp)
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .clip(RoundedCornerShape(16.dp))
-                    .selectable(
-                        selected = selected,
-                        enabled = true,
-                        role = Role.Tab,
-                        onClick = onClick,
-                    )
-                    .padding(10.dp),
-                contentAlignment = Alignment.Center,
+            FloatingBottomBarItem(
+                onClick = onClick,
+                modifier = modifier,
             ) {
-                content()
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .alpha(if (selected) 0f else 1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    content()
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun ColumnScope.NavIcon(
+    selected: Boolean,
+    icon: @Composable (androidx.compose.ui.graphics.Color) -> Unit,
+) {
+    val baseAlpha = if (selected) 0f else 1f
+    val color = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .alpha(baseAlpha),
+        contentAlignment = Alignment.Center,
+    ) {
+        icon(color)
     }
 }

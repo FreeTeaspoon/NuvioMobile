@@ -40,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +71,8 @@ import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.request.CachePolicy
 import coil3.request.crossfade
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
@@ -80,7 +83,9 @@ import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.sync.AppForegroundMonitor
 import com.nuvio.app.core.sync.ProfileSettingsSync
 import com.nuvio.app.core.sync.SyncManager
+import com.nuvio.app.core.ui.LocalNuvioBottomOverlayScrollPadding
 import com.nuvio.app.core.ui.NuvioNavigationBar
+import com.nuvio.app.core.ui.NuvioNavigationBarScrollClearance
 import com.nuvio.app.core.ui.NuvioContinueWatchingActionSheet
 import com.nuvio.app.core.ui.NuvioPosterActionSheet
 import com.nuvio.app.core.ui.NuvioStatusModal
@@ -897,6 +902,7 @@ private fun MainAppContent(
 
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val isTabletLayout = maxWidth >= 768.dp
+                        val navigationBackdrop = rememberLayerBackdrop()
                         val onProfileSelected: (NuvioProfile) -> Unit = { profile ->
                             profileSwitchLoading = true
                             selectedTab = AppScreenTab.Home
@@ -910,9 +916,87 @@ private fun MainAppContent(
                                 .alpha(if (initialHomeReady) 1f else 0f),
                             containerColor = Color.Transparent,
                             contentWindowInsets = WindowInsets(0),
-                            bottomBar = {
-                                if (!isTabletLayout) {
-                                    NuvioNavigationBar {
+                        ) { innerPadding ->
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                CompositionLocalProvider(
+                                    LocalNuvioBottomOverlayScrollPadding provides if (!isTabletLayout) {
+                                        NuvioNavigationBarScrollClearance
+                                    } else {
+                                        0.dp
+                                    },
+                                ) {
+                                    AppTabHost(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(innerPadding)
+                                            .then(if (!isTabletLayout) Modifier.layerBackdrop(navigationBackdrop) else Modifier),
+                                        selectedTab = selectedTab,
+                                        onCatalogClick = onCatalogClick,
+                                        onPosterClick = { meta ->
+                                            navController.navigate(DetailRoute(type = meta.type, id = meta.id))
+                                        },
+                                        onPosterLongClick = { meta ->
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            selectedPosterForActions = meta
+                                        },
+                                        onLibraryPosterClick = { item ->
+                                            navController.navigate(DetailRoute(type = item.type, id = item.id))
+                                        },
+                                        onLibrarySectionViewAllClick = onLibrarySectionViewAllClick,
+                                        onContinueWatchingClick = onContinueWatchingClick,
+                                        onContinueWatchingLongPress = onContinueWatchingLongPress,
+                                        onSwitchProfile = onSwitchProfile,
+                                        onHomescreenSettingsClick = { navController.navigate(HomescreenSettingsRoute) },
+                                        onMetaScreenSettingsClick = { navController.navigate(MetaScreenSettingsRoute) },
+                                        onContinueWatchingSettingsClick = { navController.navigate(ContinueWatchingSettingsRoute) },
+                                        onDownloadsSettingsClick = { navController.navigate(DownloadsSettingsRoute) },
+                                        onAddonsSettingsClick = { navController.navigate(AddonsSettingsRoute) },
+                                        onPluginsSettingsClick = {
+                                            if (AppFeaturePolicy.pluginsEnabled) {
+                                                navController.navigate(PluginsSettingsRoute)
+                                            }
+                                        },
+                                        onAccountSettingsClick = { navController.navigate(AccountSettingsRoute) },
+                                        onSupportersContributorsSettingsClick = {
+                                            navController.navigate(SupportersContributorsSettingsRoute)
+                                        },
+                                        onCheckForUpdatesClick = if (AppFeaturePolicy.inAppUpdaterEnabled) {
+                                            {
+                                                appUpdaterController.checkForUpdates(
+                                                    force = true,
+                                                    showNoUpdateFeedback = true,
+                                                )
+                                            }
+                                        } else {
+                                            null
+                                        },
+                                        onCollectionsSettingsClick = { navController.navigate(CollectionsRoute) },
+                                        onFolderClick = { collectionId, folderId ->
+                                            navController.navigate(FolderDetailRoute(collectionId = collectionId, folderId = folderId))
+                                        },
+                                        onInitialHomeContentRendered = { initialHomeReady = true },
+                                    )
+                                }
+
+                                if (isTabletLayout) {
+                                    TabletFloatingTopBar(
+                                        selectedTab = selectedTab,
+                                        onTabSelected = { selectedTab = it },
+                                        onProfileSelected = onProfileSelected,
+                                        onAddProfileRequested = onSwitchProfile,
+                                    )
+                                } else {
+                                    NuvioNavigationBar(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .zIndex(1f),
+                                        selectedIndex = selectedTab.ordinal,
+                                        itemCount = AppScreenTab.entries.size,
+                                        backdrop = navigationBackdrop,
+                                        onSelectedIndexChange = { index ->
+                                            AppScreenTab.entries.getOrNull(index)?.let { selectedTab = it }
+                                        },
+                                    ) {
                                         NavItem(
                                             selected = selectedTab == AppScreenTab.Home,
                                             onClick = { selectedTab = AppScreenTab.Home },
@@ -943,68 +1027,6 @@ private fun MainAppContent(
                                             )
                                         }
                                     }
-                                }
-                            },
-                        ) { innerPadding ->
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                AppTabHost(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(innerPadding),
-                                    selectedTab = selectedTab,
-                                    onCatalogClick = onCatalogClick,
-                                    onPosterClick = { meta ->
-                                        navController.navigate(DetailRoute(type = meta.type, id = meta.id))
-                                    },
-                                    onPosterLongClick = { meta ->
-                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        selectedPosterForActions = meta
-                                    },
-                                    onLibraryPosterClick = { item ->
-                                        navController.navigate(DetailRoute(type = item.type, id = item.id))
-                                    },
-                                    onLibrarySectionViewAllClick = onLibrarySectionViewAllClick,
-                                    onContinueWatchingClick = onContinueWatchingClick,
-                                    onContinueWatchingLongPress = onContinueWatchingLongPress,
-                                    onSwitchProfile = onSwitchProfile,
-                                    onHomescreenSettingsClick = { navController.navigate(HomescreenSettingsRoute) },
-                                    onMetaScreenSettingsClick = { navController.navigate(MetaScreenSettingsRoute) },
-                                    onContinueWatchingSettingsClick = { navController.navigate(ContinueWatchingSettingsRoute) },
-                                    onDownloadsSettingsClick = { navController.navigate(DownloadsSettingsRoute) },
-                                    onAddonsSettingsClick = { navController.navigate(AddonsSettingsRoute) },
-                                    onPluginsSettingsClick = {
-                                        if (AppFeaturePolicy.pluginsEnabled) {
-                                            navController.navigate(PluginsSettingsRoute)
-                                        }
-                                    },
-                                    onAccountSettingsClick = { navController.navigate(AccountSettingsRoute) },
-                                    onSupportersContributorsSettingsClick = {
-                                        navController.navigate(SupportersContributorsSettingsRoute)
-                                    },
-                                    onCheckForUpdatesClick = if (AppFeaturePolicy.inAppUpdaterEnabled) {
-                                        {
-                                            appUpdaterController.checkForUpdates(
-                                                force = true,
-                                                showNoUpdateFeedback = true,
-                                            )
-                                        }
-                                    } else {
-                                        null
-                                    },
-                                    onCollectionsSettingsClick = { navController.navigate(CollectionsRoute) },
-                                    onFolderClick = { collectionId, folderId ->
-                                        navController.navigate(FolderDetailRoute(collectionId = collectionId, folderId = folderId))
-                                    },
-                                    onInitialHomeContentRendered = { initialHomeReady = true },
-                                )
-
-                                if (isTabletLayout) {
-                                    TabletFloatingTopBar(
-                                        selectedTab = selectedTab,
-                                        onTabSelected = { selectedTab = it },
-                                        onProfileSelected = onProfileSelected,
-                                        onAddProfileRequested = onSwitchProfile,
-                                    )
                                 }
                             }
                         }
