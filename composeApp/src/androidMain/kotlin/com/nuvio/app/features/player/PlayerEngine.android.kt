@@ -207,9 +207,10 @@ internal fun AndroidMedia3PlayerSurface(
     var currentSubtitleStyle by remember { mutableStateOf(SubtitleStyleState.DEFAULT) }
     var subtitleSelectionJob by remember { mutableStateOf<Job?>(null) }
     var terminalSnapshotOverride by remember(exoPlayer) { mutableStateOf<PlayerPlaybackSnapshot?>(null) }
+    var hasRenderedFirstFrame by remember(exoPlayer) { mutableStateOf(false) }
 
     fun currentSnapshotForUi(): PlayerPlaybackSnapshot =
-        terminalSnapshotOverride ?: exoPlayer.snapshot()
+        terminalSnapshotOverride ?: exoPlayer.snapshot().keepLoadingUntilFirstFrame(hasRenderedFirstFrame)
 
     DisposableEffect(exoPlayer) {
         PlayerPictureInPictureManager.registerPausePlaybackCallback {
@@ -256,6 +257,11 @@ internal fun AndroidMedia3PlayerSurface(
                     latestOnError.value(null)
                     exoPlayer.logCurrentTracks("STATE_READY")
                 }
+                latestOnSnapshot.value(currentSnapshotForUi())
+            }
+
+            override fun onRenderedFirstFrame() {
+                hasRenderedFirstFrame = true
                 latestOnSnapshot.value(currentSnapshotForUi())
             }
 
@@ -552,6 +558,15 @@ private fun ExoPlayer.snapshot(): PlayerPlaybackSnapshot =
         bufferedPositionMs = bufferedPosition.coerceAtLeast(0L),
         playbackSpeed = playbackParameters.speed,
     )
+
+private fun PlayerPlaybackSnapshot.keepLoadingUntilFirstFrame(
+    hasRenderedFirstFrame: Boolean,
+): PlayerPlaybackSnapshot =
+    if (hasRenderedFirstFrame || isEnded) {
+        this
+    } else {
+        copy(isLoading = true)
+    }
 
 private fun PlayerResizeMode.toExoResizeMode(): Int =
     when (this) {
