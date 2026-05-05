@@ -56,6 +56,7 @@ import org.jetbrains.compose.resources.stringResource
 private const val gitHubOwner = "FreeTeaspoon"
 private const val gitHubRepo = "NuvioMobile"
 private const val gitHubApiBase = "https://api.github.com"
+private const val forkApkAssetName = "com.nuvio.app.freeteaspoon"
 
 data class AppUpdate(
     val tag: String,
@@ -207,6 +208,7 @@ internal object AppUpdaterRepository {
 
     private fun chooseBestApkAsset(assets: List<GitHubAssetDto>): GitHubAssetDto? {
         val apkAssets = assets.filter { asset ->
+            asset.name.equals(forkApkAssetName, ignoreCase = true) ||
             asset.name.endsWith(".apk", ignoreCase = true) ||
                 asset.contentType == "application/vnd.android.package-archive"
         }

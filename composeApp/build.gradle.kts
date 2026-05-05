@@ -315,7 +315,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "kerry.nuvio.app.apk"
+        applicationId = "com.nuvio.app.freeteaspoon"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = releaseAppVersionCode

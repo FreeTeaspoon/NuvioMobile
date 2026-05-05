@@ -12,7 +12,7 @@ concurrency:
 
 env:
   UPSTREAM_REPO: NuvioMedia/NuvioMobile
-  RELEASE_APK_NAME: kerry.nuvio.app.apk
+  RELEASE_APK_NAME: com.nuvio.app.freeteaspoon
 
 jobs:
   build:

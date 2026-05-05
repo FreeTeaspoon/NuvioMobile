@@ -20,7 +20,7 @@ concurrency:
 env:
   UPSTREAM_REPO: NuvioMedia/NuvioMobile
   TARGET_BRANCH: cmp-rewrite
-  RELEASE_APK_NAME: kerry.nuvio.app.apk
+  RELEASE_APK_NAME: com.nuvio.app.freeteaspoon
 
 jobs:
   build:
@@ -63,9 +63,14 @@ jobs:
           upstream_tag="$(jq -r '.tag_name' <<<"${release_json}")"
           prerelease="$(jq -r '.prerelease' <<<"${release_json}")"
           upstream_url="$(jq -r '.html_url' <<<"${release_json}")"
+          upstream_apk_url="$(jq -r '.assets[]? | select(.name | endswith(".apk")) | .browser_download_url' <<<"${release_json}" | head -n 1)"
 
           if [ -z "${upstream_tag}" ] || [ "${upstream_tag}" = "null" ]; then
             echo "::error::Official release has no tag."
+            exit 1
+          fi
+          if [ -z "${upstream_apk_url}" ] || [ "${upstream_apk_url}" = "null" ]; then
+            echo "::error::Official release ${upstream_tag} has no APK asset."
             exit 1
           fi
 
@@ -128,11 +133,15 @@ jobs:
 
           echo "skip=false" >> "${GITHUB_OUTPUT}"
           echo "upstream_tag=${upstream_tag}" >> "${GITHUB_OUTPUT}"
+          echo "upstream_apk_url=${upstream_apk_url}" >> "${GITHUB_OUTPUT}"
           echo "upstream_version=${upstream_version}" >> "${GITHUB_OUTPUT}"
           echo "tag=${fork_tag}" >> "${GITHUB_OUTPUT}"
           echo "name=${fork_tag}" >> "${GITHUB_OUTPUT}"
           echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
           echo "body_file=${body_file}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Android SDK for official APK metadata
+        uses: android-actions/setup-android@v3
 
       - name: Sync official release source and version
         id: sync_source
@@ -146,12 +155,6 @@ jobs:
           official_tag_ref="refs/remotes/upstream/release-tags/${upstream_tag}"
           official_branch_ref="refs/remotes/upstream/${TARGET_BRANCH}"
           version_file="iosApp/Configuration/Version.xcconfig"
-          previous_project_version="$(sed -n 's/^CURRENT_PROJECT_VERSION=//p' "${version_file}" | head -n 1)"
-          if ! [[ "${previous_project_version}" =~ ^[0-9]+$ ]]; then
-            echo "::error::Current ${version_file} is missing a numeric CURRENT_PROJECT_VERSION."
-            exit 1
-          fi
-
           git fetch upstream "refs/heads/${TARGET_BRANCH}:${official_branch_ref}" "refs/tags/${upstream_tag}:${official_tag_ref}"
 
           before="$(git rev-parse HEAD)"
@@ -169,13 +172,18 @@ jobs:
           fi
 
           official_version_file="${RUNNER_TEMP}/official-version.xcconfig"
-          git show "${official_branch_ref}:${version_file}" > "${official_version_file}"
+          git show "${official_tag_ref}:${version_file}" > "${official_version_file}"
           official_marketing_version="$(sed -n 's/^MARKETING_VERSION=//p' "${official_version_file}" | head -n 1)"
-          official_project_version="$(sed -n 's/^CURRENT_PROJECT_VERSION=//p' "${official_version_file}" | head -n 1)"
+          official_apk="${RUNNER_TEMP}/official-release.apk"
+          curl -fsSL "${{ steps.release.outputs.upstream_apk_url }}" -o "${official_apk}"
+          official_project_version="$(
+            "${ANDROID_HOME}/build-tools/$(ls "${ANDROID_HOME}/build-tools" | sort -V | tail -n 1)/aapt" dump badging "${official_apk}" |
+              sed -n "s/^package:.*versionCode='\([0-9][0-9]*\)'.*$/\1/p" |
+              head -n 1
+          )"
 
           if [ "${official_marketing_version}" != "${upstream_version}" ]; then
-            echo "::error::Official ${TARGET_BRANCH} ${version_file} MARKETING_VERSION (${official_marketing_version}) does not match release tag ${upstream_tag}."
-            exit 1
+            echo "::warning::Official ${upstream_tag} ${version_file} MARKETING_VERSION (${official_marketing_version}) does not match release tag ${upstream_tag}; using the tag's CURRENT_PROJECT_VERSION for this fork build."
           fi
 
           if ! [[ "${official_project_version}" =~ ^[0-9]+$ ]]; then
@@ -183,20 +191,14 @@ jobs:
             exit 1
           fi
 
-          fork_project_version="${official_project_version}"
-          next_project_version=$((previous_project_version + 1))
-          if [ "${fork_project_version}" -le "${previous_project_version}" ]; then
-            fork_project_version="${next_project_version}"
-          fi
-
           {
-            printf 'CURRENT_PROJECT_VERSION=%s\n' "${fork_project_version}"
+            printf 'CURRENT_PROJECT_VERSION=%s\n' "${official_project_version}"
             printf 'MARKETING_VERSION=%s\n' "${fork_tag}"
           } > "${version_file}"
 
           if ! git diff --quiet -- "${version_file}"; then
             git add "${version_file}"
-            git commit -m "Sync app version to ${fork_tag} (${fork_project_version})"
+            git commit -m "Sync app version to ${fork_tag} (${official_project_version})"
           fi
 
           after="$(git rev-parse HEAD)"
