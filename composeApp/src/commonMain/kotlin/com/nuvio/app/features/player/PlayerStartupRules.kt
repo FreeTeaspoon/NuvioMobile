@@ -5,6 +5,7 @@ import kotlin.math.abs
 internal const val InitialSeekRetryIntervalMs = 250L
 internal const val InitialSeekMaxAttempts = 24
 internal const val InitialSeekToleranceMs = 1_500L
+internal const val PendingScrubDisplayTimeoutMs = 1_500L
 
 internal sealed class InitialSeekTarget {
     data object None : InitialSeekTarget()
@@ -60,3 +61,42 @@ internal fun hasInitialSeekSettled(
     }
     return abs(current - target) <= InitialSeekToleranceMs
 }
+
+internal fun isPlaybackReadyForOpeningOverlay(
+    snapshot: PlayerPlaybackSnapshot,
+    initialSeekApplied: Boolean,
+): Boolean =
+    initialSeekApplied &&
+        !snapshot.isLoading &&
+        snapshot.durationMs > 0L
+
+internal fun shouldHoldPendingScrubDisplay(
+    targetMs: Long,
+    snapshot: PlayerPlaybackSnapshot,
+): Boolean =
+    !hasInitialSeekSettled(
+        targetMs = targetMs,
+        currentPositionMs = snapshot.positionMs,
+        durationMs = snapshot.durationMs,
+    )
+
+internal fun resolveDisplayedPlaybackPosition(
+    scrubbingPositionMs: Long?,
+    pendingScrubTargetMs: Long?,
+    snapshotPositionMs: Long,
+): Long =
+    scrubbingPositionMs
+        ?: pendingScrubTargetMs
+        ?: snapshotPositionMs
+
+internal fun resolveFinishedScrubTarget(
+    latestScrubPositionMs: Long,
+    durationMs: Long,
+): Long =
+    latestScrubPositionMs.coerceIn(0L, durationMs.coerceAtLeast(1L))
+
+internal fun calculateHorizontalSeekDeltaSeconds(
+    targetPositionMs: Long,
+    currentPositionMs: Long,
+): Int =
+    ((targetPositionMs - currentPositionMs) / 1000L).toInt()
