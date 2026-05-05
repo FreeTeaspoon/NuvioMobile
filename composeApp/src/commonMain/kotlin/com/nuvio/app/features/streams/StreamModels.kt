@@ -25,6 +25,11 @@ data class StreamItem(
     val directPlaybackUrl: String?
         get() = url ?: externalUrl
 
+    val isTorrentStream: Boolean
+        get() = !infoHash.isNullOrBlank() ||
+            url.isMagnetLink() ||
+            externalUrl.isMagnetLink()
+
     val hasPlayableSource: Boolean
         get() = url != null || infoHash != null || externalUrl != null
 
@@ -33,6 +38,9 @@ data class StreamItem(
             ?: listOfNotNull(name, description, url, externalUrl)
                 .firstNotNullOfOrNull(::extractPlaybackFilenameHint)
 }
+
+private fun String?.isMagnetLink(): Boolean =
+    this?.trimStart()?.startsWith("magnet:", ignoreCase = true) == true
 
 data class StreamBehaviorHints(
     val bingeGroup: String? = null,
