@@ -258,7 +258,7 @@ jobs:
 
       - name: Build full release APK
         shell: bash
-        run: ./gradlew --console=plain :composeApp:assembleFullRelease -Pnuvio.release.abiSplit=true
+        run: ./gradlew --console=plain :composeApp:assembleFullRelease
 
       - name: Stage release asset
         shell: bash
@@ -266,9 +266,9 @@ jobs:
           set -euo pipefail
 
           mkdir -p dist
-          apk="$(find composeApp/build/outputs/apk/full/release -maxdepth 1 -name '*arm64-v8a*release*.apk' ! -name '*unsigned.apk' | head -n 1)"
+          apk="$(find composeApp/build/outputs/apk/full/release -maxdepth 1 -name '*release*.apk' ! -name '*unsigned.apk' | head -n 1)"
           if [ -z "${apk}" ]; then
-            echo "::error::No signed arm64-v8a full release APK was produced."
+            echo "::error::No signed full release APK was produced."
             exit 1
           fi
 
@@ -322,4 +322,4 @@ jobs:
               --input "${release_file}" >/dev/null
           fi
 
-          gh release upload "${tag}" dist/*.apk --repo "${GITHUB_REPOSITORY}" --clobber
+          gh release upload "${tag}" "dist/${RELEASE_APK_NAME}" --repo "${GITHUB_REPOSITORY}" --clobber
