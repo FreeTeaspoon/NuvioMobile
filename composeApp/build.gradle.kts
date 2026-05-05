@@ -274,6 +274,8 @@ kotlin {
             implementation(libs.supabase.auth)
             implementation(libs.supabase.functions)
             implementation(libs.reorderable)
+            implementation(libs.backdrop)
+            implementation(libs.kyant.capsule)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -320,6 +322,9 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = releaseAppVersionCode
         versionName = releaseAppVersionName
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
     flavorDimensions += "distribution"
     productFlavors {

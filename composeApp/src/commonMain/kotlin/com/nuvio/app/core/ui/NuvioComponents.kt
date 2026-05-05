@@ -52,6 +52,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,6 +74,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+val LocalNuvioBottomOverlayScrollPadding = staticCompositionLocalOf { 0.dp }
+
 @Composable
 fun NuvioScreen(
     modifier: Modifier = Modifier,
@@ -91,7 +94,7 @@ fun NuvioScreen(
             start = horizontalPadding,
             top = topPadding ?: 10.dp + statusBarTop + nuvioPlatformExtraTopPadding,
             end = horizontalPadding,
-            bottom = nuvioSafeBottomPadding(18.dp),
+            bottom = nuvioSafeBottomPadding(18.dp) + LocalNuvioBottomOverlayScrollPadding.current,
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         content = content,
