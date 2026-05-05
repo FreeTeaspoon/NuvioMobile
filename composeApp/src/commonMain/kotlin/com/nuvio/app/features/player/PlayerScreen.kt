@@ -429,6 +429,7 @@ fun PlayerScreen(
 
         var showAudioModal by remember { mutableStateOf(false) }
         var showSubtitleModal by remember { mutableStateOf(false) }
+        var showSpeedModal by remember { mutableStateOf(false) }
         var audioTracks by remember { mutableStateOf<List<AudioTrack>>(emptyList()) }
         var subtitleTracks by remember { mutableStateOf<List<SubtitleTrack>>(emptyList()) }
         var selectedAudioIndex by remember { mutableStateOf(-1) }
@@ -553,6 +554,7 @@ fun PlayerScreen(
             renderedGestureFeedback = null
             showAudioModal = false
             showSubtitleModal = false
+            showSpeedModal = false
             showSourcesPanel = false
             showEpisodesPanel = false
             episodeStreamsPanelState = EpisodeStreamsPanelState()
@@ -716,13 +718,17 @@ fun PlayerScreen(
             controlsVisible = true
         }
 
-        fun cyclePlaybackSpeed() {
-            val speeds = listOf(1f, 1.25f, 1.5f, 2f)
-            val current = playbackSnapshot.playbackSpeed
-            val next = speeds.firstOrNull { it > current + 0.01f } ?: speeds.first()
-            playerController?.setPlaybackSpeed(next)
-            showGestureMessage(formatPlaybackSpeedLabel(next))
+        fun openSpeedModal() {
+            showSpeedModal = true
+            showAudioModal = false
+            showSubtitleModal = false
             controlsVisible = true
+        }
+
+        fun selectPlaybackSpeed(speed: Float) {
+            val normalized = speed.coerceIn(0.25f, 4f)
+            playerController?.setPlaybackSpeed(normalized)
+            showGestureMessage(formatPlaybackSpeedLabel(normalized))
         }
 
         fun activateHoldToSpeed() {
@@ -1089,6 +1095,7 @@ fun PlayerScreen(
             )
             showSourcesPanel = true
             showEpisodesPanel = false
+            showSpeedModal = false
             controlsVisible = false
         }
 
@@ -1101,6 +1108,7 @@ fun PlayerScreen(
             }
             showEpisodesPanel = true
             showSourcesPanel = false
+            showSpeedModal = false
             controlsVisible = false
         }
 
@@ -1689,13 +1697,17 @@ fun PlayerScreen(
                     onSeekBack = { seekBy(-10_000L) },
                     onSeekForward = { seekBy(10_000L) },
                     onResizeModeClick = ::cycleResizeMode,
-                    onSpeedClick = ::cyclePlaybackSpeed,
+                    onSpeedClick = ::openSpeedModal,
                     onSubtitleClick = {
                         refreshTracks()
+                        showSpeedModal = false
+                        showAudioModal = false
                         showSubtitleModal = true
                     },
                     onAudioClick = {
                         refreshTracks()
+                        showSpeedModal = false
+                        showSubtitleModal = false
                         showAudioModal = true
                     },
                     onSourcesClick = if (activeVideoId != null) {{ openSourcesPanel() }} else null,
@@ -1843,6 +1855,19 @@ fun PlayerScreen(
                     }
                 },
                 onDismiss = { showAudioModal = false },
+            )
+
+            PlaybackSpeedModal(
+                visible = showSpeedModal,
+                currentSpeed = playbackSnapshot.playbackSpeed,
+                onSpeedSelected = { speed ->
+                    selectPlaybackSpeed(speed)
+                    scope.launch {
+                        delay(200)
+                        showSpeedModal = false
+                    }
+                },
+                onDismiss = { showSpeedModal = false },
             )
 
             SubtitleModal(

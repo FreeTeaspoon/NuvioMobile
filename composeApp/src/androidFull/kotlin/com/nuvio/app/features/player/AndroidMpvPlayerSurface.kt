@@ -649,16 +649,18 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     private fun applyResizeMode() {
         when (resizeMode) {
             PlayerResizeMode.Fit -> {
+                MPVLib.setPropertyString("video-unscaled", "no")
                 MPVLib.setPropertyDouble("panscan", 0.0)
                 MPVLib.setPropertyString("keepaspect", "yes")
             }
             PlayerResizeMode.Fill -> {
-                MPVLib.setPropertyDouble("panscan", 1.0)
-                MPVLib.setPropertyString("keepaspect", "yes")
+                MPVLib.setPropertyString("video-unscaled", "no")
+                MPVLib.setPropertyDouble("panscan", 0.0)
+                MPVLib.setPropertyString("keepaspect", "no")
             }
             PlayerResizeMode.Zoom -> {
-                MPVLib.setPropertyDouble("panscan", 0.0)
-                MPVLib.setPropertyString("video-unscaled", "downscale-big")
+                MPVLib.setPropertyString("video-unscaled", "no")
+                MPVLib.setPropertyDouble("panscan", 1.0)
                 MPVLib.setPropertyString("keepaspect", "yes")
             }
         }
