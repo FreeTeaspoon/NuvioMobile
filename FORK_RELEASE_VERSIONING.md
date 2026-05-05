@@ -37,8 +37,11 @@ CURRENT_PROJECT_VERSION=52
 MARKETING_VERSION=0.1.12.1
 ```
 
-`CURRENT_PROJECT_VERSION` must always increase for app installs and store
-updates. `MARKETING_VERSION` must remain a four-part fork version.
+`CURRENT_PROJECT_VERSION` must match the official NuvioMobile release APK
+version code, even if that differs from the checked-in upstream version file or
+means lowering this fork's version code. Release automation must not bump it
+just because this fork is publishing another `x.x.x.N` build. `MARKETING_VERSION`
+must remain a four-part fork version.
 
 ## Release Rule
 
@@ -48,7 +51,9 @@ Use this rule when preparing a fork release:
 2. Set `MARKETING_VERSION` to `0.1.11.1` for the first fork build.
 3. If another fork build is needed for the same upstream version, increment
    only the fourth segment, for example `0.1.11.2`.
-4. Increment `CURRENT_PROJECT_VERSION` every release.
+4. Keep `CURRENT_PROJECT_VERSION` identical to the official NuvioMobile release
+   code. Increment only the fourth `MARKETING_VERSION` segment for fork-only
+   builds.
 
 Do not publish fork releases using the upstream three-part version, such as
 `0.1.11`. That tag belongs to the upstream project.
