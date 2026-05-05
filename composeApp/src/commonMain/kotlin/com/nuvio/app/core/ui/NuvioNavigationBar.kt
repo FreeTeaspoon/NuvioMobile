@@ -179,7 +179,7 @@ private class NuvioNavigationBarScopeImpl(
                 Box(
                     modifier = Modifier
                         .size(28.dp)
-                        .alpha(if (selected) 0f else 1f),
+                        .alpha(1f),
                     contentAlignment = Alignment.Center,
                 ) {
                     content()
@@ -194,9 +194,9 @@ private fun ColumnScope.NavIcon(
     selected: Boolean,
     icon: @Composable (androidx.compose.ui.graphics.Color) -> Unit,
 ) {
-    val baseAlpha = if (selected) 0f else 1f
+    val baseAlpha = 1f
     val color = if (selected) {
-        MaterialTheme.colorScheme.primary
+        Color.White
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
