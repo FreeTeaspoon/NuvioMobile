@@ -999,49 +999,6 @@ private fun MainAppContent(
                                 .alpha(if (initialHomeReady) 1f else 0f),
                             containerColor = Color.Transparent,
                             contentWindowInsets = WindowInsets(0),
-                            bottomBar = {
-                                if (!isTabletLayout && !useNativeBottomTabs) {
-                                    NuvioNavigationBar(
-                                        modifier = Modifier.zIndex(1f),
-                                        selectedIndex = selectedTab.ordinal,
-                                        itemCount = AppScreenTab.entries.size,
-                                        backdrop = navigationBackdrop,
-                                        onSelectedIndexChange = { index ->
-                                            AppScreenTab.entries.getOrNull(index)?.let { selectedTab = it }
-                                        },
-                                    ) {
-                                        NavItem(
-                                            selected = selectedTab == AppScreenTab.Home,
-                                            onClick = { selectedTab = AppScreenTab.Home },
-                                            icon = Icons.Filled.Home,
-                                            contentDescription = stringResource(Res.string.compose_nav_home),
-                                        )
-                                        NavItem(
-                                            selected = selectedTab == AppScreenTab.Search,
-                                            onClick = { selectedTab = AppScreenTab.Search },
-                                            icon = Res.drawable.sidebar_search,
-                                            contentDescription = stringResource(Res.string.compose_nav_search),
-                                        )
-                                        NavItem(
-                                            selected = selectedTab == AppScreenTab.Library,
-                                            onClick = { selectedTab = AppScreenTab.Library },
-                                            icon = Res.drawable.sidebar_library,
-                                            contentDescription = stringResource(Res.string.compose_nav_library),
-                                        )
-                                        NavItem(
-                                            selected = selectedTab == AppScreenTab.Settings,
-                                            onClick = { selectedTab = AppScreenTab.Settings },
-                                        ) {
-                                            ProfileSwitcherTab(
-                                                selected = selectedTab == AppScreenTab.Settings,
-                                                onClick = { selectedTab = AppScreenTab.Settings },
-                                                onProfileSelected = onProfileSelected,
-                                                onAddProfileRequested = onSwitchProfile,
-                                            )
-                                        }
-                                    }
-                                }
-                            },
                         ) { innerPadding ->
                             Box(modifier = Modifier.fillMaxSize()) {
                                 CompositionLocalProvider(
@@ -1112,6 +1069,48 @@ private fun MainAppContent(
                                         onProfileSelected = onProfileSelected,
                                         onAddProfileRequested = onSwitchProfile,
                                     )
+                                } else if (!useNativeBottomTabs) {
+                                    NuvioNavigationBar(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .zIndex(1f),
+                                        selectedIndex = selectedTab.ordinal,
+                                        itemCount = AppScreenTab.entries.size,
+                                        backdrop = navigationBackdrop,
+                                        onSelectedIndexChange = { index ->
+                                            AppScreenTab.entries.getOrNull(index)?.let { selectedTab = it }
+                                        },
+                                    ) {
+                                        NavItem(
+                                            selected = selectedTab == AppScreenTab.Home,
+                                            onClick = { selectedTab = AppScreenTab.Home },
+                                            icon = Icons.Filled.Home,
+                                            contentDescription = stringResource(Res.string.compose_nav_home),
+                                        )
+                                        NavItem(
+                                            selected = selectedTab == AppScreenTab.Search,
+                                            onClick = { selectedTab = AppScreenTab.Search },
+                                            icon = Res.drawable.sidebar_search,
+                                            contentDescription = stringResource(Res.string.compose_nav_search),
+                                        )
+                                        NavItem(
+                                            selected = selectedTab == AppScreenTab.Library,
+                                            onClick = { selectedTab = AppScreenTab.Library },
+                                            icon = Res.drawable.sidebar_library,
+                                            contentDescription = stringResource(Res.string.compose_nav_library),
+                                        )
+                                        NavItem(
+                                            selected = selectedTab == AppScreenTab.Settings,
+                                            onClick = { selectedTab = AppScreenTab.Settings },
+                                        ) {
+                                            ProfileSwitcherTab(
+                                                selected = selectedTab == AppScreenTab.Settings,
+                                                onClick = { selectedTab = AppScreenTab.Settings },
+                                                onProfileSelected = onProfileSelected,
+                                                onAddProfileRequested = onSwitchProfile,
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
