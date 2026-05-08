@@ -88,6 +88,7 @@ import com.nuvio.app.core.sync.ProfileSettingsSync
 import com.nuvio.app.core.sync.SyncManager
 import com.nuvio.app.core.ui.LocalNuvioBottomOverlayScrollPadding
 import com.nuvio.app.core.ui.NuvioNavigationBar
+import com.nuvio.app.core.ui.NuvioNavigationBarScrollClearance
 import com.nuvio.app.core.ui.NuvioContinueWatchingActionSheet
 import com.nuvio.app.core.ui.NuvioPosterActionSheet
 import com.nuvio.app.core.ui.NuvioStatusModal
@@ -1044,7 +1045,11 @@ private fun MainAppContent(
                         ) { innerPadding ->
                             Box(modifier = Modifier.fillMaxSize()) {
                                 CompositionLocalProvider(
-                                    LocalNuvioBottomOverlayScrollPadding provides 0.dp,
+                                    LocalNuvioBottomOverlayScrollPadding provides if (!isTabletLayout && !useNativeBottomTabs) {
+                                        NuvioNavigationBarScrollClearance
+                                    } else {
+                                        0.dp
+                                    },
                                     LocalNuvioBottomNavigationOverlayPadding provides if (useNativeBottomTabs) 49.dp else 0.dp,
                                 ) {
                                     AppTabHost(
