@@ -39,6 +39,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -61,6 +62,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -97,6 +100,10 @@ import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.NuvioFloatingPrompt
 import com.nuvio.app.core.ui.TraktListPickerDialog
 import com.nuvio.app.core.ui.NuvioTheme
+import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
+import com.nuvio.app.core.ui.NativeNavigationTab
+import com.nuvio.app.core.ui.NativeTabBridge
+import com.nuvio.app.core.ui.isLiquidGlassNativeTabBarSupported
 import com.nuvio.app.core.ui.localizedContinueWatchingSubtitle
 import com.nuvio.app.features.auth.AuthScreen
 import com.nuvio.app.features.addons.AddonRepository
@@ -127,11 +134,13 @@ import com.nuvio.app.features.player.PlayerRoute
 import com.nuvio.app.features.player.PlayerScreen
 import com.nuvio.app.features.player.sanitizePlaybackHeaders
 import com.nuvio.app.features.player.sanitizePlaybackResponseHeaders
+import com.nuvio.app.features.profiles.AvatarRepository
 import com.nuvio.app.features.profiles.NuvioProfile
 import com.nuvio.app.features.profiles.ProfileEditScreen
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.profiles.ProfileSelectionScreen
 import com.nuvio.app.features.profiles.ProfileSwitcherTab
+import com.nuvio.app.features.profiles.profileAvatarImageUrl
 import com.nuvio.app.features.search.SearchScreen
 import com.nuvio.app.features.settings.SettingsScreen
 import com.nuvio.app.features.settings.HomescreenSettingsScreen
@@ -160,8 +169,6 @@ import com.nuvio.app.features.streams.toStreamEpisodeMeta
 import com.nuvio.app.features.tmdb.TmdbMetadataService
 import com.nuvio.app.features.tmdb.TmdbService
 import com.nuvio.app.features.player.PlayerSettingsRepository
-import com.nuvio.app.features.trakt.TraktAuthRepository
-import com.nuvio.app.features.trakt.TraktConnectionMode
 import com.nuvio.app.features.trakt.TraktListTab
 import com.nuvio.app.features.updater.AppUpdaterHost
 import com.nuvio.app.features.updater.rememberAppUpdaterController
@@ -270,6 +277,20 @@ enum class AppScreenTab {
     Settings,
 }
 
+private fun AppScreenTab.toNativeNavigationTab(): NativeNavigationTab = when (this) {
+    AppScreenTab.Home -> NativeNavigationTab.Home
+    AppScreenTab.Search -> NativeNavigationTab.Search
+    AppScreenTab.Library -> NativeNavigationTab.Library
+    AppScreenTab.Settings -> NativeNavigationTab.Settings
+}
+
+private fun NativeNavigationTab.toAppScreenTab(): AppScreenTab = when (this) {
+    NativeNavigationTab.Home -> AppScreenTab.Home
+    NativeNavigationTab.Search -> AppScreenTab.Search
+    NativeNavigationTab.Library -> AppScreenTab.Library
+    NativeNavigationTab.Settings -> AppScreenTab.Settings
+}
+
 private enum class AppGateScreen {
     Loading,
     Auth,
@@ -303,13 +324,36 @@ fun App() {
         LaunchedEffect(Unit) {
             NetworkStatusRepository.ensureStarted()
             ProfileRepository.loadCachedProfiles()
+            AvatarRepository.fetchAvatars()
         }
 
         val authState by AuthRepository.state.collectAsStateWithLifecycle()
         val profileState by ProfileRepository.state.collectAsStateWithLifecycle()
+        val profileAvatars by AvatarRepository.avatars.collectAsStateWithLifecycle()
         val networkStatusUiState by remember {
             NetworkStatusRepository.uiState
         }.collectAsStateWithLifecycle()
+
+        LaunchedEffect(
+            profileState.activeProfile?.profileIndex,
+            profileState.activeProfile?.name,
+            profileState.activeProfile?.avatarColorHex,
+            profileState.activeProfile?.avatarId,
+            profileState.activeProfile?.avatarUrl,
+            profileAvatars,
+        ) {
+            val activeProfile = profileState.activeProfile
+            val avatarItem = activeProfile?.avatarId?.let { avatarId ->
+                profileAvatars.find { it.id == avatarId }
+            }
+            NativeTabBridge.publishProfileTabIcon(
+                name = activeProfile?.name,
+                avatarColorHex = activeProfile?.avatarColorHex,
+                avatarImageUrl = activeProfile?.let { profileAvatarImageUrl(it, avatarItem) },
+                avatarBackgroundColorHex = avatarItem?.bgColor,
+            )
+        }
+
         var gateScreen by rememberSaveable { mutableStateOf(AppGateScreen.Loading.name) }
         var editingProfile by remember { mutableStateOf<NuvioProfile?>(null) }
         var isNewProfile by remember { mutableStateOf(false) }
@@ -476,6 +520,11 @@ private fun MainAppContent(
         val hapticFeedback = LocalHapticFeedback.current
         val coroutineScope = rememberCoroutineScope()
         var selectedTab by rememberSaveable { mutableStateOf(AppScreenTab.Home) }
+        val nativeRequestedTab by remember { NativeTabBridge.requestedTab }.collectAsStateWithLifecycle()
+        val liquidGlassNativeTabBarEnabled by remember {
+            ThemeSettingsRepository.liquidGlassNativeTabBarEnabled
+        }.collectAsStateWithLifecycle()
+        val liquidGlassNativeTabBarSupported = remember { isLiquidGlassNativeTabBarSupported() }
         var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
         var selectedPosterForActions by remember { mutableStateOf<MetaPreview?>(null) }
         var selectedContinueWatchingForActions by remember { mutableStateOf<ContinueWatchingItem?>(null) }
@@ -493,10 +542,6 @@ private fun MainAppContent(
         val libraryUiState by remember {
             LibraryRepository.ensureLoaded()
             LibraryRepository.uiState
-        }.collectAsStateWithLifecycle()
-        val traktAuthUiState by remember {
-            TraktAuthRepository.ensureLoaded()
-            TraktAuthRepository.uiState
         }.collectAsStateWithLifecycle()
         val authState by AuthRepository.state.collectAsStateWithLifecycle()
         val profileState by ProfileRepository.state.collectAsStateWithLifecycle()
@@ -516,7 +561,7 @@ private fun MainAppContent(
         NetworkStatusRepository.uiState
     }.collectAsStateWithLifecycle()
     val downloadedProviderLabel = stringResource(Res.string.provider_downloaded)
-    val isTraktConnected = traktAuthUiState.mode == TraktConnectionMode.CONNECTED
+    val isTraktLibrarySource = libraryUiState.sourceMode == LibrarySourceMode.TRAKT
     var initialHomeReady by rememberSaveable { mutableStateOf(false) }
     var offlineLaunchRouteHandled by rememberSaveable { mutableStateOf(false) }
     var networkToastBaselineReady by rememberSaveable { mutableStateOf(false) }
@@ -527,6 +572,42 @@ private fun MainAppContent(
             .mapNotNull { it.manifest?.transportUrl }
             .distinct()
             .sorted()
+    }
+
+    LaunchedEffect(nativeRequestedTab) {
+        if (liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled) {
+            selectedTab = nativeRequestedTab.toAppScreenTab()
+        }
+    }
+
+    LaunchedEffect(selectedTab) {
+        NativeTabBridge.publishSelectedTab(selectedTab.toNativeNavigationTab())
+    }
+
+    DisposableEffect(
+        navController,
+        liquidGlassNativeTabBarSupported,
+        liquidGlassNativeTabBarEnabled,
+        initialHomeReady,
+    ) {
+        fun publishNativeTabVisibilityForCurrentRoute() {
+            val visible = liquidGlassNativeTabBarSupported &&
+                liquidGlassNativeTabBarEnabled &&
+                initialHomeReady &&
+                navController.currentDestination?.hasRoute<TabsRoute>() == true
+            NativeTabBridge.publishTabBarVisible(visible)
+        }
+
+        val destinationChangedListener = NavController.OnDestinationChangedListener { _, _, _ ->
+            publishNativeTabVisibilityForCurrentRoute()
+        }
+
+        publishNativeTabVisibilityForCurrentRoute()
+        navController.addOnDestinationChangedListener(destinationChangedListener)
+        onDispose {
+            navController.removeOnDestinationChangedListener(destinationChangedListener)
+            NativeTabBridge.publishTabBarVisible(false)
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -902,6 +983,8 @@ private fun MainAppContent(
 
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val isTabletLayout = maxWidth >= 768.dp
+                        val useNativeBottomTabs =
+                            liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
                         val navigationBackdrop = rememberLayerBackdrop()
                         val onProfileSelected: (NuvioProfile) -> Unit = { profile ->
                             profileSwitchLoading = true
@@ -916,20 +999,64 @@ private fun MainAppContent(
                                 .alpha(if (initialHomeReady) 1f else 0f),
                             containerColor = Color.Transparent,
                             contentWindowInsets = WindowInsets(0),
+                            bottomBar = {
+                                if (!isTabletLayout && !useNativeBottomTabs) {
+                                    NuvioNavigationBar(
+                                        modifier = Modifier.zIndex(1f),
+                                        selectedIndex = selectedTab.ordinal,
+                                        itemCount = AppScreenTab.entries.size,
+                                        backdrop = navigationBackdrop,
+                                        onSelectedIndexChange = { index ->
+                                            AppScreenTab.entries.getOrNull(index)?.let { selectedTab = it }
+                                        },
+                                    ) {
+                                        NavItem(
+                                            selected = selectedTab == AppScreenTab.Home,
+                                            onClick = { selectedTab = AppScreenTab.Home },
+                                            icon = Icons.Filled.Home,
+                                            contentDescription = stringResource(Res.string.compose_nav_home),
+                                        )
+                                        NavItem(
+                                            selected = selectedTab == AppScreenTab.Search,
+                                            onClick = { selectedTab = AppScreenTab.Search },
+                                            icon = Res.drawable.sidebar_search,
+                                            contentDescription = stringResource(Res.string.compose_nav_search),
+                                        )
+                                        NavItem(
+                                            selected = selectedTab == AppScreenTab.Library,
+                                            onClick = { selectedTab = AppScreenTab.Library },
+                                            icon = Res.drawable.sidebar_library,
+                                            contentDescription = stringResource(Res.string.compose_nav_library),
+                                        )
+                                        NavItem(
+                                            selected = selectedTab == AppScreenTab.Settings,
+                                            onClick = { selectedTab = AppScreenTab.Settings },
+                                        ) {
+                                            ProfileSwitcherTab(
+                                                selected = selectedTab == AppScreenTab.Settings,
+                                                onClick = { selectedTab = AppScreenTab.Settings },
+                                                onProfileSelected = onProfileSelected,
+                                                onAddProfileRequested = onSwitchProfile,
+                                            )
+                                        }
+                                    }
+                                }
+                            },
                         ) { innerPadding ->
                             Box(modifier = Modifier.fillMaxSize()) {
                                 CompositionLocalProvider(
-                                    LocalNuvioBottomOverlayScrollPadding provides if (!isTabletLayout) {
+                                    LocalNuvioBottomOverlayScrollPadding provides if (!isTabletLayout && !useNativeBottomTabs) {
                                         NuvioNavigationBarScrollClearance
                                     } else {
                                         0.dp
                                     },
+                                    LocalNuvioBottomNavigationOverlayPadding provides if (useNativeBottomTabs) 49.dp else 0.dp,
                                 ) {
                                     AppTabHost(
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .padding(innerPadding)
-                                            .then(if (!isTabletLayout) Modifier.layerBackdrop(navigationBackdrop) else Modifier),
+                                            .then(if (!isTabletLayout && !useNativeBottomTabs) Modifier.layerBackdrop(navigationBackdrop) else Modifier),
                                         selectedTab = selectedTab,
                                         onCatalogClick = onCatalogClick,
                                         onPosterClick = { meta ->
@@ -978,55 +1105,13 @@ private fun MainAppContent(
                                     )
                                 }
 
-                                if (isTabletLayout) {
+                                if (isTabletLayout && !useNativeBottomTabs) {
                                     TabletFloatingTopBar(
                                         selectedTab = selectedTab,
                                         onTabSelected = { selectedTab = it },
                                         onProfileSelected = onProfileSelected,
                                         onAddProfileRequested = onSwitchProfile,
                                     )
-                                } else {
-                                    NuvioNavigationBar(
-                                        modifier = Modifier
-                                            .align(Alignment.BottomCenter)
-                                            .zIndex(1f),
-                                        selectedIndex = selectedTab.ordinal,
-                                        itemCount = AppScreenTab.entries.size,
-                                        backdrop = navigationBackdrop,
-                                        onSelectedIndexChange = { index ->
-                                            AppScreenTab.entries.getOrNull(index)?.let { selectedTab = it }
-                                        },
-                                    ) {
-                                        NavItem(
-                                            selected = selectedTab == AppScreenTab.Home,
-                                            onClick = { selectedTab = AppScreenTab.Home },
-                                            icon = Icons.Filled.Home,
-                                            contentDescription = stringResource(Res.string.compose_nav_home),
-                                        )
-                                        NavItem(
-                                            selected = selectedTab == AppScreenTab.Search,
-                                            onClick = { selectedTab = AppScreenTab.Search },
-                                            icon = Res.drawable.sidebar_search,
-                                            contentDescription = stringResource(Res.string.compose_nav_search),
-                                        )
-                                        NavItem(
-                                            selected = selectedTab == AppScreenTab.Library,
-                                            onClick = { selectedTab = AppScreenTab.Library },
-                                            icon = Res.drawable.sidebar_library,
-                                            contentDescription = stringResource(Res.string.compose_nav_library),
-                                        )
-                                        NavItem(
-                                            selected = selectedTab == AppScreenTab.Settings,
-                                            onClick = { selectedTab = AppScreenTab.Settings },
-                                        ) {
-                                            ProfileSwitcherTab(
-                                                selected = selectedTab == AppScreenTab.Settings,
-                                                onClick = { selectedTab = AppScreenTab.Settings },
-                                                onProfileSelected = onProfileSelected,
-                                                onAddProfileRequested = onSwitchProfile,
-                                            )
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -1748,12 +1833,12 @@ private fun MainAppContent(
                 onToggleLibrary = {
                     selectedPosterForActions?.let { preview ->
                         val libraryItem = preview.toLibraryItem(savedAtEpochMs = 0L)
-                        if (!isTraktConnected) {
+                        if (!isTraktLibrarySource) {
                             LibraryRepository.toggleSaved(libraryItem)
                         } else {
                             pickerItem = libraryItem
                             pickerTitle = preview.name
-                            pickerTabs = LibraryRepository.traktListTabs()
+                            pickerTabs = LibraryRepository.libraryListTabs()
                             pickerMembership = pickerTabs.associate { it.key to false }
                             pickerPending = true
                             pickerError = null
@@ -1761,7 +1846,7 @@ private fun MainAppContent(
                             coroutineScope.launch {
                                 runCatching {
                                     val snapshot = LibraryRepository.getMembershipSnapshot(libraryItem)
-                                    val tabs = LibraryRepository.traktListTabs()
+                                    val tabs = LibraryRepository.libraryListTabs()
                                     pickerTabs = tabs
                                     pickerMembership = tabs.associate { tab ->
                                         tab.key to (snapshot[tab.key] == true)
