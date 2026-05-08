@@ -50,6 +50,7 @@ actual object PlayerSettingsStorage {
     private const val nextEpisodeThresholdMinutesBeforeEndKey = "next_episode_threshold_minutes_before_end_v2"
     private const val useLibassKey = "use_libass"
     private const val libassRenderTypeKey = "libass_render_type"
+    private const val rememberedAudioSelectionsKey = "remembered_audio_selections"
     private val syncKeys = listOf(
         showLoadingOverlayKey,
         resizeModeKey,
@@ -495,6 +496,16 @@ actual object PlayerSettingsStorage {
     actual fun loadLibassRenderType(): String? = null
 
     actual fun saveLibassRenderType(renderType: String) {}
+
+    actual fun loadRememberedAudioSelections(): String? {
+        val defaults = NSUserDefaults.standardUserDefaults
+        val key = ProfileScopedKey.of(rememberedAudioSelectionsKey)
+        return defaults.stringForKey(key)
+    }
+
+    actual fun saveRememberedAudioSelections(json: String) {
+        NSUserDefaults.standardUserDefaults.setObject(json, forKey = ProfileScopedKey.of(rememberedAudioSelectionsKey))
+    }
 
     actual fun exportToSyncPayload(): JsonObject = buildJsonObject {
         loadShowLoadingOverlay()?.let { put(showLoadingOverlayKey, encodeSyncBoolean(it)) }

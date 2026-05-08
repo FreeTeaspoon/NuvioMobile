@@ -53,6 +53,7 @@ actual object PlayerSettingsStorage {
     private const val nextEpisodeThresholdMinutesBeforeEndKey = "next_episode_threshold_minutes_before_end_v2"
     private const val useLibassKey = "use_libass"
     private const val libassRenderTypeKey = "libass_render_type"
+    private const val rememberedAudioSelectionsKey = "remembered_audio_selections"
     private val syncKeys = listOf(
         showLoadingOverlayKey,
         resizeModeKey,
@@ -594,6 +595,16 @@ actual object PlayerSettingsStorage {
         preferences
             ?.edit()
             ?.putString(ProfileScopedKey.of(libassRenderTypeKey), renderType)
+            ?.apply()
+    }
+
+    actual fun loadRememberedAudioSelections(): String? =
+        preferences?.getString(ProfileScopedKey.of(rememberedAudioSelectionsKey), null)
+
+    actual fun saveRememberedAudioSelections(json: String) {
+        preferences
+            ?.edit()
+            ?.putString(ProfileScopedKey.of(rememberedAudioSelectionsKey), json)
             ?.apply()
     }
 
