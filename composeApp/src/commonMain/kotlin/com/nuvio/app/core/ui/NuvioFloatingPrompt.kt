@@ -122,7 +122,7 @@ fun NuvioFloatingPrompt(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = navBarBottom + 72.dp)
+                .padding(bottom = navBarBottom + NuvioNavigationBarScrollClearance)
                 .padding(horizontal = 16.dp)
                 .offset { IntOffset(0, dragOffsetY.value.roundToInt().coerceAtLeast(0)) }
                 .pointerInput(Unit) {
