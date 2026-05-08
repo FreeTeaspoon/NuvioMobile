@@ -77,6 +77,11 @@ actual fun PlatformPlayerSurface(
                 bridge.setPlaybackSpeed(speed)
             }
 
+            override fun setVideoZoom(state: PlayerVideoZoomState) {
+                val normalized = state.normalized()
+                bridge.setVideoZoom(normalized.zoom, normalized.panAndZoomEnabled)
+            }
+
             override fun getAudioTracks(): List<AudioTrack> {
                 val count = bridge.getAudioTrackCount()
                 return (0 until count).map { i ->

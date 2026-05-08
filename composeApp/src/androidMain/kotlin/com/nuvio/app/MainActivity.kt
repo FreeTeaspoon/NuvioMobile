@@ -24,6 +24,7 @@ import com.nuvio.app.features.home.HomeCatalogSettingsStorage
 import com.nuvio.app.features.mdblist.MdbListSettingsStorage
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationPlatform
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsStorage
+import com.nuvio.app.features.player.PlayerLaunchStorage
 import com.nuvio.app.features.player.PlayerSettingsStorage
 import com.nuvio.app.features.player.PlayerPictureInPictureManager
 import com.nuvio.app.features.plugins.PluginStorage
@@ -41,6 +42,7 @@ import com.nuvio.app.features.tmdb.TmdbSettingsStorage
 import com.nuvio.app.features.updater.AndroidAppUpdaterPlatform
 import com.nuvio.app.core.ui.PosterCardStyleStorage
 import com.nuvio.app.features.watched.WatchedStorage
+import com.nuvio.app.features.streams.StreamLaunchStorage
 import com.nuvio.app.features.streams.StreamLinkCacheStorage
 import com.nuvio.app.features.watchprogress.ContinueWatchingEnrichmentStorage
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesStorage
@@ -66,6 +68,7 @@ class MainActivity : AppCompatActivity() {
         MetaScreenSettingsStorage.initialize(applicationContext)
         HomeCatalogSettingsStorage.initialize(applicationContext)
         PlayerSettingsStorage.initialize(applicationContext)
+        PlayerLaunchStorage.initialize(applicationContext)
         ProfileStorage.initialize(applicationContext)
         AvatarStorage.initialize(applicationContext)
         ProfilePinCacheStorage.initialize(applicationContext)
@@ -83,6 +86,7 @@ class MainActivity : AppCompatActivity() {
         ContinueWatchingEnrichmentStorage.initialize(applicationContext)
         EpisodeReleaseNotificationsStorage.initialize(applicationContext)
         WatchProgressStorage.initialize(applicationContext)
+        StreamLaunchStorage.initialize(applicationContext)
         StreamLinkCacheStorage.initialize(applicationContext)
         PluginStorage.initialize(applicationContext)
         CollectionStorage.initialize(applicationContext)

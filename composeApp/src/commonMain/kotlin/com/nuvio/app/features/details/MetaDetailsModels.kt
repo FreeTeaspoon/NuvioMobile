@@ -94,4 +94,6 @@ data class MetaDetailsUiState(
     val isLoading: Boolean = false,
     val meta: MetaDetails? = null,
     val errorMessage: String? = null,
+    val requestType: String? = null,
+    val requestId: String? = null,
 )

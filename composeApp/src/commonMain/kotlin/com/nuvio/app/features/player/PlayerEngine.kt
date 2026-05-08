@@ -18,6 +18,7 @@ interface PlayerEngineController {
     fun setSubtitleUri(url: String)
     fun clearExternalSubtitle()
     fun clearExternalSubtitleAndSelect(trackIndex: Int)
+    fun setVideoZoom(state: PlayerVideoZoomState) {}
     fun applySubtitleStyle(style: SubtitleStyleState) {}
 }
 

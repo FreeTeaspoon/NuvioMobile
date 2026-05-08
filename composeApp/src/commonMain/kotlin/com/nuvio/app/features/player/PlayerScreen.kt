@@ -179,9 +179,6 @@ fun PlayerScreen(
         }
         val scope = rememberCoroutineScope()
         val hapticFeedback = LocalHapticFeedback.current
-        val resizeModeFitLabel = stringResource(Res.string.compose_player_resize_fit)
-        val resizeModeFillLabel = stringResource(Res.string.compose_player_resize_fill)
-        val resizeModeZoomLabel = stringResource(Res.string.compose_player_resize_zoom)
         val downloadedLabel = stringResource(Res.string.compose_player_downloaded)
         val airsPrefix = stringResource(Res.string.compose_player_airs_prefix)
         val tbaLabel = stringResource(Res.string.compose_player_tba)
@@ -212,9 +209,17 @@ fun PlayerScreen(
         var activeInitialPositionMs by rememberSaveable { mutableStateOf(initialPositionMs) }
         var activeInitialProgressFraction by rememberSaveable { mutableStateOf(initialProgressFraction) }
         var shouldPlay by rememberSaveable(activeSourceUrl) { mutableStateOf(true) }
-        var resizeMode by rememberSaveable(playerSettingsUiState.resizeMode) {
-            mutableStateOf(playerSettingsUiState.resizeMode)
+        val resizeMode = PlayerResizeMode.Fit
+        var videoZoom by rememberSaveable(activeSourceUrl, playerSettingsUiState.videoZoomState.zoom) {
+            mutableStateOf(playerSettingsUiState.videoZoomState.zoom)
         }
+        var panAndZoomEnabled by rememberSaveable(activeSourceUrl, playerSettingsUiState.videoZoomState.panAndZoomEnabled) {
+            mutableStateOf(playerSettingsUiState.videoZoomState.panAndZoomEnabled)
+        }
+        val videoZoomState = PlayerVideoZoomState(
+            zoom = videoZoom,
+            panAndZoomEnabled = panAndZoomEnabled,
+        ).normalized()
         var layoutSize by remember { mutableStateOf(IntSize.Zero) }
         var playbackSnapshot by remember { mutableStateOf(PlayerPlaybackSnapshot()) }
         var playerController by remember { mutableStateOf<PlayerEngineController?>(null) }
@@ -444,6 +449,7 @@ fun PlayerScreen(
         var showAudioModal by remember { mutableStateOf(false) }
         var showSubtitleModal by remember { mutableStateOf(false) }
         var showSpeedModal by remember { mutableStateOf(false) }
+        var showVideoZoomModal by remember { mutableStateOf(false) }
         var audioTracks by remember { mutableStateOf<List<AudioTrack>>(emptyList()) }
         var subtitleTracks by remember { mutableStateOf<List<SubtitleTrack>>(emptyList()) }
         var selectedAudioIndex by remember { mutableStateOf(-1) }
@@ -584,6 +590,7 @@ fun PlayerScreen(
             showAudioModal = false
             showSubtitleModal = false
             showSpeedModal = false
+            showVideoZoomModal = false
             showSourcesPanel = false
             showEpisodesPanel = false
             episodeStreamsPanelState = EpisodeStreamsPanelState()
@@ -733,17 +740,18 @@ fun PlayerScreen(
             }
         }
 
-        fun cycleResizeMode() {
-            val nextMode = resizeMode.next()
-            resizeMode = nextMode
-            PlayerSettingsRepository.setResizeMode(nextMode)
-            showGestureMessage(
-                when (nextMode) {
-                    PlayerResizeMode.Fit -> resizeModeFitLabel
-                    PlayerResizeMode.Fill -> resizeModeFillLabel
-                    PlayerResizeMode.Zoom -> resizeModeZoomLabel
-                },
-            )
+        fun applyVideoZoomState(state: PlayerVideoZoomState) {
+            val normalized = state.normalized()
+            videoZoom = normalized.zoom
+            panAndZoomEnabled = normalized.panAndZoomEnabled
+            playerController?.setVideoZoom(normalized)
+        }
+
+        fun openVideoZoomModal() {
+            showVideoZoomModal = true
+            showSpeedModal = false
+            showAudioModal = false
+            showSubtitleModal = false
             controlsVisible = true
         }
 
@@ -751,6 +759,7 @@ fun PlayerScreen(
             showSpeedModal = true
             showAudioModal = false
             showSubtitleModal = false
+            showVideoZoomModal = false
             controlsVisible = true
         }
 
@@ -1125,6 +1134,7 @@ fun PlayerScreen(
             showSourcesPanel = true
             showEpisodesPanel = false
             showSpeedModal = false
+            showVideoZoomModal = false
             controlsVisible = false
         }
 
@@ -1138,6 +1148,7 @@ fun PlayerScreen(
             showEpisodesPanel = true
             showSourcesPanel = false
             showSpeedModal = false
+            showVideoZoomModal = false
             controlsVisible = false
         }
 
@@ -1178,6 +1189,10 @@ fun PlayerScreen(
 
         LaunchedEffect(playerController, subtitleStyle) {
             playerController?.applySubtitleStyle(subtitleStyle)
+        }
+
+        LaunchedEffect(playerController, videoZoomState) {
+            playerController?.setVideoZoom(videoZoomState)
         }
 
         LaunchedEffect(showSubtitleModal, activeSubtitleTab, contentType, activeVideoId) {
@@ -1712,7 +1727,6 @@ fun PlayerScreen(
                     playbackSnapshot = playbackSnapshot,
                     displayedPositionMs = displayedPositionMs,
                     metrics = metrics,
-                    resizeMode = resizeMode,
                     isLocked = playerControlsLocked,
                     onLockToggle = {
                         if (playerControlsLocked) {
@@ -1725,18 +1739,20 @@ fun PlayerScreen(
                     onTogglePlayback = ::togglePlayback,
                     onSeekBack = { seekBy(-10_000L) },
                     onSeekForward = { seekBy(10_000L) },
-                    onResizeModeClick = ::cycleResizeMode,
+                    onVideoZoomClick = ::openVideoZoomModal,
                     onSpeedClick = ::openSpeedModal,
                     onSubtitleClick = {
                         refreshTracks()
                         showSpeedModal = false
                         showAudioModal = false
+                        showVideoZoomModal = false
                         showSubtitleModal = true
                     },
                     onAudioClick = {
                         refreshTracks()
                         showSpeedModal = false
                         showSubtitleModal = false
+                        showVideoZoomModal = false
                         showAudioModal = true
                     },
                     onSourcesClick = if (activeVideoId != null) {{ openSourcesPanel() }} else null,
@@ -1900,6 +1916,24 @@ fun PlayerScreen(
                     }
                 },
                 onDismiss = { showSpeedModal = false },
+            )
+
+            VideoZoomModal(
+                visible = showVideoZoomModal,
+                state = videoZoomState,
+                onStateChanged = ::applyVideoZoomState,
+                onSetDefault = {
+                    PlayerSettingsRepository.setVideoZoomDefault(videoZoomState)
+                    showGestureMessage(formatPlayerVideoZoomLabel(videoZoomState.zoom))
+                    scope.launch {
+                        delay(200)
+                        showVideoZoomModal = false
+                    }
+                },
+                onReset = {
+                    applyVideoZoomState(videoZoomState.copy(zoom = 0f))
+                },
+                onDismiss = { showVideoZoomModal = false },
             )
 
             SubtitleModal(

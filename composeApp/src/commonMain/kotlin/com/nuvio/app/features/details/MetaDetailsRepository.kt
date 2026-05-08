@@ -51,14 +51,22 @@ object MetaDetailsRepository {
             cachedEntry.metaScreenMeta
                 ?.takeIf { cachedEntry.metaScreenSettingsFingerprint == metaScreenSettingsFingerprint }
                 ?.let { cachedMeta ->
-                    _uiState.value = MetaDetailsUiState(meta = cachedMeta.withUnreleasedFilter())
+                    _uiState.value = MetaDetailsUiState(
+                        meta = cachedMeta.withUnreleasedFilter(),
+                        requestType = type,
+                        requestId = id,
+                    )
                     activeRequestKey = requestKey
                     return
                 }
 
             val cachedBaseMeta = cachedEntry.baseMeta
             if (!shouldFetchMdbListOnMetaScreen(cachedBaseMeta, id, mdbListSettings)) {
-                _uiState.value = MetaDetailsUiState(meta = cachedBaseMeta.withUnreleasedFilter())
+                _uiState.value = MetaDetailsUiState(
+                    meta = cachedBaseMeta.withUnreleasedFilter(),
+                    requestType = type,
+                    requestId = id,
+                )
                 activeRequestKey = requestKey
                 return
             }
@@ -72,6 +80,8 @@ object MetaDetailsRepository {
             _uiState.value = MetaDetailsUiState(
                 isLoading = true,
                 meta = cachedBaseMeta,
+                requestType = type,
+                requestId = id,
             )
 
             scope.launch {
@@ -84,7 +94,11 @@ object MetaDetailsRepository {
                         settingsFingerprint = metaScreenSettingsFingerprint,
                     )
                 }
-                _uiState.value = MetaDetailsUiState(meta = enrichedMeta.withUnreleasedFilter())
+                _uiState.value = MetaDetailsUiState(
+                    meta = enrichedMeta.withUnreleasedFilter(),
+                    requestType = type,
+                    requestId = id,
+                )
                 activeRequestKey = requestKey
             }
             return
@@ -102,7 +116,11 @@ object MetaDetailsRepository {
         }
 
         activeRequestKey = requestKey
-        _uiState.value = MetaDetailsUiState(isLoading = true)
+        _uiState.value = MetaDetailsUiState(
+            isLoading = true,
+            requestType = type,
+            requestId = id,
+        )
 
         scope.launch {
             val metaLookupId = resolveMetaLookupId(itemId = id, itemType = type)
@@ -124,6 +142,8 @@ object MetaDetailsRepository {
                 log.w { "No addon provides meta for type=$type id=$id" }
                 _uiState.value = MetaDetailsUiState(
                     errorMessage = getString(Res.string.details_no_addon_meta),
+                    requestType = type,
+                    requestId = id,
                 )
                 activeRequestKey = null
                 return@launch
@@ -159,6 +179,8 @@ object MetaDetailsRepository {
 
             _uiState.value = MetaDetailsUiState(
                 errorMessage = getString(Res.string.details_load_failed_all_addons),
+                requestType = type,
+                requestId = id,
             )
             activeRequestKey = null
         }
@@ -301,11 +323,16 @@ object MetaDetailsRepository {
         mdbListSettings: com.nuvio.app.features.mdblist.MdbListSettings,
         metaScreenSettingsFingerprint: String,
     ) {
+        val (requestType, requestId) = splitRequestKey(requestKey)
         val cachedEntry = CachedMetaEntry(baseMeta = meta)
         cachedMetaByRequestKey[requestKey] = cachedEntry
 
         if (!shouldFetchMdbListOnMetaScreen(meta, fallbackItemId, mdbListSettings)) {
-            _uiState.value = MetaDetailsUiState(meta = meta.withUnreleasedFilter())
+            _uiState.value = MetaDetailsUiState(
+                meta = meta.withUnreleasedFilter(),
+                requestType = requestType,
+                requestId = requestId,
+            )
             activeRequestKey = requestKey
             return
         }
@@ -313,6 +340,8 @@ object MetaDetailsRepository {
         _uiState.value = MetaDetailsUiState(
             isLoading = true,
             meta = meta,
+            requestType = requestType,
+            requestId = requestId,
         )
         val enrichedMeta = withContext(Dispatchers.Default) {
             enrichForMetaScreen(
@@ -327,9 +356,19 @@ object MetaDetailsRepository {
             metaScreenMeta = enrichedMeta,
             metaScreenSettingsFingerprint = metaScreenSettingsFingerprint,
         )
-        _uiState.value = MetaDetailsUiState(meta = enrichedMeta.withUnreleasedFilter())
+        _uiState.value = MetaDetailsUiState(
+            meta = enrichedMeta.withUnreleasedFilter(),
+            requestType = requestType,
+            requestId = requestId,
+        )
         activeRequestKey = requestKey
     }
+
+    private fun splitRequestKey(requestKey: String): Pair<String?, String?> =
+        requestKey.substringBefore(':', missingDelimiterValue = "")
+            .takeIf { it.isNotBlank() } to
+            requestKey.substringAfter(':', missingDelimiterValue = "")
+                .takeIf { it.isNotBlank() }
 
     private suspend fun enrichForMetaScreen(
         requestKey: String,
