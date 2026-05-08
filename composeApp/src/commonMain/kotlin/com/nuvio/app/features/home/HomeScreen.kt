@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
+import com.nuvio.app.core.ui.LocalNuvioBottomOverlayScrollPadding
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioNetworkOfflineCard
@@ -407,19 +408,22 @@ fun HomeScreen(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val homeSectionPadding = homeSectionHorizontalPaddingForWidth(maxWidth.value)
         val continueWatchingLayout = rememberContinueWatchingLayout(maxWidth.value)
+        val floatingBottomNavigationScrollClearance = LocalNuvioBottomOverlayScrollPadding.current
         val nativeBottomNavigationOverlayHeight =
             if (LocalNuvioBottomNavigationOverlayPadding.current > 0.dp) {
                 nuvioSafeBottomPadding()
             } else {
                 0.dp
             }
+        val bottomNavigationOverlayHeight =
+            nativeBottomNavigationOverlayHeight + floatingBottomNavigationScrollClearance
         val mobileHeroBelowSectionHeightHint = remember(
             maxWidth.value,
             continueWatchingPreferences.isVisible,
             continueWatchingPreferences.style,
             continueWatchingItems.isNotEmpty(),
             continueWatchingLayout,
-            nativeBottomNavigationOverlayHeight,
+            bottomNavigationOverlayHeight,
         ) {
             heroMobileBelowSectionHeightHint(
                 maxWidthDp = maxWidth.value,
@@ -427,7 +431,7 @@ fun HomeScreen(
                 hasContinueWatchingItems = continueWatchingItems.isNotEmpty(),
                 continueWatchingStyle = continueWatchingPreferences.style,
                 continueWatchingLayout = continueWatchingLayout,
-                bottomNavigationOverlayHeight = nativeBottomNavigationOverlayHeight,
+                bottomNavigationOverlayHeight = bottomNavigationOverlayHeight,
             )
         }
 

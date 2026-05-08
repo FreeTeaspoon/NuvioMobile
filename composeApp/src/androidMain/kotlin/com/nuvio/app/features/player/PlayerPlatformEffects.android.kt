@@ -30,6 +30,8 @@ actual fun LockPlayerToLandscape() {
 
         onDispose {
             activity.requestedOrientation = previousOrientation
+                .takeUnless { it == ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
+                ?: ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
     }
 }
