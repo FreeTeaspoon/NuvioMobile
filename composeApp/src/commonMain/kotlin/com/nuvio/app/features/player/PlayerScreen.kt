@@ -453,6 +453,9 @@ fun PlayerScreen(
         var preferredAudioSelectionApplied by rememberSaveable(sourceUrl) { mutableStateOf(false) }
         var preferredSubtitleSelectionApplied by rememberSaveable(sourceUrl) { mutableStateOf(false) }
         var activeSubtitleTab by remember { mutableStateOf(SubtitleTab.BuiltIn) }
+        val rememberedAudioKey = remember(parentMetaType, parentMetaId) {
+            rememberedAudioContentKey(parentMetaType, parentMetaId)
+        }
         val subtitleStyle = playerSettingsUiState.subtitleStyle
         val addonSubtitles by SubtitleRepository.addonSubtitles.collectAsStateWithLifecycle()
         val isLoadingAddonSubtitles by SubtitleRepository.isLoading.collectAsStateWithLifecycle()
@@ -467,24 +470,36 @@ fun PlayerScreen(
             if (selectedSub != null && !useCustomSubtitles) selectedSubtitleIndex = selectedSub.index
 
             if (!preferredAudioSelectionApplied) {
-                val preferredAudioTargets = resolvePreferredAudioLanguageTargets(
-                    preferredAudioLanguage = playerSettingsUiState.preferredAudioLanguage,
-                    secondaryPreferredAudioLanguage = playerSettingsUiState.secondaryPreferredAudioLanguage,
-                    deviceLanguages = DeviceLanguagePreferences.preferredLanguageCodes(),
+                val rememberedAudioIndex = resolveRememberedAudioTrackIndex(
+                    tracks = audioTracks,
+                    selection = RememberedAudioSelectionRepository.selectionFor(rememberedAudioKey),
                 )
-                if (preferredAudioTargets.isEmpty()) {
-                    preferredAudioSelectionApplied = true
-                } else if (audioTracks.isNotEmpty()) {
-                    val preferredAudioIndex = findPreferredTrackIndex(
-                        tracks = audioTracks,
-                        targets = preferredAudioTargets,
-                        language = { track -> track.language },
-                    )
-                    if (preferredAudioIndex >= 0 && preferredAudioIndex != selectedAudioIndex) {
-                        playerController?.selectAudioTrack(preferredAudioIndex)
-                        selectedAudioIndex = preferredAudioIndex
+                if (rememberedAudioIndex >= 0) {
+                    if (rememberedAudioIndex != selectedAudioIndex) {
+                        playerController?.selectAudioTrack(rememberedAudioIndex)
+                        selectedAudioIndex = rememberedAudioIndex
                     }
                     preferredAudioSelectionApplied = true
+                } else {
+                    val preferredAudioTargets = resolvePreferredAudioLanguageTargets(
+                        preferredAudioLanguage = playerSettingsUiState.preferredAudioLanguage,
+                        secondaryPreferredAudioLanguage = playerSettingsUiState.secondaryPreferredAudioLanguage,
+                        deviceLanguages = DeviceLanguagePreferences.preferredLanguageCodes(),
+                    )
+                    if (preferredAudioTargets.isEmpty()) {
+                        preferredAudioSelectionApplied = true
+                    } else if (audioTracks.isNotEmpty()) {
+                        val preferredAudioIndex = findPreferredTrackIndex(
+                            tracks = audioTracks,
+                            targets = preferredAudioTargets,
+                            language = { track -> track.language },
+                        )
+                        if (preferredAudioIndex >= 0 && preferredAudioIndex != selectedAudioIndex) {
+                            playerController?.selectAudioTrack(preferredAudioIndex)
+                            selectedAudioIndex = preferredAudioIndex
+                        }
+                        preferredAudioSelectionApplied = true
+                    }
                 }
             }
 
@@ -1863,6 +1878,9 @@ fun PlayerScreen(
                 onTrackSelected = { index ->
                     selectedAudioIndex = index
                     playerController?.selectAudioTrack(index)
+                    audioTracks.firstOrNull { it.index == index }?.let { track ->
+                        RememberedAudioSelectionRepository.saveSelection(rememberedAudioKey, track)
+                    }
                     scope.launch {
                         delay(200)
                         showAudioModal = false
@@ -2012,7 +2030,7 @@ fun PlayerScreen(
     }
 }
 
-private fun <T> findPreferredTrackIndex(
+internal fun <T> findPreferredTrackIndex(
     tracks: List<T>,
     targets: List<String>,
     language: (T) -> String?,

@@ -85,10 +85,12 @@ object PlayerSettingsRepository {
     }
 
     fun onProfileChanged() {
+        RememberedAudioSelectionRepository.onProfileChanged()
         loadFromDisk()
     }
 
     fun clearLocalState() {
+        RememberedAudioSelectionRepository.clearLocalState()
         hasLoaded = false
         showLoadingOverlay = true
         resizeMode = PlayerResizeMode.Fit
