@@ -87,6 +87,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
+import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import kotlinx.coroutines.launch
 import kotlin.math.round
@@ -146,33 +147,15 @@ fun StreamsScreen(
     var streamActionsTarget by remember(videoId) { mutableStateOf<StreamItem?>(null) }
     var downloadPromptMessage by remember { mutableStateOf<String?>(null) }
     var preferredFilterApplied by remember(videoId) { mutableStateOf(false) }
-    val storedProgress = if (startFromBeginning) {
-        null
-    } else {
-        watchProgressUiState.byVideoId[videoId]
-    }
-    val storedProgressFraction = storedProgress
-        ?.takeIf { it.isResumable }
-        ?.progressPercent
-        ?.takeIf { it > 0f }
-        ?.let { explicitPercent -> (explicitPercent / 100f).coerceIn(0f, 1f) }
-    val effectiveResumeProgressFraction = if (startFromBeginning) {
-        null
-    } else {
-        resumeProgressFraction
-        ?.takeIf { it > 0f }
-        ?.coerceIn(0f, 1f)
-        ?: storedProgressFraction
-    }
-    val effectiveResumePositionMs = if (effectiveResumeProgressFraction != null) {
-        null
-    } else {
-        if (startFromBeginning) {
-            null
-        } else {
-            (resumePositionMs ?: storedProgress?.takeIf { it.isResumable }?.lastPositionMs)?.takeIf { it > 0L }
-        }
-    }
+    val storedProgress = watchProgressUiState.byVideoId[videoId]
+    val effectiveResume = resolveEffectiveStreamResume(
+        requestedPositionMs = resumePositionMs,
+        requestedProgressFraction = resumeProgressFraction,
+        storedProgress = storedProgress,
+        startFromBeginning = startFromBeginning,
+    )
+    val effectiveResumePositionMs = effectiveResume.positionMs
+    val effectiveResumeProgressFraction = effectiveResume.progressFraction
 
     LaunchedEffect(type, videoId, manualSelection) {
         StreamsRepository.load(
@@ -382,6 +365,44 @@ fun StreamsScreen(
             },
         )
     }
+}
+
+internal data class EffectiveStreamResume(
+    val positionMs: Long?,
+    val progressFraction: Float?,
+)
+
+internal fun resolveEffectiveStreamResume(
+    requestedPositionMs: Long?,
+    requestedProgressFraction: Float?,
+    storedProgress: WatchProgressEntry?,
+    startFromBeginning: Boolean,
+): EffectiveStreamResume {
+    if (startFromBeginning) return EffectiveStreamResume(positionMs = null, progressFraction = null)
+
+    val requestedPosition = requestedPositionMs?.takeIf { it > 0L }
+    if (requestedPosition != null) {
+        return EffectiveStreamResume(positionMs = requestedPosition, progressFraction = null)
+    }
+
+    val resumableStoredProgress = storedProgress?.takeIf { it.isResumable }
+    val storedPosition = resumableStoredProgress?.lastPositionMs?.takeIf { it > 0L }
+    if (storedPosition != null) {
+        return EffectiveStreamResume(positionMs = storedPosition, progressFraction = null)
+    }
+
+    val requestedFraction = requestedProgressFraction
+        ?.takeIf { it > 0f }
+        ?.coerceIn(0f, 1f)
+    if (requestedFraction != null) {
+        return EffectiveStreamResume(positionMs = null, progressFraction = requestedFraction)
+    }
+
+    val storedFraction = resumableStoredProgress
+        ?.progressPercent
+        ?.takeIf { it > 0f }
+        ?.let { explicitPercent -> (explicitPercent / 100f).coerceIn(0f, 1f) }
+    return EffectiveStreamResume(positionMs = null, progressFraction = storedFraction)
 }
 
 @Composable
