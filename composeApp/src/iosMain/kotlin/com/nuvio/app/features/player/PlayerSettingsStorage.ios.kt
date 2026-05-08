@@ -19,6 +19,8 @@ import platform.Foundation.NSUserDefaults
 actual object PlayerSettingsStorage {
     private const val showLoadingOverlayKey = "show_loading_overlay"
     private const val resizeModeKey = "resize_mode"
+    private const val videoZoomKey = "video_zoom"
+    private const val panAndZoomEnabledKey = "pan_and_zoom_enabled"
     private const val holdToSpeedEnabledKey = "hold_to_speed_enabled"
     private const val holdToSpeedValueKey = "hold_to_speed_value"
     private const val preferredAudioLanguageKey = "preferred_audio_language"
@@ -54,6 +56,8 @@ actual object PlayerSettingsStorage {
     private val syncKeys = listOf(
         showLoadingOverlayKey,
         resizeModeKey,
+        videoZoomKey,
+        panAndZoomEnabledKey,
         holdToSpeedEnabledKey,
         holdToSpeedValueKey,
         preferredAudioLanguageKey,
@@ -109,6 +113,34 @@ actual object PlayerSettingsStorage {
 
     actual fun saveResizeMode(mode: String) {
         NSUserDefaults.standardUserDefaults.setObject(mode, forKey = ProfileScopedKey.of(resizeModeKey))
+    }
+
+    actual fun loadVideoZoom(): Float? {
+        val defaults = NSUserDefaults.standardUserDefaults
+        val key = ProfileScopedKey.of(videoZoomKey)
+        return if (defaults.objectForKey(key) != null) {
+            defaults.floatForKey(key)
+        } else {
+            null
+        }
+    }
+
+    actual fun saveVideoZoom(zoom: Float) {
+        NSUserDefaults.standardUserDefaults.setFloat(clampPlayerVideoZoom(zoom), forKey = ProfileScopedKey.of(videoZoomKey))
+    }
+
+    actual fun loadPanAndZoomEnabled(): Boolean? {
+        val defaults = NSUserDefaults.standardUserDefaults
+        val key = ProfileScopedKey.of(panAndZoomEnabledKey)
+        return if (defaults.objectForKey(key) != null) {
+            defaults.boolForKey(key)
+        } else {
+            null
+        }
+    }
+
+    actual fun savePanAndZoomEnabled(enabled: Boolean) {
+        NSUserDefaults.standardUserDefaults.setBool(enabled, forKey = ProfileScopedKey.of(panAndZoomEnabledKey))
     }
 
     actual fun loadPlayerEngine(): String? = null
@@ -510,6 +542,8 @@ actual object PlayerSettingsStorage {
     actual fun exportToSyncPayload(): JsonObject = buildJsonObject {
         loadShowLoadingOverlay()?.let { put(showLoadingOverlayKey, encodeSyncBoolean(it)) }
         loadResizeMode()?.let { put(resizeModeKey, encodeSyncString(it)) }
+        loadVideoZoom()?.let { put(videoZoomKey, encodeSyncFloat(it)) }
+        loadPanAndZoomEnabled()?.let { put(panAndZoomEnabledKey, encodeSyncBoolean(it)) }
         loadHoldToSpeedEnabled()?.let { put(holdToSpeedEnabledKey, encodeSyncBoolean(it)) }
         loadHoldToSpeedValue()?.let { put(holdToSpeedValueKey, encodeSyncFloat(it)) }
         loadPreferredAudioLanguage()?.let { put(preferredAudioLanguageKey, encodeSyncString(it)) }
@@ -550,6 +584,8 @@ actual object PlayerSettingsStorage {
 
         payload.decodeSyncBoolean(showLoadingOverlayKey)?.let(::saveShowLoadingOverlay)
         payload.decodeSyncString(resizeModeKey)?.let(::saveResizeMode)
+        payload.decodeSyncFloat(videoZoomKey)?.let(::saveVideoZoom)
+        payload.decodeSyncBoolean(panAndZoomEnabledKey)?.let(::savePanAndZoomEnabled)
         payload.decodeSyncBoolean(holdToSpeedEnabledKey)?.let(::saveHoldToSpeedEnabled)
         payload.decodeSyncFloat(holdToSpeedValueKey)?.let(::saveHoldToSpeedValue)
         payload.decodeSyncString(preferredAudioLanguageKey)?.let(::savePreferredAudioLanguage)

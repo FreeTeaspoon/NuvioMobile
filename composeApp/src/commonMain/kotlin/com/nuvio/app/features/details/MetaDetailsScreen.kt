@@ -123,6 +123,8 @@ fun MetaDetailsScreen(
     val uiState by MetaDetailsRepository.uiState.collectAsStateWithLifecycle()
     val displayedMeta = uiState.meta?.takeIf { it.type == type && it.id == id }
         ?: MetaDetailsRepository.peek(type, id)
+    val isCurrentRequestState = uiState.requestType == type && uiState.requestId == id
+    val currentErrorMessage = uiState.errorMessage.takeIf { isCurrentRequestState }
     val metaScreenSettingsUiState by remember {
         MetaScreenSettingsRepository.ensureLoaded()
         MetaScreenSettingsRepository.uiState
@@ -262,7 +264,7 @@ fun MetaDetailsScreen(
                 )
             }
 
-            displayedMeta == null && uiState.errorMessage != null -> {
+            displayedMeta == null && currentErrorMessage != null -> {
                 Column(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -279,7 +281,7 @@ fun MetaDetailsScreen(
                         text = when (networkStatusUiState.condition) {
                             NetworkCondition.NoInternet -> stringResource(Res.string.details_check_connection)
                             NetworkCondition.ServersUnreachable -> stringResource(Res.string.details_servers_unreachable)
-                            else -> uiState.errorMessage.orEmpty()
+                            else -> currentErrorMessage.orEmpty()
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -1,12 +1,14 @@
 package com.nuvio.app.features.player
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 @Serializable
 data class PlayerRoute(
     val launchId: Long,
 )
 
+@Serializable
 data class PlayerLaunch(
     val title: String,
     val sourceUrl: String,
@@ -36,24 +38,114 @@ data class PlayerLaunch(
     val initialProgressFraction: Float? = null,
 )
 
+internal expect object PlayerLaunchStorage {
+    fun loadLaunchPayload(launchId: Long): String?
+    fun saveLaunchPayload(launchId: Long, payload: String)
+    fun removeLaunchPayload(launchId: Long)
+    fun loadNextLaunchId(): Long?
+    fun saveNextLaunchId(nextLaunchId: Long)
+    fun loadLaunchIds(): Set<Long>
+    fun saveLaunchIds(launchIds: Set<Long>)
+    fun clear()
+}
+
+internal interface PlayerLaunchPayloadStorage {
+    fun loadLaunchPayload(launchId: Long): String?
+    fun saveLaunchPayload(launchId: Long, payload: String)
+    fun removeLaunchPayload(launchId: Long)
+    fun loadNextLaunchId(): Long?
+    fun saveNextLaunchId(nextLaunchId: Long)
+    fun loadLaunchIds(): Set<Long>
+    fun saveLaunchIds(launchIds: Set<Long>)
+    fun clear()
+}
+
+private object PlatformPlayerLaunchPayloadStorage : PlayerLaunchPayloadStorage {
+    override fun loadLaunchPayload(launchId: Long): String? =
+        PlayerLaunchStorage.loadLaunchPayload(launchId)
+
+    override fun saveLaunchPayload(launchId: Long, payload: String) {
+        PlayerLaunchStorage.saveLaunchPayload(launchId, payload)
+    }
+
+    override fun removeLaunchPayload(launchId: Long) {
+        PlayerLaunchStorage.removeLaunchPayload(launchId)
+    }
+
+    override fun loadNextLaunchId(): Long? =
+        PlayerLaunchStorage.loadNextLaunchId()
+
+    override fun saveNextLaunchId(nextLaunchId: Long) {
+        PlayerLaunchStorage.saveNextLaunchId(nextLaunchId)
+    }
+
+    override fun loadLaunchIds(): Set<Long> =
+        PlayerLaunchStorage.loadLaunchIds()
+
+    override fun saveLaunchIds(launchIds: Set<Long>) {
+        PlayerLaunchStorage.saveLaunchIds(launchIds)
+    }
+
+    override fun clear() {
+        PlayerLaunchStorage.clear()
+    }
+}
+
 object PlayerLaunchStore {
-    private var nextLaunchId = 1L
+    private val json = Json { ignoreUnknownKeys = true }
+    private var storage: PlayerLaunchPayloadStorage = PlatformPlayerLaunchPayloadStorage
+    private var nextLaunchId = storage.loadNextLaunchId() ?: 1L
     private val launches = mutableMapOf<Long, PlayerLaunch>()
 
     fun put(launch: PlayerLaunch): Long {
         val launchId = nextLaunchId++
         launches[launchId] = launch
+        storage.saveLaunchPayload(launchId, json.encodeToString(PlayerLaunch.serializer(), launch))
+        storage.saveNextLaunchId(nextLaunchId)
+        storage.saveLaunchIds(storage.loadLaunchIds() + launchId)
         return launchId
     }
 
-    fun get(launchId: Long): PlayerLaunch? = launches[launchId]
+    fun get(launchId: Long): PlayerLaunch? {
+        launches[launchId]?.let { return it }
+        val payload = storage.loadLaunchPayload(launchId) ?: return null
+        return runCatching {
+            json.decodeFromString(PlayerLaunch.serializer(), payload)
+        }.getOrNull()
+            ?.also { launches[launchId] = it }
+            ?: run {
+                storage.removeLaunchPayload(launchId)
+                storage.saveLaunchIds(storage.loadLaunchIds() - launchId)
+                null
+            }
+    }
 
     fun remove(launchId: Long) {
         launches.remove(launchId)
+        storage.removeLaunchPayload(launchId)
+        storage.saveLaunchIds(storage.loadLaunchIds() - launchId)
     }
 
     fun clear() {
         nextLaunchId = 1L
+        launches.clear()
+        storage.clear()
+    }
+
+    internal fun resetMemoryForTesting() {
+        launches.clear()
+        nextLaunchId = storage.loadNextLaunchId() ?: 1L
+    }
+
+    internal fun useStorageForTesting(testStorage: PlayerLaunchPayloadStorage) {
+        storage = testStorage
+        nextLaunchId = storage.loadNextLaunchId() ?: 1L
+        launches.clear()
+    }
+
+    internal fun resetStorageForTesting() {
+        storage = PlatformPlayerLaunchPayloadStorage
+        nextLaunchId = storage.loadNextLaunchId() ?: 1L
         launches.clear()
     }
 }
@@ -63,6 +155,18 @@ enum class PlayerResizeMode {
     Fill,
     Zoom,
 }
+
+data class PlayerVideoZoomState(
+    val zoom: Float = 0f,
+    val panAndZoomEnabled: Boolean = false,
+) {
+    fun normalized(): PlayerVideoZoomState =
+        copy(zoom = zoom.coerceIn(PlayerVideoZoomMin, PlayerVideoZoomMax))
+}
+
+internal const val PlayerVideoZoomMin = -2f
+internal const val PlayerVideoZoomMax = 2f
+internal const val PlayerVideoZoomStep = 0.05f
 
 enum class PlayerEngineType {
     MEDIA3,

@@ -143,6 +143,10 @@ private class AndroidMpvPlayerController(
         view.setPlaybackSpeed(speed)
     }
 
+    override fun setVideoZoom(state: PlayerVideoZoomState) {
+        view.setVideoZoom(state)
+    }
+
     override fun getAudioTracks(): List<AudioTrack> =
         view.getAudioTracks()
 
@@ -216,6 +220,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     private var initialSeekAppliedForRequest: MpvPlaybackRequest? = null
     private var loadGeneration = 0
     private var resizeMode: PlayerResizeMode = PlayerResizeMode.Fit
+    private var videoZoomState: PlayerVideoZoomState = PlayerVideoZoomState()
     private var subtitleStyle: SubtitleStyleState = SubtitleStyleState.DEFAULT
     private var currentErrorMessage: String? = null
     private var recentPlaybackLogs: List<String> = emptyList()
@@ -355,6 +360,13 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         resizeMode = mode
         if (isMpvInitialized) {
             applyResizeMode()
+        }
+    }
+
+    fun setVideoZoom(state: PlayerVideoZoomState) {
+        videoZoomState = state.normalized()
+        if (isMpvInitialized) {
+            applyVideoZoom()
         }
     }
 
@@ -663,6 +675,15 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
                 MPVLib.setPropertyDouble("panscan", 1.0)
                 MPVLib.setPropertyString("keepaspect", "yes")
             }
+        }
+        applyVideoZoom()
+    }
+
+    private fun applyVideoZoom() {
+        MPVLib.setPropertyDouble("video-zoom", videoZoomState.zoom.toDouble())
+        if (!videoZoomState.panAndZoomEnabled || videoZoomState.zoom == 0f) {
+            MPVLib.setPropertyDouble("video-pan-x", 0.0)
+            MPVLib.setPropertyDouble("video-pan-y", 0.0)
         }
     }
 

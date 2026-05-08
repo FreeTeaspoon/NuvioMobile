@@ -30,6 +30,9 @@ final class MPVPlayerBridgeImpl: NSObject, NuvioPlayerBridge {
     func retry() { playerVC?.retryPlayback() }
     func setPlaybackSpeed(speed: Float) { playerVC?.setSpeed(speed) }
     func setResizeMode(mode: Int32) { playerVC?.setResize(Int(mode)) }
+    func setVideoZoom(zoom: Float, panAndZoomEnabled: Bool) {
+        playerVC?.setVideoZoom(Double(zoom), panAndZoomEnabled: panAndZoomEnabled)
+    }
 
     // Audio tracks
     func getAudioTrackCount() -> Int32 { Int32(playerVC?.audioTracks.count ?? 0) }
@@ -451,6 +454,17 @@ final class MPVPlayerViewController: UIViewController {
         default: // Fit
             checkError(mpv_set_option_string(mpv, "panscan", "0.0"))
             checkError(mpv_set_option_string(mpv, "video-unscaled", "no"))
+        }
+    }
+
+    func setVideoZoom(_ zoom: Double, panAndZoomEnabled: Bool) {
+        guard mpv != nil else { return }
+        var normalizedZoom = min(2.0, max(-2.0, zoom))
+        mpv_set_property(mpv, "video-zoom", MPV_FORMAT_DOUBLE, &normalizedZoom)
+        if !panAndZoomEnabled || normalizedZoom == 0.0 {
+            var zero = 0.0
+            mpv_set_property(mpv, "video-pan-x", MPV_FORMAT_DOUBLE, &zero)
+            mpv_set_property(mpv, "video-pan-y", MPV_FORMAT_DOUBLE, &zero)
         }
     }
 

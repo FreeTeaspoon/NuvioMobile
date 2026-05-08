@@ -205,6 +205,7 @@ internal fun AndroidMedia3PlayerSurface(
     val pendingSubtitleTrackIndex = remember { mutableListOf<Int>() }
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     var currentSubtitleStyle by remember { mutableStateOf(SubtitleStyleState.DEFAULT) }
+    var currentVideoZoomState by remember { mutableStateOf(PlayerVideoZoomState()) }
     var subtitleSelectionJob by remember { mutableStateOf<Job?>(null) }
     var terminalSnapshotOverride by remember(exoPlayer) { mutableStateOf<PlayerPlaybackSnapshot?>(null) }
     var hasRenderedFirstFrame by remember(exoPlayer) { mutableStateOf(false) }
@@ -360,6 +361,11 @@ internal fun AndroidMedia3PlayerSurface(
                     exoPlayer.setPlaybackSpeed(speed)
                 }
 
+                override fun setVideoZoom(state: PlayerVideoZoomState) {
+                    currentVideoZoomState = state.normalized()
+                    playerViewRef?.applyVideoZoom(currentVideoZoomState)
+                }
+
                 override fun getAudioTracks(): List<AudioTrack> =
                     exoPlayer.extractAudioTracks()
 
@@ -492,6 +498,7 @@ internal fun AndroidMedia3PlayerSurface(
                 this.resizeMode = resizeMode.toExoResizeMode()
                 setShutterBackgroundColor(android.graphics.Color.BLACK)
                 playerViewRef = this
+                applyVideoZoom(currentVideoZoomState)
                 syncLibassOverlay(
                     player = exoPlayer,
                     enabled = useLibass,
@@ -505,6 +512,7 @@ internal fun AndroidMedia3PlayerSurface(
             playerView.useController = useNativeController
             playerView.resizeMode = resizeMode.toExoResizeMode()
             playerViewRef = playerView
+            playerView.applyVideoZoom(currentVideoZoomState)
             playerView.syncLibassOverlay(
                 player = exoPlayer,
                 enabled = useLibass,
@@ -574,6 +582,17 @@ private fun PlayerResizeMode.toExoResizeMode(): Int =
         PlayerResizeMode.Fill -> AspectRatioFrameLayout.RESIZE_MODE_FILL
         PlayerResizeMode.Zoom -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
     }
+
+private fun PlayerView.applyVideoZoom(state: PlayerVideoZoomState) {
+    val normalized = state.normalized()
+    val scale = java.lang.Math.pow(2.0, normalized.zoom.toDouble()).toFloat()
+    scaleX = scale
+    scaleY = scale
+    pivotX = width / 2f
+    pivotY = height / 2f
+    translationX = 0f
+    translationY = 0f
+}
 
 private fun PlayerView.syncLibassOverlay(
     player: ExoPlayer,

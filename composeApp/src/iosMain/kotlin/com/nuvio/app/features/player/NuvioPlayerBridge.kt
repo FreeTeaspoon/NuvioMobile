@@ -17,6 +17,7 @@ interface NuvioPlayerBridge {
     fun retry()
     fun setPlaybackSpeed(speed: Float)
     fun setResizeMode(mode: Int) // 0=Fit, 1=Fill, 2=Zoom
+    fun setVideoZoom(zoom: Float, panAndZoomEnabled: Boolean)
     fun getAudioTrackCount(): Int
     fun getAudioTrackIndex(at: Int): Int
     fun getAudioTrackId(at: Int): String

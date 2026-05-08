@@ -7,6 +7,10 @@ internal expect object PlayerSettingsStorage {
     fun saveShowLoadingOverlay(enabled: Boolean)
     fun loadResizeMode(): String?
     fun saveResizeMode(mode: String)
+    fun loadVideoZoom(): Float?
+    fun saveVideoZoom(zoom: Float)
+    fun loadPanAndZoomEnabled(): Boolean?
+    fun savePanAndZoomEnabled(enabled: Boolean)
     fun loadPlayerEngine(): String?
     fun savePlayerEngine(engine: String)
     fun loadHoldToSpeedEnabled(): Boolean?
