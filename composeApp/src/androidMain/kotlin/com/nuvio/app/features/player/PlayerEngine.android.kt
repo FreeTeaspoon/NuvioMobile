@@ -586,12 +586,18 @@ private fun PlayerResizeMode.toExoResizeMode(): Int =
 private fun PlayerView.applyVideoZoom(state: PlayerVideoZoomState) {
     val normalized = state.normalized()
     val scale = java.lang.Math.pow(2.0, normalized.zoom.toDouble()).toFloat()
-    scaleX = scale
-    scaleY = scale
-    pivotX = width / 2f
-    pivotY = height / 2f
+    scaleX = 1f
+    scaleY = 1f
     translationX = 0f
     translationY = 0f
+
+    val videoSurface = videoSurfaceView ?: return
+    videoSurface.scaleX = scale
+    videoSurface.scaleY = scale
+    videoSurface.pivotX = videoSurface.width / 2f
+    videoSurface.pivotY = videoSurface.height / 2f
+    videoSurface.translationX = 0f
+    videoSurface.translationY = 0f
 }
 
 private fun PlayerView.syncLibassOverlay(
