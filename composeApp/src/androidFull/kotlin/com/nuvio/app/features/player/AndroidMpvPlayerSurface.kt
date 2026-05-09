@@ -52,13 +52,15 @@ internal fun AndroidMpvPlayerSurface(
     val lifecycleOwner = LocalLifecycleOwner.current
     val latestOnSnapshot = rememberUpdatedState(onSnapshot)
     val latestOnError = rememberUpdatedState(onError)
+    val latestOnControllerReady = rememberUpdatedState(onControllerReady)
     val sanitizedSourceHeaders = remember(sourceHeaders) {
         sanitizePlaybackHeaders(sourceHeaders)
     }
     val playerView = remember(context) { AndroidMpvPlayerView(context) }
+    val playerController = remember(playerView) { AndroidMpvPlayerController(playerView) }
 
-    LaunchedEffect(playerView) {
-        onControllerReady(AndroidMpvPlayerController(playerView))
+    LaunchedEffect(playerController, sourceUrl, sourceAudioUrl, sanitizedSourceHeaders) {
+        latestOnControllerReady.value(playerController)
     }
 
     LaunchedEffect(playerView) {
