@@ -88,6 +88,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
+import com.nuvio.app.features.watchprogress.progressForPlaybackTarget
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import kotlinx.coroutines.launch
 import kotlin.math.round
@@ -147,7 +148,12 @@ fun StreamsScreen(
     var streamActionsTarget by remember(videoId) { mutableStateOf<StreamItem?>(null) }
     var downloadPromptMessage by remember { mutableStateOf<String?>(null) }
     var preferredFilterApplied by remember(videoId) { mutableStateOf(false) }
-    val storedProgress = watchProgressUiState.byVideoId[videoId]
+    val storedProgress = watchProgressUiState.entries.progressForPlaybackTarget(
+        videoId = videoId,
+        parentMetaId = parentMetaId,
+        seasonNumber = seasonNumber,
+        episodeNumber = episodeNumber,
+    )
     val effectiveResume = resolveEffectiveStreamResume(
         requestedPositionMs = resumePositionMs,
         requestedProgressFraction = resumeProgressFraction,

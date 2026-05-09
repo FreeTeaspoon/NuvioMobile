@@ -324,7 +324,7 @@ object WatchProgressRepository {
             TraktProgressRepository.uiState.value.entries
         } else {
             entriesByVideoId.values.toList()
-        }.firstOrNull { it.videoId == videoId }
+        }.progressForPlaybackTarget(videoId = videoId)
     }
 
     fun resumeEntryForSeries(metaId: String): WatchProgressEntry? {
