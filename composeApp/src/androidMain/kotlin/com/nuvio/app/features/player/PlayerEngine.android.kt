@@ -8,6 +8,8 @@ import android.util.Log
 import android.util.TypedValue
 import android.graphics.Typeface
 import android.os.Build
+import android.view.View
+import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -586,6 +588,7 @@ private fun PlayerResizeMode.toExoResizeMode(): Int =
 private fun PlayerView.applyVideoZoom(state: PlayerVideoZoomState) {
     val normalized = state.normalized()
     val scale = java.lang.Math.pow(2.0, normalized.zoom.toDouble()).toFloat()
+    allowZoomedVideoToDrawIntoGutters()
     scaleX = 1f
     scaleY = 1f
     translationX = 0f
@@ -599,6 +602,23 @@ private fun PlayerView.applyVideoZoom(state: PlayerVideoZoomState) {
     videoSurface.translationX = 0f
     videoSurface.translationY = 0f
 }
+
+private fun PlayerView.allowZoomedVideoToDrawIntoGutters() {
+    disableChildClipping()
+    findViewById<View>(androidx.media3.ui.R.id.exo_content_frame)?.disableChildClipping()
+    videoSurfaceView?.parentChain()
+        ?.forEach { parent -> parent.disableChildClipping() }
+}
+
+private fun View.disableChildClipping() {
+    (this as? ViewGroup)?.let { group ->
+        group.clipChildren = false
+        group.clipToPadding = false
+    }
+}
+
+private fun View.parentChain(): Sequence<View> =
+    generateSequence(parent as? View) { view -> view.parent as? View }
 
 private fun PlayerView.syncLibassOverlay(
     player: ExoPlayer,

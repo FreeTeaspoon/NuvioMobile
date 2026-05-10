@@ -682,7 +682,10 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     }
 
     private fun applyVideoZoom() {
-        MPVLib.setPropertyDouble("video-zoom", videoZoomState.zoom.toDouble())
+        val normalizedZoom = videoZoomState.zoom.coerceIn(PlayerVideoZoomMin, PlayerVideoZoomMax)
+        val panscan = normalizedZoom.coerceAtLeast(0f).coerceAtMost(1f).toDouble()
+        MPVLib.setPropertyDouble("panscan", panscan)
+        MPVLib.setPropertyDouble("video-zoom", normalizedZoom.toDouble())
         if (!videoZoomState.panAndZoomEnabled || videoZoomState.zoom == 0f) {
             MPVLib.setPropertyDouble("video-pan-x", 0.0)
             MPVLib.setPropertyDouble("video-pan-y", 0.0)
