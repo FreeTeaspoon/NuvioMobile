@@ -10,6 +10,8 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ### Fixed
 
+- MDBList ratings now load more reliably on newly opened uncached movie and show meta screens.
+
 ## 0.1.12.2
 
 ### Fixed
