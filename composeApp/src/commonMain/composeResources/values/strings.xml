@@ -677,6 +677,10 @@
     <string name="settings_playback_anime_skip_client_id">AnimeSkip Client ID</string>
     <string name="settings_playback_anime_skip_client_id_description">Enter your AnimeSkip API client ID. Get one at anime-skip.com.</string>
     <string name="settings_playback_anime_skip_description">Also search AnimeSkip for skip timestamps (requires client ID).</string>
+    <string name="settings_playback_intro_submit_enabled">Enable Intro Submission</string>
+    <string name="settings_playback_intro_submit_enabled_description">Show a button to submit intro/outro timestamps to the community database.</string>
+    <string name="settings_playback_introdb_api_key">IntroDB API Key</string>
+    <string name="settings_playback_introdb_api_key_description">Enter your IntroDB API key to submit timestamps. Required for submission.</string>
     <string name="settings_playback_auto_play_next_episode">Auto-Play Next Episode</string>
     <string name="settings_playback_auto_play_next_episode_description">Automatically find and play the next episode when the threshold is reached.</string>
     <string name="settings_playback_decoder_device_only">Device Only</string>
@@ -1106,6 +1110,7 @@
     <string name="streams_resume_from_percent">Resume from %1$d%</string>
     <string name="streams_resume_from_time">Resume from %1$s</string>
     <string name="streams_size">SIZE %1$s</string>
+    <string name="streams_torrent_not_supported">Torrent streams are not supported</string>
     <string name="trailer_close">Close trailer</string>
     <string name="trailer_unable_to_play">Unable to play trailer</string>
     <string name="trakt_lists_load_failed">Failed to load Trakt lists</string>
