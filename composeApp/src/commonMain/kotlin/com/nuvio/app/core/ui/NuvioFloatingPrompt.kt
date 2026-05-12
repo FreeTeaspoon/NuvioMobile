@@ -31,22 +31,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -72,13 +68,12 @@ fun NuvioFloatingPrompt(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     autoDismissMs: Long = AutoDismissDelayMs,
+    bottomClearance: Dp = NuvioNavigationBarScrollClearance,
 ) {
     val visibilityState = remember { MutableTransitionState(false) }
     val coroutineScope = rememberCoroutineScope()
-    val density = LocalDensity.current
     val hapticFeedback = LocalHapticFeedback.current
     val dragOffsetY = remember { Animatable(0f) }
-    var promptHeightPx by remember { mutableIntStateOf(0) }
     val actionWithHaptic = remember(hapticFeedback, onAction) {
         {
             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -97,14 +92,6 @@ fun NuvioFloatingPrompt(
     if (visible) {
         LaunchedEffect(Unit) {
             delay(autoDismissMs)
-            val dismissDistance = maxOf(
-                promptHeightPx.toFloat() + with(density) { 24.dp.toPx() },
-                with(density) { 160.dp.toPx() },
-            )
-            dragOffsetY.animateTo(
-                targetValue = dismissDistance,
-                animationSpec = tween(durationMillis = 240),
-            )
             onDismiss()
         }
     }
@@ -122,7 +109,7 @@ fun NuvioFloatingPrompt(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = navBarBottom + NuvioNavigationBarScrollClearance)
+                .padding(bottom = navBarBottom + bottomClearance)
                 .padding(horizontal = 16.dp)
                 .offset { IntOffset(0, dragOffsetY.value.roundToInt().coerceAtLeast(0)) }
                 .pointerInput(Unit) {
@@ -132,14 +119,6 @@ fun NuvioFloatingPrompt(
                             coroutineScope.launch {
                                 if (shouldDismiss) {
                                     hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    val dismissDistance = maxOf(
-                                        promptHeightPx.toFloat() + with(density) { 24.dp.toPx() },
-                                        with(density) { 160.dp.toPx() },
-                                    )
-                                    dragOffsetY.animateTo(
-                                        targetValue = dismissDistance,
-                                        animationSpec = tween(durationMillis = 220),
-                                    )
                                     onDismiss()
                                 } else {
                                     dragOffsetY.animateTo(
@@ -166,7 +145,6 @@ fun NuvioFloatingPrompt(
             contentAlignment = Alignment.BottomCenter,
         ) {
             Surface(
-                modifier = Modifier.onSizeChanged { promptHeightPx = it.height },
                 shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 tonalElevation = 4.dp,
