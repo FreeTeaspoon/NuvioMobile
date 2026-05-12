@@ -128,7 +128,6 @@ fun NuvioScreenHeader(
     includeStatusBarPadding: Boolean = true,
     topPadding: Dp? = null,
     onBack: (() -> Unit)? = null,
-    animateTitle: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -154,21 +153,13 @@ fun NuvioScreenHeader(
                     )
                 }
             }
-            if (animateTitle) {
-                AnimatedContent(
-                    targetState = title,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "screen_header_title",
-                ) { currentTitle ->
-                    Text(
-                        text = currentTitle,
-                        style = MaterialTheme.typography.displayLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-            } else {
+            AnimatedContent(
+                targetState = title,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "screen_header_title",
+            ) { currentTitle ->
                 Text(
-                    text = title,
+                    text = currentTitle,
                     style = MaterialTheme.typography.displayLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
