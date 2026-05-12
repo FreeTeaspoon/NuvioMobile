@@ -163,7 +163,7 @@ fun StreamsScreen(
     val effectiveResumePositionMs = effectiveResume.positionMs
     val effectiveResumeProgressFraction = effectiveResume.progressFraction
 
-    LaunchedEffect(type, videoId, manualSelection) {
+    LaunchedEffect(type, videoId, seasonNumber, episodeNumber, manualSelection) {
         StreamsRepository.load(
             type = type,
             videoId = videoId,
