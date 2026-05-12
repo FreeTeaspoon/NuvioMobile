@@ -2,11 +2,6 @@ package com.nuvio.app.features.settings
 
 import com.nuvio.app.core.build.AppFeaturePolicy
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -90,7 +85,6 @@ import org.jetbrains.compose.resources.stringResource
 private val SettingsSearchRevealThreshold = 28.dp
 private const val SettingsSearchRevealAnimationMillis = 240L
 private const val SettingsSearchRevealHapticDelayMillis = 90L
-private const val SettingsPageTransitionMillis = 260
 
 @Composable
 fun SettingsScreen(
@@ -316,55 +310,6 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsPageTransition(
-    page: SettingsPage,
-    content: @Composable (SettingsPage) -> Unit,
-) {
-    AnimatedContent(
-        targetState = page,
-        modifier = Modifier.fillMaxSize(),
-        transitionSpec = {
-            val direction = if (targetState.opensAfter(initialState)) 1 else -1
-            slideInHorizontally(
-                animationSpec = tween(SettingsPageTransitionMillis),
-                initialOffsetX = { direction * it },
-            ) togetherWith slideOutHorizontally(
-                animationSpec = tween(SettingsPageTransitionMillis),
-                targetOffsetX = { -direction * it },
-            )
-        },
-        label = "settings_page_transition",
-    ) { animatedPage ->
-        content(animatedPage)
-    }
-}
-
-private fun SettingsPage.opensAfter(previousPage: SettingsPage): Boolean {
-    if (this == previousPage) return true
-    if (parentPage == previousPage) return true
-    if (previousPage.parentPage == this) return false
-
-    val previousDepth = previousPage.depth()
-    val targetDepth = depth()
-    return if (targetDepth != previousDepth) {
-        targetDepth > previousDepth
-    } else {
-        ordinal >= previousPage.ordinal
-    }
-}
-
-private fun SettingsPage.depth(): Int {
-    var depth = 0
-    var parent = parentPage
-    while (parent != null) {
-        depth += 1
-        parent = parent.parentPage
-    }
-    return depth
-}
-
-
-@Composable
 private fun MobileSettingsScreen(
     page: SettingsPage,
     onPageChange: (SettingsPage) -> Unit,
@@ -418,9 +363,6 @@ private fun MobileSettingsScreen(
     onCheckForUpdatesClick: (() -> Unit)? = null,
     onCollectionsClick: () -> Unit = {},
 ) {
-    val saveableStateHolder = rememberSaveableStateHolder()
-    SettingsPageTransition(page = page) { animatedPage ->
-    saveableStateHolder.SaveableStateProvider(animatedPage.name) {
         var settingsSearchQuery by rememberSaveable { mutableStateOf("") }
         var rootSearchVisible by rememberSaveable { mutableStateOf(false) }
         var rootSearchRevealAnimating by rememberSaveable { mutableStateOf(false) }
@@ -428,7 +370,7 @@ private fun MobileSettingsScreen(
         val hapticFeedback = LocalHapticFeedback.current
         val hapticScope = rememberCoroutineScope()
         val rootSearchRevealConnection = rememberSettingsRootSearchRevealConnection(
-            page = animatedPage,
+            page = page,
             listState = listState,
             query = settingsSearchQuery,
             searchVisible = rootSearchVisible,
@@ -483,15 +425,14 @@ private fun MobileSettingsScreen(
             listState = listState,
         ) {
             stickyHeader {
-                val previousPage = animatedPage.previousPage()
+                val previousPage = page.previousPage()
                 NuvioScreenHeader(
-                    title = stringResource(animatedPage.titleRes),
+                    title = stringResource(page.titleRes),
                     onBack = previousPage?.let { { onPageChange(it) } },
-                    animateTitle = false,
                 )
             }
 
-            when (animatedPage) {
+            when (page) {
                 SettingsPage.Root -> {
                     settingsSearchRootContent(
                         query = settingsSearchQuery,
@@ -624,8 +565,6 @@ private fun MobileSettingsScreen(
                 )
             }
         }
-    }
-    }
 }
 
 @Composable
@@ -777,8 +716,7 @@ private fun TabletSettingsScreen(
             }
         }
 
-        SettingsPageTransition(page = page) { animatedPage ->
-        saveableStateHolder.SaveableStateProvider(animatedPage.name) {
+        saveableStateHolder.SaveableStateProvider(page.name) {
             var settingsSearchQuery by rememberSaveable { mutableStateOf("") }
             var rootSearchVisible by rememberSaveable { mutableStateOf(false) }
             var rootSearchRevealAnimating by rememberSaveable { mutableStateOf(false) }
@@ -804,7 +742,7 @@ private fun TabletSettingsScreen(
             val listState = rememberLazyListState()
             val bottomOverlayPadding = LocalNuvioBottomNavigationOverlayPadding.current
             val rootSearchRevealConnection = rememberSettingsRootSearchRevealConnection(
-                page = animatedPage,
+                page = page,
                 listState = listState,
                 query = settingsSearchQuery,
                 searchVisible = rootSearchVisible,
@@ -836,22 +774,22 @@ private fun TabletSettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 item {
-                    val previousPage = animatedPage.previousPage()
+                    val previousPage = page.previousPage()
                     TabletPageHeader(
-                        title = if (animatedPage == SettingsPage.Root) {
+                        title = if (page == SettingsPage.Root) {
                             if (settingsSearchQuery.isBlank()) {
                                 stringResource(activeCategory.labelRes)
                             } else {
                                 stringResource(Res.string.compose_settings_page_root)
                             }
                         } else {
-                            stringResource(animatedPage.titleRes)
+                            stringResource(page.titleRes)
                         },
                         showBack = previousPage != null,
                         onBack = { previousPage?.let(onPageChange) },
                     )
                 }
-                when (animatedPage) {
+                when (page) {
                     SettingsPage.Root -> {
                         settingsSearchRootContent(
                             query = settingsSearchQuery,
@@ -987,7 +925,6 @@ private fun TabletSettingsScreen(
                     )
                 }
             }
-        }
         }
     }
 }
