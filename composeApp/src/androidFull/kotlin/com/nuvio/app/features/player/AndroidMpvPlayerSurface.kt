@@ -32,6 +32,7 @@ private const val TAG = "NuvioMpvPlayer"
 private const val MpvCacheBytes = 192 * 1024 * 1024
 private const val MpvBackCacheBytes = 96 * 1024 * 1024
 private const val MpvForwardCacheSeconds = 120
+private const val MaxMpvSeekableCacheRanges = 32
 private const val DefaultUserAgent =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
@@ -469,6 +470,12 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
             ?: 0.0
         val positionSeconds = MPVLib.getPropertyDouble("time-pos") ?: 0.0
         val cachedSeconds = MPVLib.getPropertyDouble("demuxer-cache-time") ?: 0.0
+        val bufferedPositionMs = resolveMpvBufferedPositionMs(
+            positionSeconds = positionSeconds,
+            durationSeconds = durationSeconds,
+            cacheTimeSeconds = cachedSeconds,
+            seekableRanges = readMpvSeekableCacheRanges(),
+        )
         val speed = MPVLib.getPropertyDouble("speed") ?: 1.0
         val paused = MPVLib.getPropertyBoolean("pause") ?: isPaused
         val pausedForCache = MPVLib.getPropertyBoolean("paused-for-cache") ?: false
@@ -487,7 +494,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
             isEnded = eofReached,
             durationMs = (durationSeconds.coerceAtLeast(0.0) * 1000.0).toLong(),
             positionMs = (positionSeconds.coerceAtLeast(0.0) * 1000.0).toLong(),
-            bufferedPositionMs = ((positionSeconds + cachedSeconds).coerceAtLeast(0.0) * 1000.0).toLong(),
+            bufferedPositionMs = bufferedPositionMs,
             playbackSpeed = speed.toFloat().takeIf { it > 0f } ?: 1f,
         )
     }
@@ -502,6 +509,25 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         runCatching { MPVLib.detachSurface() }
         runCatching { MPVLib.destroy() }
         isMpvInitialized = false
+    }
+
+    private fun readMpvSeekableCacheRanges(): List<MpvSeekableCacheRange> {
+        val count = MPVLib.getPropertyInt("demuxer-cache-state/seekable-ranges/count")
+        val ranges = mutableListOf<MpvSeekableCacheRange>()
+        val maxRangeCount = count?.takeIf { it > 0 }?.coerceAtMost(MaxMpvSeekableCacheRanges)
+            ?: MaxMpvSeekableCacheRanges
+
+        for (index in 0 until maxRangeCount) {
+            val prefix = "demuxer-cache-state/seekable-ranges/$index"
+            val start = MPVLib.getPropertyDouble("$prefix/start")
+            val end = MPVLib.getPropertyDouble("$prefix/end")
+            if (start == null || end == null) {
+                if (count == null) break
+                continue
+            }
+            ranges += MpvSeekableCacheRange(startSeconds = start, endSeconds = end)
+        }
+        return ranges
     }
 
     private fun initOptions() {
@@ -572,6 +598,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         MPVLib.observeProperty("duration/full", mpvFormatDouble)
         MPVLib.observeProperty("duration", mpvFormatDouble)
         MPVLib.observeProperty("demuxer-cache-time", mpvFormatDouble)
+        MPVLib.observeProperty("demuxer-cache-state", mpvFormatNone)
         MPVLib.observeProperty("pause", mpvFormatFlag)
         MPVLib.observeProperty("paused-for-cache", mpvFormatFlag)
         MPVLib.observeProperty("core-idle", mpvFormatFlag)
