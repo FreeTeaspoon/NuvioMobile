@@ -14,8 +14,10 @@ class MdbListMetadataServiceTest {
     fun `rating enrichment keeps successful providers when one provider fails`() = runBlocking {
         val originalRatingPayloadFetcher = MdbListMetadataService.ratingPayloadFetcher
         val originalProviderLinksHtmlFetcher = MdbListMetadataService.providerLinksHtmlFetcher
+        val originalTmdbToImdbResolver = MdbListMetadataService.tmdbToImdbResolver
         MdbListMetadataService.clearCache()
         MdbListMetadataService.providerLinksHtmlFetcher = { "" }
+        MdbListMetadataService.tmdbToImdbResolver = { _, _ -> null }
         MdbListMetadataService.ratingPayloadFetcher = { url, _ ->
             when {
                 "/tmdb?" in url -> error("TMDB request failed")
@@ -52,6 +54,130 @@ class MdbListMetadataServiceTest {
         } finally {
             MdbListMetadataService.ratingPayloadFetcher = originalRatingPayloadFetcher
             MdbListMetadataService.providerLinksHtmlFetcher = originalProviderLinksHtmlFetcher
+            MdbListMetadataService.tmdbToImdbResolver = originalTmdbToImdbResolver
+            MdbListMetadataService.clearCache()
+        }
+    }
+
+    @Test
+    fun `rating enrichment resolves tmdb fallback id to imdb id`() = runBlocking {
+        val originalRatingPayloadFetcher = MdbListMetadataService.ratingPayloadFetcher
+        val originalProviderLinksHtmlFetcher = MdbListMetadataService.providerLinksHtmlFetcher
+        val originalTmdbToImdbResolver = MdbListMetadataService.tmdbToImdbResolver
+        val requestedTmdbLookups = mutableListOf<Pair<Int, String>>()
+        val ratingRequestBodies = mutableListOf<String>()
+        MdbListMetadataService.clearCache()
+        MdbListMetadataService.providerLinksHtmlFetcher = { "" }
+        MdbListMetadataService.tmdbToImdbResolver = { tmdbId, mediaType ->
+            requestedTmdbLookups += tmdbId to mediaType
+            if (tmdbId == 900 && mediaType == "tv") "tt0840196" else null
+        }
+        MdbListMetadataService.ratingPayloadFetcher = { _, body ->
+            ratingRequestBodies += body
+            """{"ratings":[{"rating":8.3}]}"""
+        }
+
+        try {
+            val result = MdbListMetadataService.enrichMeta(
+                meta = MetaDetails(
+                    id = "tmdb:900",
+                    type = "series",
+                    name = "Skins",
+                ),
+                fallbackItemId = "tmdb:900",
+                settings = mdbListSettings(useImdb = true),
+            )
+
+            assertEquals(listOf(900 to "tv"), requestedTmdbLookups)
+            assertTrue(ratingRequestBodies.single().contains("tt0840196"))
+            assertEquals(
+                listOf(MetaExternalRating(source = MdbListMetadataService.PROVIDER_IMDB, value = 8.3)),
+                result.externalRatings,
+            )
+        } finally {
+            MdbListMetadataService.ratingPayloadFetcher = originalRatingPayloadFetcher
+            MdbListMetadataService.providerLinksHtmlFetcher = originalProviderLinksHtmlFetcher
+            MdbListMetadataService.tmdbToImdbResolver = originalTmdbToImdbResolver
+            MdbListMetadataService.clearCache()
+        }
+    }
+
+    @Test
+    fun `rating enrichment resolves tmdb provider link to imdb id`() = runBlocking {
+        val originalRatingPayloadFetcher = MdbListMetadataService.ratingPayloadFetcher
+        val originalProviderLinksHtmlFetcher = MdbListMetadataService.providerLinksHtmlFetcher
+        val originalTmdbToImdbResolver = MdbListMetadataService.tmdbToImdbResolver
+        val requestedTmdbLookups = mutableListOf<Pair<Int, String>>()
+        MdbListMetadataService.clearCache()
+        MdbListMetadataService.providerLinksHtmlFetcher = { "" }
+        MdbListMetadataService.tmdbToImdbResolver = { tmdbId, mediaType ->
+            requestedTmdbLookups += tmdbId to mediaType
+            if (tmdbId == 900 && mediaType == "tv") "tt0840196" else null
+        }
+        MdbListMetadataService.ratingPayloadFetcher = { _, _ -> """{"ratings":[{"rating":8.3}]}""" }
+
+        try {
+            val result = MdbListMetadataService.enrichMeta(
+                meta = MetaDetails(
+                    id = "series:skins",
+                    type = "series",
+                    name = "Skins",
+                    links = listOf(
+                        MetaLink(
+                            name = "TMDB",
+                            category = "metadata",
+                            url = "https://www.themoviedb.org/tv/900-skins",
+                        ),
+                    ),
+                ),
+                fallbackItemId = "series:skins",
+                settings = mdbListSettings(useImdb = true),
+            )
+
+            assertEquals(listOf(900 to "tv"), requestedTmdbLookups)
+            assertEquals(
+                listOf(MetaExternalRating(source = MdbListMetadataService.PROVIDER_IMDB, value = 8.3)),
+                result.externalRatings,
+            )
+        } finally {
+            MdbListMetadataService.ratingPayloadFetcher = originalRatingPayloadFetcher
+            MdbListMetadataService.providerLinksHtmlFetcher = originalProviderLinksHtmlFetcher
+            MdbListMetadataService.tmdbToImdbResolver = originalTmdbToImdbResolver
+            MdbListMetadataService.clearCache()
+        }
+    }
+
+    @Test
+    fun `rating enrichment returns base meta when ids cannot resolve to imdb`() = runBlocking {
+        val originalRatingPayloadFetcher = MdbListMetadataService.ratingPayloadFetcher
+        val originalProviderLinksHtmlFetcher = MdbListMetadataService.providerLinksHtmlFetcher
+        val originalTmdbToImdbResolver = MdbListMetadataService.tmdbToImdbResolver
+        var ratingRequests = 0
+        MdbListMetadataService.clearCache()
+        MdbListMetadataService.providerLinksHtmlFetcher = { "" }
+        MdbListMetadataService.tmdbToImdbResolver = { _, _ -> null }
+        MdbListMetadataService.ratingPayloadFetcher = { _, _ ->
+            ratingRequests += 1
+            """{"ratings":[{"rating":8.3}]}"""
+        }
+
+        try {
+            val result = MdbListMetadataService.enrichMeta(
+                meta = MetaDetails(
+                    id = "series:skins",
+                    type = "series",
+                    name = "Skins",
+                ),
+                fallbackItemId = "series:skins",
+                settings = mdbListSettings(useImdb = true),
+            )
+
+            assertEquals(0, ratingRequests)
+            assertTrue(result.externalRatings.isEmpty())
+        } finally {
+            MdbListMetadataService.ratingPayloadFetcher = originalRatingPayloadFetcher
+            MdbListMetadataService.providerLinksHtmlFetcher = originalProviderLinksHtmlFetcher
+            MdbListMetadataService.tmdbToImdbResolver = originalTmdbToImdbResolver
             MdbListMetadataService.clearCache()
         }
     }
@@ -185,5 +311,25 @@ class MdbListMetadataServiceTest {
         name = provider,
         category = RATING_PROVIDER_LINK_CATEGORY,
         url = url,
+    )
+
+    private fun mdbListSettings(
+        useImdb: Boolean = false,
+        useTmdb: Boolean = false,
+        useTomatoes: Boolean = false,
+        useMetacritic: Boolean = false,
+        useTrakt: Boolean = false,
+        useLetterboxd: Boolean = false,
+        useAudience: Boolean = false,
+    ): MdbListSettings = MdbListSettings(
+        enabled = true,
+        apiKey = "test-key",
+        useImdb = useImdb,
+        useTmdb = useTmdb,
+        useTomatoes = useTomatoes,
+        useMetacritic = useMetacritic,
+        useTrakt = useTrakt,
+        useLetterboxd = useLetterboxd,
+        useAudience = useAudience,
     )
 }
