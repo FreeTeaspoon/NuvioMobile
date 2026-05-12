@@ -75,6 +75,8 @@ jobs:
           fi
 
           body_file="${RUNNER_TEMP}/release-body.md"
+          official_notes_file="${RUNNER_TEMP}/official-release-notes.md"
+          fork_notes_file="${RUNNER_TEMP}/fork-release-notes.md"
           upstream_version="${upstream_tag#v}"
           if ! [[ "${upstream_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Official release tag must resolve to x.x.x, got ${upstream_tag}."
@@ -97,39 +99,65 @@ jobs:
           else
             fork_tag="${upstream_version}.1"
           fi
-          jq -r '.body // ""' <<<"${release_json}" > "${body_file}"
+          jq -r '.body // ""' <<<"${release_json}" > "${official_notes_file}"
 
-          changelog_notes="${RUNNER_TEMP}/changelog-notes.md"
-          if [ -f CHANGELOG.md ] && awk -v version="${upstream_version}" '
-            /^##[[:space:]]+/ {
-              heading = $0
-              sub(/^##[[:space:]]+/, "", heading)
-              sub(/^\[/, "", heading)
-              sub(/\].*$/, "", heading)
-              sub(/[[:space:]].*$/, "", heading)
-              if (heading == version) {
-                found = 1
-                next
+          extract_changelog_section() {
+            local version="$1"
+            local output="$2"
+
+            [ -f CHANGELOG.md ] || return 1
+            awk -v version="${version}" '
+              /^##[[:space:]]+/ {
+                heading = $0
+                sub(/^##[[:space:]]+/, "", heading)
+                sub(/^\[/, "", heading)
+                sub(/\].*$/, "", heading)
+                sub(/[[:space:]].*$/, "", heading)
+                if (heading == version) {
+                  found = 1
+                  next
+                }
+                if (found) exit
               }
-              if (found) exit
-            }
-            found { print }
-            END { if (!found) exit 1 }
-          ' CHANGELOG.md > "${changelog_notes}" && [ -s "${changelog_notes}" ]; then
-            {
-              echo
-              echo "### Fork Changes"
-              cat "${changelog_notes}"
-            } >> "${body_file}"
+              found { print }
+              END { if (!found) exit 1 }
+            ' CHANGELOG.md > "${output}" &&
+              awk 'NF && $0 !~ /^###[[:space:]]+/ { has_content = 1 } END { exit has_content ? 0 : 1 }' "${output}"
+          }
+
+          if extract_changelog_section "${fork_tag}" "${fork_notes_file}"; then
+            fork_notes_source="CHANGELOG.md ${fork_tag}"
+          elif extract_changelog_section "${upstream_version}" "${fork_notes_file}"; then
+            fork_notes_source="CHANGELOG.md ${upstream_version}"
+          elif extract_changelog_section "Unreleased" "${fork_notes_file}"; then
+            fork_notes_source="CHANGELOG.md Unreleased"
+          else
+            fork_notes_source="none"
+            echo "- No fork-specific changelog entries were found for this build." > "${fork_notes_file}"
           fi
 
           {
+            echo "## Fork changes"
             echo
+            cat "${fork_notes_file}"
             echo "---"
-            echo "Fork build from ${GITHUB_REPOSITORY}:${TARGET_BRANCH}."
-            echo "Official release source: ${upstream_url}"
-            echo "This APK is built from this fork after syncing ${UPSTREAM_REPO}:${TARGET_BRANCH} for the official ${upstream_tag} release. Fork changes are included, and the app version is stamped as ${fork_tag}."
-          } >> "${body_file}"
+            echo
+            if [ -s "${official_notes_file}" ]; then
+              echo "## Upstream release notes"
+              echo
+              cat "${official_notes_file}"
+              echo
+              echo "---"
+              echo
+            fi
+            echo "## Build metadata"
+            echo
+            echo "- Fork release: ${fork_tag}"
+            echo "- Upstream release: ${upstream_tag}"
+            echo "- Fork notes source: ${fork_notes_source}"
+            echo "- Repository: ${GITHUB_REPOSITORY}:${TARGET_BRANCH}"
+            echo "- Official release: ${upstream_url}"
+          } > "${body_file}"
 
           echo "skip=false" >> "${GITHUB_OUTPUT}"
           echo "upstream_tag=${upstream_tag}" >> "${GITHUB_OUTPUT}"

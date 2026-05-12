@@ -69,70 +69,24 @@ jobs:
           notes_file="${RUNNER_TEMP}/release-notes.md"
           upstream_tag="${base_version}"
           official_release_json="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${upstream_tag}" 2>/dev/null || gh api "repos/${UPSTREAM_REPO}/releases/tags/v${upstream_tag}" 2>/dev/null || true)"
+          official_notes_file="${RUNNER_TEMP}/official-release-notes.md"
+          fork_notes_file="${RUNNER_TEMP}/fork-release-notes.md"
           official_url=""
           prerelease="false"
 
-          if [ -n "${official_release_json}" ] && jq -e '.tag_name' <<<"${official_release_json}" >/dev/null 2>&1; then
-            upstream_tag="$(jq -r '.tag_name' <<<"${official_release_json}")"
-            official_url="$(jq -r '.html_url // ""' <<<"${official_release_json}")"
-            prerelease="$(jq -r '.prerelease // false' <<<"${official_release_json}")"
-            jq -r '.body // ""' <<<"${official_release_json}" > "${notes_file}"
-            # Upstream body is identical for every fork tag with the same base version (e.g. 0.1.12.1 vs 0.1.12.2).
-            # Always append fork-specific notes so each GitHub release is distinct.
-            {
-              echo
-              echo "### This fork build (${tag})"
-              echo
-              fork_changelog="${RUNNER_TEMP}/fork-changelog-exact.md"
-              if [ -f CHANGELOG.md ] && awk -v version="${tag}" '
-                /^##[[:space:]]+/ {
-                  heading = $0
-                  sub(/^##[[:space:]]+/, "", heading)
-                  sub(/^\[/, "", heading)
-                  sub(/\].*$/, "", heading)
-                  sub(/[[:space:]].*$/, "", heading)
-                  if (heading == version) {
-                    found = 1
-                    next
-                  }
-                  if (found) exit
-                }
-                found { print }
-                END { if (!found) exit 1 }
-              ' CHANGELOG.md > "${fork_changelog}" && [ -s "${fork_changelog}" ]; then
-                cat "${fork_changelog}"
-              elif [ "${next_suffix}" -gt 1 ]; then
-                previous_fork="${base_version}.$((next_suffix - 1))"
-                if git rev-parse -q --verify "refs/tags/${previous_fork}" >/dev/null; then
-                  # Do not fail the step if the revision range is invalid under set -e.
-                  fork_commits="$(
-                    git log --no-merges --pretty=format:'- %s (%h)' "${previous_fork}..${GITHUB_SHA}" 2>/dev/null || true
-                  )"
-                  if [ -n "${fork_commits}" ]; then
-                    printf '%s\n' "${fork_commits}"
-                  else
-                    echo "No commit list since ${previous_fork} (empty range or unavailable history)."
-                  fi
-                  echo
-                else
-                  echo "Additional fork builds for upstream ${upstream_tag} reuse the official release notes above. This is tag ${tag}; compare to the previous fork tag ${previous_fork} in git for commit-level changes."
-                  echo
-                fi
-              else
-                echo "First fork build published for upstream release ${upstream_tag}."
-                echo
-              fi
-            } >> "${notes_file}"
-          else
-            changelog_notes="${RUNNER_TEMP}/changelog-notes.md"
-            if [ -f CHANGELOG.md ] && awk -v version="${tag}" -v base_version="${base_version}" '
+          extract_changelog_section() {
+            local version="$1"
+            local output="$2"
+
+            [ -f CHANGELOG.md ] || return 1
+            awk -v version="${version}" '
               /^##[[:space:]]+/ {
                 heading = $0
                 sub(/^##[[:space:]]+/, "", heading)
                 sub(/^\[/, "", heading)
                 sub(/\].*$/, "", heading)
                 sub(/[[:space:]].*$/, "", heading)
-                if (heading == version || heading == base_version) {
+                if (heading == version) {
                   found = 1
                   next
                 }
@@ -140,50 +94,71 @@ jobs:
               }
               found { print }
               END { if (!found) exit 1 }
-            ' CHANGELOG.md > "${changelog_notes}" && [ -s "${changelog_notes}" ]; then
-              {
-                echo "### Release Notes"
-                cat "${changelog_notes}"
-              } > "${notes_file}"
+            ' CHANGELOG.md > "${output}" &&
+              awk 'NF && $0 !~ /^###[[:space:]]+/ { has_content = 1 } END { exit has_content ? 0 : 1 }' "${output}"
+          }
+
+          if [ -n "${official_release_json}" ] && jq -e '.tag_name' <<<"${official_release_json}" >/dev/null 2>&1; then
+            upstream_tag="$(jq -r '.tag_name' <<<"${official_release_json}")"
+            official_url="$(jq -r '.html_url // ""' <<<"${official_release_json}")"
+            prerelease="$(jq -r '.prerelease // false' <<<"${official_release_json}")"
+            jq -r '.body // ""' <<<"${official_release_json}" > "${official_notes_file}"
+          fi
+
+          if extract_changelog_section "${tag}" "${fork_notes_file}"; then
+            fork_notes_source="CHANGELOG.md ${tag}"
+          elif extract_changelog_section "${base_version}" "${fork_notes_file}"; then
+            fork_notes_source="CHANGELOG.md ${base_version}"
+          elif extract_changelog_section "Unreleased" "${fork_notes_file}"; then
+            fork_notes_source="CHANGELOG.md Unreleased"
+          else
+            fork_notes_source="commit summary"
+            previous_fork="${base_version}.$((next_suffix - 1))"
+            previous_tag="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
+            if [ "${next_suffix}" -gt 1 ] && git rev-parse -q --verify "refs/tags/${previous_fork}" >/dev/null; then
+              commit_range="${previous_fork}..${GITHUB_SHA}"
+            elif [ -n "${previous_tag}" ]; then
+              commit_range="${previous_tag}..${GITHUB_SHA}"
             else
-              previous_tag="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
-              {
-                echo "### Fork Changes"
-                echo
-                if [ -n "${previous_tag}" ]; then
-                  fork_commits="$(
-                    git log --no-merges --pretty=format:'- %s (%h)' "${previous_tag}..${GITHUB_SHA}" 2>/dev/null || true
-                  )"
-                  if [ -n "${fork_commits}" ]; then
-                    printf '%s\n' "${fork_commits}"
-                  else
-                    echo "(Could not list commits since ${previous_tag}.)"
-                  fi
-                else
-                  fork_commits="$(
-                    git log --no-merges --pretty=format:'- %s (%h)' -n 20 "${GITHUB_SHA}" 2>/dev/null || true
-                  )"
-                  if [ -n "${fork_commits}" ]; then
-                    printf '%s\n' "${fork_commits}"
-                  else
-                    echo "(Could not list recent commits.)"
-                  fi
-                fi
-                echo
-              } > "${notes_file}"
+              commit_range=""
+            fi
+
+            if [ -n "${commit_range}" ]; then
+              git log --no-merges --pretty=format:'- %s (%h)' "${commit_range}" 2>/dev/null > "${fork_notes_file}" || true
+            else
+              git log --no-merges --pretty=format:'- %s (%h)' -n 20 "${GITHUB_SHA}" 2>/dev/null > "${fork_notes_file}" || true
+            fi
+            if [ ! -s "${fork_notes_file}" ]; then
+              echo "- No commit summary was available for this build." > "${fork_notes_file}"
             fi
           fi
 
           {
+            echo "## Fork changes"
             echo
+            cat "${fork_notes_file}"
             echo "---"
-            echo "Fork build from ${GITHUB_REPOSITORY}:cmp-rewrite."
-            if [ -n "${official_url}" ]; then
-              echo "Official release source: ${official_url}"
-              echo "This APK is built from this fork after syncing the official ${UPSTREAM_REPO} ${upstream_tag} release. Fork changes are included, and the app version is stamped as ${tag}."
+            echo
+            if [ -s "${official_notes_file}" ]; then
+              echo "## Upstream release notes"
+              echo
+              cat "${official_notes_file}"
+              echo
+              echo "---"
+              echo
             fi
-            echo "Build commit: ${GITHUB_SHA}"
-          } >> "${notes_file}"
+            echo "## Build metadata"
+            echo
+            echo "- Fork release: ${tag}"
+            echo "- Base version: ${base_version}"
+            echo "- Fork notes source: ${fork_notes_source}"
+            echo "- Repository: ${GITHUB_REPOSITORY}:cmp-rewrite"
+            if [ -n "${official_url}" ]; then
+              echo "- Upstream release: ${upstream_tag}"
+              echo "- Official release: ${official_url}"
+            fi
+            echo "- Build commit: ${GITHUB_SHA}"
+          } > "${notes_file}"
 
           echo "version=${tag}" >> "${GITHUB_OUTPUT}"
           echo "app_version=${app_version}" >> "${GITHUB_OUTPUT}"
