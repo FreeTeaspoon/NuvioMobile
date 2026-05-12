@@ -74,6 +74,7 @@ import coil3.ImageLoader
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.request.CachePolicy
 import coil3.request.crossfade
+import coil3.svg.SvgDecoder
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.nuvio.app.core.build.AppFeaturePolicy
@@ -150,6 +151,7 @@ import com.nuvio.app.features.settings.AddonsSettingsScreen
 import com.nuvio.app.features.settings.PluginsSettingsScreen
 import com.nuvio.app.features.settings.AccountSettingsScreen
 import com.nuvio.app.features.settings.SupportersContributorsSettingsScreen
+import com.nuvio.app.features.settings.LicensesAttributionsSettingsScreen
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.collection.CollectionManagementScreen
 import com.nuvio.app.features.collection.CollectionEditorScreen
@@ -246,6 +248,9 @@ object AccountSettingsRoute
 object SupportersContributorsSettingsRoute
 
 @Serializable
+object LicensesAttributionsSettingsRoute
+
+@Serializable
 object CollectionsRoute
 
 @Serializable
@@ -308,6 +313,9 @@ fun App() {
             .crossfade(true)
             .diskCachePolicy(CachePolicy.ENABLED)
             .memoryCachePolicy(CachePolicy.ENABLED)
+            .components {
+                add(SvgDecoder.Factory())
+            }
             .configurePlatformImageLoader()
             .build()
     }
@@ -520,6 +528,7 @@ private fun MainAppContent(
         val hapticFeedback = LocalHapticFeedback.current
         val coroutineScope = rememberCoroutineScope()
         var selectedTab by rememberSaveable { mutableStateOf(AppScreenTab.Home) }
+        val currentBackStackEntry by navController.currentBackStackEntryAsState()
         val nativeRequestedTab by remember { NativeTabBridge.requestedTab }.collectAsStateWithLifecycle()
         val liquidGlassNativeTabBarEnabled by remember {
             ThemeSettingsRepository.liquidGlassNativeTabBarEnabled
@@ -988,6 +997,7 @@ private fun MainAppContent(
                         val useNativeBottomTabs =
                             liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
                         val navigationBackdrop = rememberLayerBackdrop()
+                        val tabsRouteActive = currentBackStackEntry?.destination?.hasRoute<TabsRoute>() == true
                         val onProfileSelected: (NuvioProfile) -> Unit = { profile ->
                             profileSwitchLoading = true
                             selectedTab = AppScreenTab.Home
@@ -1017,6 +1027,7 @@ private fun MainAppContent(
                                             .padding(innerPadding)
                                             .then(if (!isTabletLayout && !useNativeBottomTabs) Modifier.layerBackdrop(navigationBackdrop) else Modifier),
                                         selectedTab = selectedTab,
+                                        animateHomeCollectionGifs = tabsRouteActive,
                                         onCatalogClick = onCatalogClick,
                                         onPosterClick = { meta ->
                                             navController.navigate(DetailRoute(type = meta.type, id = meta.id))
@@ -1045,6 +1056,9 @@ private fun MainAppContent(
                                         onAccountSettingsClick = { navController.navigate(AccountSettingsRoute) },
                                         onSupportersContributorsSettingsClick = {
                                             navController.navigate(SupportersContributorsSettingsRoute)
+                                        },
+                                        onLicensesAttributionsSettingsClick = {
+                                            navController.navigate(LicensesAttributionsSettingsRoute)
                                         },
                                         onCheckForUpdatesClick = if (AppFeaturePolicy.inAppUpdaterEnabled) {
                                             {
@@ -1393,7 +1407,13 @@ private fun MainAppContent(
                         reuseHandled = true
                         if (launch.manualSelection) return@LaunchedEffect
                         if (!playerSettings.streamReuseLastLinkEnabled) return@LaunchedEffect
-                        val cacheKey = StreamLinkCacheRepository.contentKey(launch.type, effectiveVideoId)
+                        val cacheKey = StreamLinkCacheRepository.contentKey(
+                            type = launch.type,
+                            videoId = effectiveVideoId,
+                            parentMetaId = launch.parentMetaId,
+                            season = launch.seasonNumber,
+                            episode = launch.episodeNumber,
+                        )
                         val maxAgeMs = playerSettings.streamReuseLastLinkCacheHours * 60L * 60L * 1000L
                         val cached = StreamLinkCacheRepository.getValid(cacheKey, maxAgeMs)
                         if (cached != null) {
@@ -1435,17 +1455,37 @@ private fun MainAppContent(
                     }
 
                     val streamsUiState by StreamsRepository.uiState.collectAsStateWithLifecycle()
+                    val expectedStreamsRequestToken = StreamsRepository.requestToken(
+                        type = launch.type,
+                        videoId = effectiveVideoId,
+                        season = launch.seasonNumber,
+                        episode = launch.episodeNumber,
+                        manualSelection = launch.manualSelection,
+                    )
                     var autoPlayHandled by rememberSaveable(launch.videoId, effectiveVideoId) { mutableStateOf(false) }
-                    LaunchedEffect(streamsUiState.autoPlayStream, reuseHandled, launch.manualSelection) {
+                    LaunchedEffect(
+                        streamsUiState.autoPlayStream,
+                        streamsUiState.requestToken,
+                        expectedStreamsRequestToken,
+                        reuseHandled,
+                        launch.manualSelection,
+                    ) {
                         if (!reuseHandled) return@LaunchedEffect
                         if (launch.manualSelection) return@LaunchedEffect
                         if (reuseNavigated) return@LaunchedEffect
                         if (autoPlayHandled) return@LaunchedEffect
+                        if (streamsUiState.requestToken != expectedStreamsRequestToken) return@LaunchedEffect
                         val stream = streamsUiState.autoPlayStream ?: return@LaunchedEffect
                         val sourceUrl = stream.directPlaybackUrl ?: return@LaunchedEffect
                         autoPlayHandled = true
                         if (playerSettings.streamReuseLastLinkEnabled) {
-                            val cacheKey = StreamLinkCacheRepository.contentKey(launch.type, effectiveVideoId)
+                            val cacheKey = StreamLinkCacheRepository.contentKey(
+                                type = launch.type,
+                                videoId = effectiveVideoId,
+                                parentMetaId = launch.parentMetaId,
+                                season = launch.seasonNumber,
+                                episode = launch.episodeNumber,
+                            )
                             StreamLinkCacheRepository.save(
                                 contentKey = cacheKey,
                                 url = sourceUrl,
@@ -1531,7 +1571,13 @@ private fun MainAppContent(
                             if (sourceUrl != null) {
                                 // Persist for Reuse Last Link
                                 if (playerSettings.streamReuseLastLinkEnabled) {
-                                    val cacheKey = StreamLinkCacheRepository.contentKey(launch.type, effectiveVideoId)
+                                    val cacheKey = StreamLinkCacheRepository.contentKey(
+                                        type = launch.type,
+                                        videoId = effectiveVideoId,
+                                        parentMetaId = launch.parentMetaId,
+                                        season = launch.seasonNumber,
+                                        episode = launch.episodeNumber,
+                                    )
                                     StreamLinkCacheRepository.save(
                                         contentKey = cacheKey,
                                         url = sourceUrl,
@@ -1775,6 +1821,15 @@ private fun MainAppContent(
                         backStackEntry = backStackEntry,
                     )
                     SupportersContributorsSettingsScreen(
+                        onBack = onBack,
+                    )
+                }
+                composable<LicensesAttributionsSettingsRoute> { backStackEntry ->
+                    val onBack = rememberGuardedPopBackStack(
+                        navController = navController,
+                        backStackEntry = backStackEntry,
+                    )
+                    LicensesAttributionsSettingsScreen(
                         onBack = onBack,
                     )
                 }
@@ -2036,6 +2091,7 @@ private fun rememberGuardedPopBackStack(
 private fun AppTabHost(
     selectedTab: AppScreenTab,
     modifier: Modifier = Modifier,
+    animateHomeCollectionGifs: Boolean = true,
     onCatalogClick: ((HomeCatalogSection) -> Unit)? = null,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onPosterLongClick: ((MetaPreview) -> Unit)? = null,
@@ -2052,6 +2108,7 @@ private fun AppTabHost(
     onPluginsSettingsClick: () -> Unit = {},
     onAccountSettingsClick: () -> Unit = {},
     onSupportersContributorsSettingsClick: () -> Unit = {},
+    onLicensesAttributionsSettingsClick: () -> Unit = {},
     onCheckForUpdatesClick: (() -> Unit)? = null,
     onCollectionsSettingsClick: () -> Unit = {},
     onFolderClick: ((collectionId: String, folderId: String) -> Unit)? = null,
@@ -2065,6 +2122,7 @@ private fun AppTabHost(
                 AppScreenTab.Home -> {
                     HomeScreen(
                         modifier = Modifier.fillMaxSize(),
+                        animateCollectionGifs = animateHomeCollectionGifs,
                         onCatalogClick = onCatalogClick,
                         onPosterClick = onPosterClick,
                         onPosterLongClick = onPosterLongClick,
@@ -2103,6 +2161,7 @@ private fun AppTabHost(
                         onPluginsClick = onPluginsSettingsClick,
                         onAccountClick = onAccountSettingsClick,
                         onSupportersContributorsClick = onSupportersContributorsSettingsClick,
+                        onLicensesAttributionsClick = onLicensesAttributionsSettingsClick,
                         onCheckForUpdatesClick = onCheckForUpdatesClick,
                         onCollectionsClick = onCollectionsSettingsClick,
                     )
