@@ -9,6 +9,7 @@ import com.nuvio.app.features.details.MetaLink
 import com.nuvio.app.features.details.RATING_PROVIDER_LINK_CATEGORY
 import com.nuvio.app.features.details.normalizeRatingProviderUrl
 import com.nuvio.app.features.details.ratingProvidersForDirectUrl
+import com.nuvio.app.features.tmdb.TmdbService
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -45,12 +46,21 @@ object MdbListMetadataService {
     private val ratingsCache = mutableMapOf<String, List<MetaExternalRating>>()
     private val providerLinksCache = mutableMapOf<String, Map<String, String>>()
     private val imdbRegex = Regex("tt\\d+")
+    private val tmdbPrefixedIdRegex = Regex(
+        pattern = """(?:^|:)(?:tmdb|movie|series|tv|show):(\d+)(?:$|[:/?#-])""",
+        option = RegexOption.IGNORE_CASE,
+    )
+    private val tmdbUrlRegex = Regex(
+        pattern = """themoviedb\.org/(movie|tv)/(\d+)""",
+        option = RegexOption.IGNORE_CASE,
+    )
     private val anchorHrefRegex = Regex(
         pattern = """<a\b[^>]*\bhref\s*=\s*(['"])(.*?)\1""",
         options = setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
     internal var ratingPayloadFetcher: suspend (url: String, body: String) -> String = ::httpPostJson
     internal var providerLinksHtmlFetcher: suspend (url: String) -> String = ::httpGetText
+    internal var tmdbToImdbResolver: suspend (tmdbId: Int, mediaType: String) -> String? = TmdbService::tmdbToImdb
 
     private const val PROVIDER_RATING_TIMEOUT_MS = 2_500L
 
@@ -62,7 +72,7 @@ object MdbListMetadataService {
         if (!settings.enabled) return false
         if (settings.apiKey.trim().isBlank()) return false
         if (settings.enabledProvidersInPriorityOrder().isEmpty()) return false
-        return extractImdbId(meta.id) != null || extractImdbId(fallbackItemId) != null
+        return true
     }
 
     suspend fun enrichMeta(
@@ -75,8 +85,7 @@ object MdbListMetadataService {
         }
         val apiKey = settings.apiKey.trim()
 
-        val imdbId = extractImdbId(meta.id)
-            ?: extractImdbId(fallbackItemId)
+        val imdbId = resolveImdbId(meta, fallbackItemId)
             ?: return meta.copy(externalRatings = emptyList())
         val mediaType = toMdbListMediaType(meta.type)
         val enabledProviders = settings.enabledProvidersInPriorityOrder()
@@ -228,11 +237,78 @@ object MdbListMetadataService {
         return imdbRegex.find(value)?.value
     }
 
+    private suspend fun resolveImdbId(meta: MetaDetails, fallbackItemId: String): String? {
+        sequenceOf(meta.id, fallbackItemId)
+            .plus(meta.links.asSequence().map(MetaLink::url))
+            .mapNotNull(::extractImdbId)
+            .firstOrNull()
+            ?.let { return it }
+
+        val metaType = normalizeTmdbMediaType(meta.type)
+        val candidates = sequenceOf(
+            extractTmdbIdCandidate(meta.id, metaType),
+            extractTmdbIdCandidate(fallbackItemId, metaType),
+        )
+            .plus(meta.links.asSequence().mapNotNull { link -> extractTmdbIdCandidate(link.url, metaType) })
+            .distinct()
+            .toList()
+
+        for (candidate in candidates) {
+            val imdbId = runCatching {
+                tmdbToImdbResolver(candidate.tmdbId, candidate.mediaType)
+            }.onFailure { error ->
+                if (error is CancellationException) throw error
+                log.w { "TMDB to IMDb lookup failed for ${candidate.mediaType}/${candidate.tmdbId}: ${error.message}" }
+            }.getOrNull()
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+                ?.let(::extractImdbId)
+
+            if (imdbId != null) {
+                return imdbId
+            }
+        }
+
+        return null
+    }
+
+    private fun extractTmdbIdCandidate(value: String?, fallbackMediaType: String): TmdbIdCandidate? {
+        if (value.isNullOrBlank()) return null
+        tmdbUrlRegex.find(value)?.let { match ->
+            val mediaType = if (match.groupValues.getOrNull(1).equals("tv", ignoreCase = true)) {
+                "tv"
+            } else {
+                "movie"
+            }
+            val tmdbId = match.groupValues.getOrNull(2)?.toIntOrNull() ?: return null
+            return TmdbIdCandidate(tmdbId = tmdbId, mediaType = mediaType)
+        }
+
+        val trimmed = value.trim()
+        val prefixedId = tmdbPrefixedIdRegex.find(trimmed)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        if (prefixedId != null) {
+            return TmdbIdCandidate(tmdbId = prefixedId, mediaType = fallbackMediaType)
+        }
+
+        val numericId = trimmed.takeIf { it.all(Char::isDigit) }?.toIntOrNull()
+        return numericId?.let { TmdbIdCandidate(tmdbId = it, mediaType = fallbackMediaType) }
+    }
+
+    private fun normalizeTmdbMediaType(metaType: String): String {
+        val normalized = metaType.trim().lowercase()
+        return if (normalized == "movie" || normalized == "film") "movie" else "tv"
+    }
+
     private fun toMdbListMediaType(metaType: String): String {
         val normalized = metaType.trim().lowercase()
         return if (normalized == "movie") "movie" else "show"
     }
 }
+
+private data class TmdbIdCandidate(
+    val tmdbId: Int,
+    val mediaType: String,
+)
 
 @Serializable
 private data class RatingRequest(
