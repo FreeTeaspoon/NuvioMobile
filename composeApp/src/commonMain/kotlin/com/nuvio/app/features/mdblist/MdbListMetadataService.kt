@@ -249,6 +249,7 @@ object MdbListMetadataService {
             extractTmdbIdCandidate(meta.id, metaType),
             extractTmdbIdCandidate(fallbackItemId, metaType),
         )
+            .filterNotNull()
             .plus(meta.links.asSequence().mapNotNull { link -> extractTmdbIdCandidate(link.url, metaType) })
             .distinct()
             .toList()
