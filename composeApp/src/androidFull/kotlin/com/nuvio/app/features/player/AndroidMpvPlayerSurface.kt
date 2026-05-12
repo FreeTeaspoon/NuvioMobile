@@ -459,6 +459,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         MPVLib.setPropertyDouble("sub-font-size", style.toMpvSubtitleFontSize())
         MPVLib.setPropertyInt("sub-pos", style.toMpvSubtitlePosition())
         MPVLib.setPropertyString("sub-use-margins", "yes")
+        applyZoomIndependentSubtitleRendering()
     }
 
     fun snapshot(): PlayerPlaybackSnapshot {
@@ -584,6 +585,9 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         MPVLib.setOptionString("sub-use-margins", "yes")
         MPVLib.setOptionString("sub-ass-override", "force")
         MPVLib.setOptionString("sub-scale", "1.0")
+        MPVLib.setOptionString("sub-scale-by-window", "yes")
+        MPVLib.setOptionString("sub-scale-with-window", "yes")
+        MPVLib.setOptionString("sub-ass-scale-with-window", "yes")
         MPVLib.setOptionString("sub-fix-timing", "yes")
         MPVLib.setOptionString("sid", "auto")
     }
@@ -713,10 +717,20 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         val panscan = normalizedZoom.coerceAtLeast(0f).coerceAtMost(1f).toDouble()
         MPVLib.setPropertyDouble("panscan", panscan)
         MPVLib.setPropertyDouble("video-zoom", normalizedZoom.toDouble())
+        applyZoomIndependentSubtitleRendering()
         if (!videoZoomState.panAndZoomEnabled || videoZoomState.zoom == 0f) {
             MPVLib.setPropertyDouble("video-pan-x", 0.0)
             MPVLib.setPropertyDouble("video-pan-y", 0.0)
         }
+    }
+
+    private fun applyZoomIndependentSubtitleRendering() {
+        MPVLib.setPropertyString("blend-subtitles", "no")
+        MPVLib.setPropertyString("sub-scale-by-window", "yes")
+        MPVLib.setPropertyString("sub-scale-with-window", "yes")
+        MPVLib.setPropertyString("sub-ass-scale-with-window", "yes")
+        MPVLib.setPropertyDouble("sub-scale", 1.0)
+        MPVLib.setPropertyInt("sub-pos", subtitleStyle.toMpvSubtitlePosition())
     }
 
     private fun removeExternalSubtitleTracks() {

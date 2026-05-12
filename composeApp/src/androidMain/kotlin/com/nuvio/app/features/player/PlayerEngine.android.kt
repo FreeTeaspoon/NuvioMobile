@@ -118,6 +118,7 @@ internal fun AndroidMedia3PlayerSurface(
     val libassRenderType = runCatching {
         LibassRenderType.valueOf(playerSettings.libassRenderType)
     }.getOrDefault(LibassRenderType.CUES)
+    val effectiveLibassRenderType = libassRenderType.toZoomIndependentRenderType()
 
     val exoPlayer = remember(
         sourceUrl,
@@ -128,6 +129,8 @@ internal fun AndroidMedia3PlayerSurface(
         sourceVideoSize,
         sourceMimeType,
         sourceAudioMimeType,
+        useLibass,
+        effectiveLibassRenderType,
     ) {
         val renderersFactory = DefaultRenderersFactory(context)
             .setExtensionRendererMode(playerSettings.decoderPriority)
@@ -171,7 +174,7 @@ internal fun AndroidMedia3PlayerSurface(
                 .setLoadControl(loadControl)
                 .buildWithAssSupportCompat(
                     context = context,
-                    renderType = libassRenderType.toAssRenderType(),
+                    renderType = effectiveLibassRenderType.toAssRenderType(),
                     dataSourceFactory = dataSourceFactory,
                     extractorsFactory = extractorsFactory,
                     renderersFactory = renderersFactory
@@ -504,7 +507,7 @@ internal fun AndroidMedia3PlayerSurface(
                 syncLibassOverlay(
                     player = exoPlayer,
                     enabled = useLibass,
-                    renderType = libassRenderType,
+                    renderType = effectiveLibassRenderType,
                 )
                 applySubtitleStyle(currentSubtitleStyle)
             }
@@ -518,7 +521,7 @@ internal fun AndroidMedia3PlayerSurface(
             playerView.syncLibassOverlay(
                 player = exoPlayer,
                 enabled = useLibass,
-                renderType = libassRenderType,
+                renderType = effectiveLibassRenderType,
             )
             playerView.applySubtitleStyle(currentSubtitleStyle)
         },
@@ -593,6 +596,7 @@ private fun PlayerView.applyVideoZoom(state: PlayerVideoZoomState) {
     scaleY = 1f
     translationX = 0f
     translationY = 0f
+    resetSubtitleLayerTransforms()
 
     val videoSurface = videoSurfaceView ?: return
     videoSurface.scaleX = scale
@@ -601,6 +605,21 @@ private fun PlayerView.applyVideoZoom(state: PlayerVideoZoomState) {
     videoSurface.pivotY = videoSurface.height / 2f
     videoSurface.translationX = 0f
     videoSurface.translationY = 0f
+}
+
+private fun PlayerView.resetSubtitleLayerTransforms() {
+    subtitleView?.resetZoomTransform()
+    findViewById<View>(R.id.libass_overlay_container)?.resetZoomTransform()
+    findViewById<View>(R.id.libass_overlay_container_gl)?.resetZoomTransform()
+}
+
+private fun View.resetZoomTransform() {
+    scaleX = 1f
+    scaleY = 1f
+    translationX = 0f
+    translationY = 0f
+    pivotX = width / 2f
+    pivotY = height / 2f
 }
 
 private fun PlayerView.allowZoomedVideoToDrawIntoGutters() {
@@ -661,6 +680,13 @@ private fun PlayerView.syncLibassOverlay(
 
 private fun LibassRenderType.usesOverlaySubtitleView(): Boolean =
     this == LibassRenderType.OVERLAY_CANVAS || this == LibassRenderType.OVERLAY_OPEN_GL
+
+private fun LibassRenderType.toZoomIndependentRenderType(): LibassRenderType =
+    when (this) {
+        LibassRenderType.EFFECTS_CANVAS -> LibassRenderType.OVERLAY_CANVAS
+        LibassRenderType.EFFECTS_OPEN_GL -> LibassRenderType.OVERLAY_OPEN_GL
+        else -> this
+    }
 
 private fun android.widget.FrameLayout.hasAssOverlayChild(): Boolean {
     for (index in 0 until childCount) {
