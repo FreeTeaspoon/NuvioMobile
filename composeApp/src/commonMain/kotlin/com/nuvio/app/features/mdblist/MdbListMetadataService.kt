@@ -15,6 +15,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -48,6 +49,10 @@ object MdbListMetadataService {
         pattern = """<a\b[^>]*\bhref\s*=\s*(['"])(.*?)\1""",
         options = setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
     )
+    internal var ratingPayloadFetcher: suspend (url: String, body: String) -> String = ::httpPostJson
+    internal var providerLinksHtmlFetcher: suspend (url: String) -> String = ::httpGetText
+
+    private const val PROVIDER_RATING_TIMEOUT_MS = 2_500L
 
     fun shouldFetchForMeta(
         meta: MetaDetails,
@@ -117,12 +122,18 @@ object MdbListMetadataService {
         val ratings = coroutineScope {
             providers.map { providerId ->
                 async {
-                    fetchProviderRating(
-                        imdbId = imdbId,
-                        mediaType = mediaType,
-                        providerId = providerId,
-                        apiKey = apiKey,
-                    )
+                    withTimeoutOrNull(PROVIDER_RATING_TIMEOUT_MS) {
+                        fetchProviderRating(
+                            imdbId = imdbId,
+                            mediaType = mediaType,
+                            providerId = providerId,
+                            apiKey = apiKey,
+                        )
+                    }.also { rating ->
+                        if (rating == null) {
+                            log.w { "MDBList request returned no rating for $providerId/$imdbId" }
+                        }
+                    }
                 }
             }.awaitAll().filterNotNull()
         }
@@ -140,7 +151,7 @@ object MdbListMetadataService {
 
         val links = runCatching {
             val pageUrl = "https://www.mdblist.com/$mediaType/$imdbId"
-            extractRatingProviderLinksFromHtml(httpGetText(pageUrl))
+            extractRatingProviderLinksFromHtml(providerLinksHtmlFetcher(pageUrl))
         }.onFailure { error ->
             if (error is CancellationException) throw error
             log.w { "MDBList provider link request failed for $mediaType/$imdbId: ${error.message}" }
@@ -202,7 +213,7 @@ object MdbListMetadataService {
         )
 
         return runCatching {
-            val payload = httpPostJson(url = url, body = requestBody)
+            val payload = ratingPayloadFetcher(url, requestBody)
             val parsed = json.decodeFromString<RatingResponse>(payload)
             val rating = parsed.ratings.firstOrNull()?.rating ?: return@runCatching null
             MetaExternalRating(source = providerId, value = rating)
