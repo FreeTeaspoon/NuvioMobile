@@ -1253,8 +1253,12 @@ fun PlayerScreen(
                 return@LaunchedEffect
             }
 
-            var attempts = 0
-            while (attempts < InitialSeekMaxAttempts) {
+            var seekAttempts = 0
+            var durationWaitAttempts = 0
+            while (
+                seekAttempts < InitialSeekPositionMaxAttempts &&
+                durationWaitAttempts < InitialSeekDurationWaitMaxAttempts
+            ) {
                 val snapshot = latestPlaybackSnapshotState.value
                 when (val target = resolveInitialSeekTarget(
                     initialPositionMs = activeInitialPositionMs,
@@ -1267,7 +1271,7 @@ fun PlayerScreen(
                     }
 
                     InitialSeekTarget.WaitingForDuration -> {
-                        attempts++
+                        durationWaitAttempts++
                         delay(InitialSeekRetryIntervalMs)
                     }
 
@@ -1283,7 +1287,7 @@ fun PlayerScreen(
                         }
 
                         controller.seekTo(target.positionMs)
-                        attempts++
+                        seekAttempts++
                         delay(InitialSeekRetryIntervalMs)
 
                         val updatedSnapshot = latestPlaybackSnapshotState.value

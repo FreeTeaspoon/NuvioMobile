@@ -30,6 +30,16 @@ class PlayerStartupRulesTest {
     }
 
     @Test
+    fun percentageResumeCanWaitLongerForSlowDurationDiscovery() {
+        assertTrue(InitialSeekDurationWaitMaxAttempts > InitialSeekMaxAttempts)
+    }
+
+    @Test
+    fun localPositionResumeCanRetryLongerDuringSlowStartup() {
+        assertTrue(InitialSeekPositionMaxAttempts > InitialSeekMaxAttempts)
+    }
+
+    @Test
     fun progressFractionComputesPositionWhenDurationIsKnown() {
         val result = resolveInitialSeekTarget(
             initialPositionMs = 0L,

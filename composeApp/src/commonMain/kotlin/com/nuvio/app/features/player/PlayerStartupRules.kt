@@ -4,6 +4,8 @@ import kotlin.math.abs
 
 internal const val InitialSeekRetryIntervalMs = 250L
 internal const val InitialSeekMaxAttempts = 24
+internal const val InitialSeekDurationWaitMaxAttempts = 120
+internal const val InitialSeekPositionMaxAttempts = 120
 internal const val InitialSeekToleranceMs = 1_500L
 internal const val PendingScrubDisplayTimeoutMs = 1_500L
 
