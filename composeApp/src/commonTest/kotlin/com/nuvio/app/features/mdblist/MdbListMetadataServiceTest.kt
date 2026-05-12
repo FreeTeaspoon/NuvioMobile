@@ -1,12 +1,61 @@
 package com.nuvio.app.features.mdblist
 
+import com.nuvio.app.features.details.MetaDetails
+import com.nuvio.app.features.details.MetaExternalRating
 import com.nuvio.app.features.details.MetaLink
 import com.nuvio.app.features.details.RATING_PROVIDER_LINK_CATEGORY
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MdbListMetadataServiceTest {
+    @Test
+    fun `rating enrichment keeps successful providers when one provider fails`() = runBlocking {
+        val originalRatingPayloadFetcher = MdbListMetadataService.ratingPayloadFetcher
+        val originalProviderLinksHtmlFetcher = MdbListMetadataService.providerLinksHtmlFetcher
+        MdbListMetadataService.clearCache()
+        MdbListMetadataService.providerLinksHtmlFetcher = { "" }
+        MdbListMetadataService.ratingPayloadFetcher = { url, _ ->
+            when {
+                "/tmdb?" in url -> error("TMDB request failed")
+                "/imdb?" in url -> """{"ratings":[{"rating":8.3}]}"""
+                else -> """{"ratings":[]}"""
+            }
+        }
+
+        try {
+            val result = MdbListMetadataService.enrichMeta(
+                meta = MetaDetails(
+                    id = "tt0840196",
+                    type = "series",
+                    name = "Skins",
+                ),
+                fallbackItemId = "tt0840196",
+                settings = MdbListSettings(
+                    enabled = true,
+                    apiKey = "test-key",
+                    useImdb = true,
+                    useTmdb = true,
+                    useTomatoes = false,
+                    useMetacritic = false,
+                    useTrakt = false,
+                    useLetterboxd = false,
+                    useAudience = false,
+                ),
+            )
+
+            assertEquals(
+                listOf(MetaExternalRating(source = MdbListMetadataService.PROVIDER_IMDB, value = 8.3)),
+                result.externalRatings,
+            )
+        } finally {
+            MdbListMetadataService.ratingPayloadFetcher = originalRatingPayloadFetcher
+            MdbListMetadataService.providerLinksHtmlFetcher = originalProviderLinksHtmlFetcher
+            MdbListMetadataService.clearCache()
+        }
+    }
+
     @Test
     fun `show page html extracts trusted provider links`() {
         val links = MdbListMetadataService.extractRatingProviderLinksFromHtml(

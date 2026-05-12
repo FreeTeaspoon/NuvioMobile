@@ -33,6 +33,11 @@ object MetaDetailsRepository {
         val metaScreenSettingsFingerprint: String? = null,
     )
 
+    private data class MetaScreenEnrichmentResult(
+        val meta: MetaDetails,
+        val completed: Boolean,
+    )
+
     private val log = Logger.withTag("MetaDetailsRepo")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val _uiState = MutableStateFlow(MetaDetailsUiState())
@@ -85,17 +90,21 @@ object MetaDetailsRepository {
             )
 
             scope.launch {
-                val enrichedMeta = withContext(Dispatchers.Default) {
+                val enrichmentResult = withContext(Dispatchers.Default) {
                     enrichForMetaScreen(
-                        requestKey = requestKey,
                         meta = cachedBaseMeta,
                         fallbackItemId = id,
                         settings = mdbListSettings,
-                        settingsFingerprint = metaScreenSettingsFingerprint,
+                    )
+                }
+                if (enrichmentResult.completed) {
+                    cachedMetaByRequestKey[requestKey] = cachedEntry.copy(
+                        metaScreenMeta = enrichmentResult.meta,
+                        metaScreenSettingsFingerprint = metaScreenSettingsFingerprint,
                     )
                 }
                 _uiState.value = MetaDetailsUiState(
-                    meta = enrichedMeta.withUnreleasedFilter(),
+                    meta = enrichmentResult.meta.withUnreleasedFilter(),
                     requestType = type,
                     requestId = id,
                 )
@@ -343,21 +352,21 @@ object MetaDetailsRepository {
             requestType = requestType,
             requestId = requestId,
         )
-        val enrichedMeta = withContext(Dispatchers.Default) {
+        val enrichmentResult = withContext(Dispatchers.Default) {
             enrichForMetaScreen(
-                requestKey = requestKey,
                 meta = meta,
                 fallbackItemId = fallbackItemId,
                 settings = mdbListSettings,
-                settingsFingerprint = metaScreenSettingsFingerprint,
             )
         }
-        cachedMetaByRequestKey[requestKey] = cachedEntry.copy(
-            metaScreenMeta = enrichedMeta,
-            metaScreenSettingsFingerprint = metaScreenSettingsFingerprint,
-        )
+        if (enrichmentResult.completed) {
+            cachedMetaByRequestKey[requestKey] = cachedEntry.copy(
+                metaScreenMeta = enrichmentResult.meta,
+                metaScreenSettingsFingerprint = metaScreenSettingsFingerprint,
+            )
+        }
         _uiState.value = MetaDetailsUiState(
-            meta = enrichedMeta.withUnreleasedFilter(),
+            meta = enrichmentResult.meta.withUnreleasedFilter(),
             requestType = requestType,
             requestId = requestId,
         )
@@ -371,32 +380,19 @@ object MetaDetailsRepository {
                 .takeIf { it.isNotBlank() }
 
     private suspend fun enrichForMetaScreen(
-        requestKey: String,
         meta: MetaDetails,
         fallbackItemId: String,
         settings: com.nuvio.app.features.mdblist.MdbListSettings,
-        settingsFingerprint: String,
-    ): MetaDetails {
+    ): MetaScreenEnrichmentResult {
         val enrichedMeta = withTimeoutOrNull(MDBLIST_ENRICH_TIMEOUT_MS) {
             MdbListMetadataService.enrichMeta(
                 meta = meta,
                 fallbackItemId = fallbackItemId,
                 settings = settings,
             )
-        } ?: meta
+        } ?: return MetaScreenEnrichmentResult(meta = meta, completed = false)
 
-        cachedMetaByRequestKey[requestKey] = cachedMetaByRequestKey[requestKey]
-            ?.copy(
-                metaScreenMeta = enrichedMeta,
-                metaScreenSettingsFingerprint = settingsFingerprint,
-            )
-            ?: CachedMetaEntry(
-                baseMeta = meta,
-                metaScreenMeta = enrichedMeta,
-                metaScreenSettingsFingerprint = settingsFingerprint,
-            )
-
-        return enrichedMeta
+        return MetaScreenEnrichmentResult(meta = enrichedMeta, completed = true)
     }
 
     private fun shouldFetchMdbListOnMetaScreen(
