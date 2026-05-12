@@ -958,11 +958,13 @@ private fun MainAppContent(
             selectedContinueWatchingForActions = item
         }
 
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
         ) {
+            val isHorizontalLayout = maxWidth > maxHeight
+
             SharedTransitionLayout {
                 NavHost(
                     navController = navController,
@@ -1983,6 +1985,7 @@ private fun MainAppContent(
                 subtitle = resumePromptItem?.let { localizedContinueWatchingSubtitle(it) }.orEmpty(),
                 progressFraction = resumePromptItem?.progressFraction ?: 0f,
                 actionLabel = stringResource(Res.string.resume_prompt_action),
+                bottomClearance = if (isHorizontalLayout) 72.dp else NuvioNavigationBarScrollClearance,
                 onAction = {
                     val item = resumePromptItem ?: return@NuvioFloatingPrompt
                     resumePromptItem = null
