@@ -536,7 +536,7 @@ internal fun AndroidMedia3PlayerSurface(
                 useController = useNativeController
                 layoutParams = android.view.ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
                 player = exoPlayer
-                keepScreenOn = true
+                keepScreenOn = exoPlayer.shouldKeepPlayerScreenOn()
                 this.resizeMode = resizeMode.toExoResizeMode()
                 setShutterBackgroundColor(android.graphics.Color.BLACK)
                 playerViewRef = this
@@ -608,6 +608,11 @@ private fun ExoPlayer.snapshot(): PlayerPlaybackSnapshot =
         bufferedPositionMs = bufferedPosition.coerceAtLeast(0L),
         playbackSpeed = playbackParameters.speed,
     )
+
+private fun ExoPlayer.shouldKeepPlayerScreenOn(): Boolean =
+    playerError == null &&
+        playWhenReady &&
+        playbackState in setOf(Player.STATE_BUFFERING, Player.STATE_READY)
 
 private fun PlayerPlaybackSnapshot.keepLoadingUntilFirstFrame(
     hasRenderedFirstFrame: Boolean,

@@ -2155,16 +2155,18 @@ fun PlayerScreen(
                 ?.takeIf { it.startsWith("tt") }
                 ?: parentMetaId.takeIf { it.startsWith("tt") }
                 ?: metaUiState.meta?.id?.takeIf { it.startsWith("tt") }
+            val submitIntroSeason = activeSeasonNumber
+            val submitIntroEpisode = activeEpisodeNumber
             if (
                 showSubmitIntroModal &&
-                activeSeasonNumber != null &&
-                activeEpisodeNumber != null &&
+                submitIntroSeason != null &&
+                submitIntroEpisode != null &&
                 !submitIntroImdbId.isNullOrBlank()
             ) {
                 com.nuvio.app.features.player.skip.SubmitIntroDialog(
                     imdbId = submitIntroImdbId,
-                    season = activeSeasonNumber,
-                    episode = activeEpisodeNumber,
+                    season = submitIntroSeason,
+                    episode = submitIntroEpisode,
                     currentTimeSec = displayedPositionMs / 1000.0,
                     segmentType = submitIntroSegmentType,
                     onSegmentTypeChange = { submitIntroSegmentType = it },
