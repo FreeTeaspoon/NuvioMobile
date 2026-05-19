@@ -16,6 +16,7 @@ import com.nuvio.app.core.storage.PlatformLocalAccountDataCleaner
 import com.nuvio.app.features.addons.AddonStorage
 import com.nuvio.app.features.collection.CollectionMobileSettingsStorage
 import com.nuvio.app.features.collection.CollectionStorage
+import com.nuvio.app.features.debrid.DebridSettingsStorage
 import com.nuvio.app.features.downloads.DownloadsLiveStatusPlatform
 import com.nuvio.app.features.downloads.DownloadsPlatformDownloader
 import com.nuvio.app.features.downloads.DownloadsStorage
@@ -27,6 +28,7 @@ import com.nuvio.app.features.notifications.EpisodeReleaseNotificationPlatform
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsStorage
 import com.nuvio.app.features.player.PlayerLaunchStorage
 import com.nuvio.app.features.player.PlayerSettingsStorage
+import com.nuvio.app.features.player.ExternalPlayerPlatform
 import com.nuvio.app.features.player.PlayerPictureInPictureManager
 import com.nuvio.app.features.plugins.PluginStorage
 import com.nuvio.app.features.profiles.AvatarStorage
@@ -70,12 +72,14 @@ class MainActivity : AppCompatActivity() {
         HomeCatalogSettingsStorage.initialize(applicationContext)
         PlayerSettingsStorage.initialize(applicationContext)
         PlayerLaunchStorage.initialize(applicationContext)
+        ExternalPlayerPlatform.initialize(applicationContext)
         ProfileStorage.initialize(applicationContext)
         AvatarStorage.initialize(applicationContext)
         ProfilePinCacheStorage.initialize(applicationContext)
         SearchHistoryStorage.initialize(applicationContext)
         SeasonViewModeStorage.initialize(applicationContext)
         PosterCardStyleStorage.initialize(applicationContext)
+        DebridSettingsStorage.initialize(applicationContext)
         TmdbSettingsStorage.initialize(applicationContext)
         MdbListSettingsStorage.initialize(applicationContext)
         TraktAuthStorage.initialize(applicationContext)

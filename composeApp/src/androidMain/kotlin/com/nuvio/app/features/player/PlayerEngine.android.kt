@@ -119,6 +119,18 @@ internal fun AndroidMedia3PlayerSurface(
         LibassRenderType.valueOf(playerSettings.libassRenderType)
     }.getOrDefault(LibassRenderType.CUES)
     val effectiveLibassRenderType = libassRenderType.toZoomIndependentRenderType()
+    val playerSourceKey = listOf(
+        sourceUrl,
+        sourceAudioUrl.orEmpty(),
+        sanitizedSourceHeaders,
+        sanitizedSourceResponseHeaders,
+        sourceFilename.orEmpty(),
+        sourceVideoSize ?: 0L,
+        useYoutubeChunkedPlayback,
+    )
+    var decoderPriorityOverride by remember(playerSourceKey) { mutableStateOf<Int?>(null) }
+    var fallbackStartPositionMs by remember(playerSourceKey) { mutableStateOf<Long?>(null) }
+    val effectiveDecoderPriority = decoderPriorityOverride ?: playerSettings.decoderPriority
 
     val exoPlayer = remember(
         sourceUrl,
@@ -131,9 +143,12 @@ internal fun AndroidMedia3PlayerSurface(
         sourceAudioMimeType,
         useLibass,
         effectiveLibassRenderType,
+        useYoutubeChunkedPlayback,
+        effectiveDecoderPriority,
     ) {
         val renderersFactory = DefaultRenderersFactory(context)
-            .setExtensionRendererMode(playerSettings.decoderPriority)
+            .setExtensionRendererMode(effectiveDecoderPriority)
+            .setEnableDecoderFallback(true)
             .setMapDV7ToHevc(playerSettings.mapDV7ToHevc)
 
         val trackSelector = DefaultTrackSelector(context).apply {
@@ -202,6 +217,7 @@ internal fun AndroidMedia3PlayerSurface(
                 } else {
                     setMediaItem(buildPlaybackMediaItem(sourceUrl, sourceMimeType))
                 }
+                fallbackStartPositionMs?.let { seekTo(it.coerceAtLeast(0L)) }
                 prepare()
                 this.playWhenReady = playWhenReady
             }
@@ -225,6 +241,7 @@ internal fun AndroidMedia3PlayerSurface(
 
         val listener = object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
+                syncPlayerViewKeepScreenOn()
                 Log.e(TAG, "Media3 playback error: code=${error.errorCodeName}, message=${error.message}", error)
                 val message = error.toPlayerErrorMessage()
                 val snapshot = exoPlayer.snapshot()
@@ -246,6 +263,21 @@ internal fun AndroidMedia3PlayerSurface(
                     latestOnError.value(null)
                     return
                 }
+                if (
+                    playerSettings.decoderPriority == DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON &&
+                    effectiveDecoderPriority != DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER &&
+                    error.isDecoderFailure()
+                ) {
+                    Log.w(
+                        TAG,
+                        "Decoder failure (${error.errorCodeName}); retrying with app decoders",
+                        error,
+                    )
+                    fallbackStartPositionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
+                    decoderPriorityOverride = DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+                    latestOnError.value(null)
+                    return
+                }
                 latestOnError.value(message)
             }
 
@@ -260,6 +292,7 @@ internal fun AndroidMedia3PlayerSurface(
                 Log.d(TAG, "onPlaybackStateChanged: $stateName")
                 if (playbackState == Player.STATE_READY) {
                     terminalSnapshotOverride = null
+                    fallbackStartPositionMs = null
                     latestOnError.value(null)
                     exoPlayer.logCurrentTracks("STATE_READY")
                 }
@@ -580,6 +613,16 @@ private fun PlayerPlaybackSnapshot.keepLoadingUntilFirstFrame(
     } else {
         copy(isLoading = true)
     }
+
+private fun PlaybackException.isDecoderFailure(): Boolean =
+    errorCode in setOf(
+        PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+        PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED,
+        PlaybackException.ERROR_CODE_DECODING_FAILED,
+        PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
+        PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+        PlaybackException.ERROR_CODE_DECODING_RESOURCES_RECLAIMED,
+    )
 
 private fun PlayerResizeMode.toExoResizeMode(): Int =
     when (this) {

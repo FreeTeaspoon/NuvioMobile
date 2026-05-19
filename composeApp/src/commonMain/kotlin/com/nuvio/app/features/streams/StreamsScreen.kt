@@ -38,6 +38,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Refresh
@@ -70,25 +71,21 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import com.nuvio.app.core.i18n.localizedByteUnit
 import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.NuvioBottomSheetActionRow
 import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
-import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
-import com.nuvio.app.features.downloads.DownloadEnqueueResult
 import com.nuvio.app.features.downloads.DownloadsRepository
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
-import com.nuvio.app.features.watchprogress.WatchProgressEntry
-import com.nuvio.app.features.watchprogress.progressForPlaybackTarget
+import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import kotlinx.coroutines.launch
 import kotlin.math.round
@@ -114,17 +111,25 @@ fun StreamsScreen(
     episodeNumber: Int? = null,
     episodeTitle: String? = null,
     episodeThumbnail: String? = null,
-    episodeMeta: StreamEpisodeMeta? = null,
     resumePositionMs: Long? = null,
     resumeProgressFraction: Float? = null,
     manualSelection: Boolean = false,
     startFromBeginning: Boolean = false,
     onStreamSelected: (stream: StreamItem, resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit = { _, _, _ -> },
-    onOpenDownloads: () -> Unit = {},
+    onStreamActionOpen: (
+        stream: StreamItem,
+        openExternally: Boolean,
+        resumePositionMs: Long?,
+        resumeProgressFraction: Float?,
+    ) -> Unit = { _, _, _, _ -> },
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by StreamsRepository.uiState.collectAsStateWithLifecycle()
+    val playerSettings by remember {
+        PlayerSettingsRepository.ensureLoaded()
+        PlayerSettingsRepository.uiState
+    }.collectAsStateWithLifecycle()
     val watchProgressUiState by remember {
         WatchProgressRepository.ensureLoaded()
         WatchProgressRepository.uiState
@@ -134,34 +139,38 @@ fun StreamsScreen(
     }
     val isEpisode = seasonNumber != null && episodeNumber != null
     val clipboardManager = LocalClipboardManager.current
-    val uriHandler = LocalUriHandler.current
-    val openImdbUrl: (String) -> Unit = remember(uriHandler) {
-        { url ->
-            runCatching { uriHandler.openUri(url) }
-        }
-    }
     val streamLinkCopiedText = stringResource(Res.string.streams_link_copied)
     val noDirectStreamLinkText = stringResource(Res.string.streams_no_direct_link)
-    val downloadQueuedTitle = stringResource(Res.string.downloads_enqueue_started)
-    val openDownloadsText = stringResource(Res.string.downloads_go_to_downloads)
-    val closeText = stringResource(Res.string.action_close)
+    val torrentUnsupportedText = stringResource(Res.string.streams_torrent_not_supported)
     var streamActionsTarget by remember(videoId) { mutableStateOf<StreamItem?>(null) }
-    var downloadPromptMessage by remember { mutableStateOf<String?>(null) }
     var preferredFilterApplied by remember(videoId) { mutableStateOf(false) }
-    val storedProgress = watchProgressUiState.entries.progressForPlaybackTarget(
-        videoId = videoId,
-        parentMetaId = parentMetaId,
-        seasonNumber = seasonNumber,
-        episodeNumber = episodeNumber,
-    )
-    val effectiveResume = resolveEffectiveStreamResume(
-        requestedPositionMs = resumePositionMs,
-        requestedProgressFraction = resumeProgressFraction,
-        storedProgress = storedProgress,
-        startFromBeginning = startFromBeginning,
-    )
-    val effectiveResumePositionMs = effectiveResume.positionMs
-    val effectiveResumeProgressFraction = effectiveResume.progressFraction
+    val storedProgress = if (startFromBeginning) {
+        null
+    } else {
+        watchProgressUiState.byVideoId[videoId]
+    }
+    val storedProgressFraction = storedProgress
+        ?.takeIf { it.isResumable }
+        ?.progressPercent
+        ?.takeIf { it > 0f }
+        ?.let { explicitPercent -> (explicitPercent / 100f).coerceIn(0f, 1f) }
+    val effectiveResumeProgressFraction = if (startFromBeginning) {
+        null
+    } else {
+        resumeProgressFraction
+        ?.takeIf { it > 0f }
+        ?.coerceIn(0f, 1f)
+        ?: storedProgressFraction
+    }
+    val effectiveResumePositionMs = if (effectiveResumeProgressFraction != null) {
+        null
+    } else {
+        if (startFromBeginning) {
+            null
+        } else {
+            (resumePositionMs ?: storedProgress?.takeIf { it.isResumable }?.lastPositionMs)?.takeIf { it > 0L }
+        }
+    }
 
     LaunchedEffect(type, videoId, seasonNumber, episodeNumber, manualSelection) {
         StreamsRepository.load(
@@ -206,13 +215,17 @@ fun StreamsScreen(
                 seasonNumber = seasonNumber,
                 episodeNumber = episodeNumber,
                 episodeTitle = episodeTitle,
-                episodeMeta = episodeMeta,
                 uiState = uiState,
                 resumePositionMs = effectiveResumePositionMs,
                 resumeProgressFraction = effectiveResumeProgressFraction,
-                onStreamSelected = onStreamSelected,
+                onStreamSelected = { stream, positionMs, progressFraction ->
+                    if (stream.isTorrentStream) {
+                        NuvioToastController.show(torrentUnsupportedText)
+                    } else {
+                        onStreamSelected(stream, positionMs, progressFraction)
+                    }
+                },
                 onStreamLongPress = { stream -> streamActionsTarget = stream },
-                onOpenImdbUrl = openImdbUrl,
             )
         } else {
             MobileStreamsLayout(
@@ -223,13 +236,17 @@ fun StreamsScreen(
                 seasonNumber = seasonNumber,
                 episodeNumber = episodeNumber,
                 episodeTitle = episodeTitle,
-                episodeMeta = episodeMeta,
                 uiState = uiState,
                 resumePositionMs = effectiveResumePositionMs,
                 resumeProgressFraction = effectiveResumeProgressFraction,
-                onStreamSelected = onStreamSelected,
+                onStreamSelected = { stream, positionMs, progressFraction ->
+                    if (stream.isTorrentStream) {
+                        NuvioToastController.show(torrentUnsupportedText)
+                    } else {
+                        onStreamSelected(stream, positionMs, progressFraction)
+                    }
+                },
                 onStreamLongPress = { stream -> streamActionsTarget = stream },
-                onOpenImdbUrl = openImdbUrl,
             )
         }
 
@@ -318,6 +335,7 @@ fun StreamsScreen(
 
         StreamActionsSheet(
             stream = streamActionsTarget,
+            externalPlayerEnabled = playerSettings.externalPlayerEnabled,
             onDismiss = { streamActionsTarget = null },
             onCopyLink = { stream ->
                 val directUrl = stream.directPlaybackUrl
@@ -344,71 +362,18 @@ fun StreamsScreen(
                     episodeThumbnail = episodeThumbnail,
                     stream = stream,
                 )
-                val message = result.toastMessage()
-                when (result) {
-                    DownloadEnqueueResult.Started,
-                    DownloadEnqueueResult.Replaced,
-                    -> downloadPromptMessage = message
-                    DownloadEnqueueResult.MissingUrl,
-                    DownloadEnqueueResult.UnsupportedFormat,
-                    -> NuvioToastController.show(message)
-                }
+                NuvioToastController.show(result.toastMessage())
             },
-        )
-
-        NuvioStatusModal(
-            title = downloadQueuedTitle,
-            message = downloadPromptMessage.orEmpty(),
-            isVisible = downloadPromptMessage != null,
-            confirmText = openDownloadsText,
-            dismissText = closeText,
-            onConfirm = {
-                downloadPromptMessage = null
-                onOpenDownloads()
-            },
-            onDismiss = {
-                downloadPromptMessage = null
+            onOpen = { stream, openExternally ->
+                onStreamActionOpen(
+                    stream,
+                    openExternally,
+                    effectiveResumePositionMs,
+                    effectiveResumeProgressFraction,
+                )
             },
         )
     }
-}
-
-internal data class EffectiveStreamResume(
-    val positionMs: Long?,
-    val progressFraction: Float?,
-)
-
-internal fun resolveEffectiveStreamResume(
-    requestedPositionMs: Long?,
-    requestedProgressFraction: Float?,
-    storedProgress: WatchProgressEntry?,
-    startFromBeginning: Boolean,
-): EffectiveStreamResume {
-    if (startFromBeginning) return EffectiveStreamResume(positionMs = null, progressFraction = null)
-
-    val requestedPosition = requestedPositionMs?.takeIf { it > 0L }
-    if (requestedPosition != null) {
-        return EffectiveStreamResume(positionMs = requestedPosition, progressFraction = null)
-    }
-
-    val resumableStoredProgress = storedProgress?.takeIf { it.isResumable }
-    val storedPosition = resumableStoredProgress?.lastPositionMs?.takeIf { it > 0L }
-    if (storedPosition != null) {
-        return EffectiveStreamResume(positionMs = storedPosition, progressFraction = null)
-    }
-
-    val requestedFraction = requestedProgressFraction
-        ?.takeIf { it > 0f }
-        ?.coerceIn(0f, 1f)
-    if (requestedFraction != null) {
-        return EffectiveStreamResume(positionMs = null, progressFraction = requestedFraction)
-    }
-
-    val storedFraction = resumableStoredProgress
-        ?.progressPercent
-        ?.takeIf { it > 0f }
-        ?.let { explicitPercent -> (explicitPercent / 100f).coerceIn(0f, 1f) }
-    return EffectiveStreamResume(positionMs = null, progressFraction = storedFraction)
 }
 
 @Composable
@@ -420,13 +385,11 @@ private fun MobileStreamsLayout(
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
-    episodeMeta: StreamEpisodeMeta?,
     uiState: StreamsUiState,
     resumePositionMs: Long?,
     resumeProgressFraction: Float?,
     onStreamSelected: (stream: StreamItem, resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit,
     onStreamLongPress: (StreamItem) -> Unit,
-    onOpenImdbUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -456,8 +419,6 @@ private fun MobileStreamsLayout(
                     episodeTitle = episodeTitle ?: title,
                     thumbnail = heroArtwork,
                     showTitle = title,
-                    episodeMeta = episodeMeta,
-                    onOpenImdbUrl = onOpenImdbUrl,
                 )
             } else {
                 MovieHeroBlock(
@@ -605,8 +566,6 @@ private fun EpisodeHeroBlock(
     episodeTitle: String,
     thumbnail: String?,
     showTitle: String,
-    episodeMeta: StreamEpisodeMeta?,
-    onOpenImdbUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val heroBlendColor = MaterialTheme.colorScheme.background
@@ -692,11 +651,6 @@ private fun EpisodeHeroBlock(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            EpisodeMetadataRow(
-                episodeMeta = episodeMeta,
-                onOpenImdbUrl = onOpenImdbUrl,
             )
         }
     }
@@ -910,7 +864,7 @@ private fun LazyListScope.streamSection(
             StreamCard(
                 stream = stream,
                 onClick = {
-                    if (stream.directPlaybackUrl != null) {
+                    if (stream.directPlaybackUrl != null || stream.isTorrentStream || stream.isDirectDebridStream) {
                         onStreamSelected(stream, resumePositionMs, resumeProgressFraction)
                     }
                 },
@@ -942,7 +896,7 @@ internal fun streamCardRenderKey(
     append(':')
     append(itemIndex)
     append(':')
-    append(stream.url ?: stream.infoHash ?: stream.streamLabel)
+    append(stream.url ?: stream.infoHash ?: stream.clientResolve?.infoHash ?: stream.streamLabel)
 }
 
 // ---------------------------------------------------------------------------
@@ -1016,7 +970,7 @@ private fun StreamCard(
     onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val isEnabled = stream.directPlaybackUrl != null
+    val isEnabled = stream.directPlaybackUrl != null || stream.isTorrentStream || stream.isDirectDebridStream
     val cardShape = RoundedCornerShape(12.dp)
     Row(
         modifier = modifier
@@ -1075,9 +1029,11 @@ private fun StreamCard(
 @Composable
 private fun StreamActionsSheet(
     stream: StreamItem?,
+    externalPlayerEnabled: Boolean,
     onDismiss: () -> Unit,
     onCopyLink: (StreamItem) -> Unit,
     onDownload: (StreamItem) -> Unit,
+    onOpen: (StreamItem, openExternally: Boolean) -> Unit,
 ) {
     if (stream == null) return
 
@@ -1130,6 +1086,23 @@ private fun StreamActionsSheet(
                 title = stringResource(Res.string.streams_copy_link),
                 onClick = {
                     onCopyLink(stream)
+                    coroutineScope.launch {
+                        dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
+                    }
+                },
+            )
+            NuvioBottomSheetDivider()
+            NuvioBottomSheetActionRow(
+                icon = Icons.AutoMirrored.Rounded.OpenInNew,
+                title = stringResource(
+                    if (externalPlayerEnabled) {
+                        Res.string.streams_open_internal_player
+                    } else {
+                        Res.string.streams_open_external_player
+                    },
+                ),
+                onClick = {
+                    onOpen(stream, !externalPlayerEnabled)
                     coroutineScope.launch {
                         dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
                     }

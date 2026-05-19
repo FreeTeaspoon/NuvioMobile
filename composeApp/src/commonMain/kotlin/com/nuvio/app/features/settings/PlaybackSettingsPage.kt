@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +53,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.player.AudioLanguageOption
 import com.nuvio.app.features.player.AvailableLanguageOptions
-import com.nuvio.app.features.player.PlayerEngineType
+import com.nuvio.app.features.player.ExternalPlayerApp
+import com.nuvio.app.features.player.ExternalPlayerPlatform
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.SubtitleLanguageOption
 import com.nuvio.app.features.player.formatPlaybackSpeedLabel
@@ -61,6 +64,7 @@ import com.nuvio.app.features.plugins.PluginRepository
 import com.nuvio.app.features.streams.StreamAutoPlayMode
 import com.nuvio.app.features.streams.StreamAutoPlaySource
 import com.nuvio.app.isIos
+import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -69,7 +73,6 @@ import kotlin.math.roundToInt
 internal fun LazyListScope.playbackSettingsContent(
     isTablet: Boolean,
     showLoadingOverlay: Boolean,
-    playerEngine: PlayerEngineType,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     preferredAudioLanguage: String,
@@ -88,7 +91,6 @@ internal fun LazyListScope.playbackSettingsContent(
         PlaybackSettingsSection(
             isTablet = isTablet,
             showLoadingOverlay = showLoadingOverlay,
-            playerEngine = playerEngine,
             holdToSpeedEnabled = holdToSpeedEnabled,
             holdToSpeedValue = holdToSpeedValue,
             preferredAudioLanguage = preferredAudioLanguage,
@@ -151,7 +153,6 @@ fun ValueBox(
 private fun PlaybackSettingsSection(
     isTablet: Boolean,
     showLoadingOverlay: Boolean,
-    playerEngine: PlayerEngineType,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     preferredAudioLanguage: String,
@@ -170,9 +171,9 @@ private fun PlaybackSettingsSection(
     var showSecondaryAudioDialog by remember { mutableStateOf(false) }
     var showPreferredSubtitleDialog by remember { mutableStateOf(false) }
     var showSecondarySubtitleDialog by remember { mutableStateOf(false) }
+    var showExternalPlayerDialog by remember { mutableStateOf(false) }
     var showReuseCacheDurationDialog by remember { mutableStateOf(false) }
     var showDecoderPriorityDialog by remember { mutableStateOf(false) }
-    var showPlayerEngineDialog by remember { mutableStateOf(false) }
     var showHoldToSpeedValueDialog by remember { mutableStateOf(false) }
     var showLibassRenderTypeDialog by remember { mutableStateOf(false) }
     var showAutoPlayModeDialog by remember { mutableStateOf(false) }
@@ -182,6 +183,10 @@ private fun PlaybackSettingsSection(
     var showAutoPlayRegexDialog by remember { mutableStateOf(false) }
     val pluginsEnabled = AppFeaturePolicy.pluginsEnabled
     val autoPlayPlayerSettings by PlayerSettingsRepository.uiState.collectAsStateWithLifecycle()
+    val availableExternalPlayers = ExternalPlayerPlatform.availablePlayers()
+    val selectedExternalPlayer = availableExternalPlayers.firstOrNull {
+        it.id == autoPlayPlayerSettings.externalPlayerId
+    }
     val addonUiState by AddonRepository.uiState.collectAsStateWithLifecycle()
     val pluginUiState = if (pluginsEnabled) {
         val state by PluginRepository.uiState.collectAsStateWithLifecycle()
@@ -200,15 +205,6 @@ private fun PlaybackSettingsSection(
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
-                if (!isIos && AppFeaturePolicy.mpvPlaybackEngineSelectable) {
-                    SettingsNavigationRow(
-                        title = stringResource(Res.string.settings_playback_player_engine),
-                        description = playerEngineLabel(playerEngine),
-                        isTablet = isTablet,
-                        onClick = { showPlayerEngineDialog = true },
-                    )
-                    SettingsGroupDivider(isTablet = isTablet)
-                }
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_playback_show_loading_overlay),
                     description = stringResource(Res.string.settings_playback_show_loading_overlay_description),
@@ -216,6 +212,39 @@ private fun PlaybackSettingsSection(
                     isTablet = isTablet,
                     onCheckedChange = PlayerSettingsRepository::setShowLoadingOverlay,
                 )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_external_player),
+                    description = stringResource(
+                        if (isIos) {
+                            Res.string.settings_playback_external_player_description_ios
+                        } else {
+                            Res.string.settings_playback_external_player_description_android
+                        },
+                    ),
+                    checked = autoPlayPlayerSettings.externalPlayerEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = { enabled ->
+                        PlayerSettingsRepository.setExternalPlayerEnabled(enabled)
+                        if (enabled && isIos) {
+                            showExternalPlayerDialog = true
+                        }
+                    },
+                )
+                if (isIos && autoPlayPlayerSettings.externalPlayerEnabled) {
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsNavigationRow(
+                        title = stringResource(Res.string.settings_playback_external_player_app),
+                        description = selectedExternalPlayer?.name
+                            ?: if (availableExternalPlayers.isEmpty()) {
+                                stringResource(Res.string.settings_playback_external_player_none_available)
+                            } else {
+                                stringResource(Res.string.settings_playback_not_set)
+                            },
+                        isTablet = isTablet,
+                        onClick = { showExternalPlayerDialog = true },
+                    )
+                }
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_playback_hold_to_speed),
@@ -525,6 +554,35 @@ private fun PlaybackSettingsSection(
                         )
                     }
                 }
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_intro_submit_enabled),
+                    description = stringResource(Res.string.settings_playback_intro_submit_enabled_description),
+                    checked = autoPlayPlayerSettings.introSubmitEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = PlayerSettingsRepository::setIntroSubmitEnabled,
+                )
+                if (autoPlayPlayerSettings.introSubmitEnabled) {
+                    SettingsGroupDivider(isTablet = isTablet)
+                    var showIntroDbApiKeyDialog by remember { mutableStateOf(false) }
+                    val notSetLabel = stringResource(Res.string.settings_playback_not_set)
+                    SettingsNavigationRow(
+                        title = stringResource(Res.string.settings_playback_introdb_api_key),
+                        description = autoPlayPlayerSettings.introDbApiKey.ifBlank { notSetLabel },
+                        isTablet = isTablet,
+                        onClick = { showIntroDbApiKeyDialog = true },
+                    )
+                    if (showIntroDbApiKeyDialog) {
+                        IntroDbApiKeyDialog(
+                            initialValue = autoPlayPlayerSettings.introDbApiKey,
+                            onSave = {
+                                PlayerSettingsRepository.setIntroDbApiKey(it)
+                                showIntroDbApiKeyDialog = false
+                            },
+                            onDismiss = { showIntroDbApiKeyDialog = false },
+                        )
+                    }
+                }
             }
         }
 
@@ -762,6 +820,18 @@ private fun PlaybackSettingsSection(
         )
     }
 
+    if (showExternalPlayerDialog) {
+        ExternalPlayerSelectionDialog(
+            players = availableExternalPlayers,
+            selectedPlayerId = autoPlayPlayerSettings.externalPlayerId,
+            onPlayerSelected = { playerId ->
+                PlayerSettingsRepository.setExternalPlayerId(playerId)
+                showExternalPlayerDialog = false
+            },
+            onDismiss = { showExternalPlayerDialog = false },
+        )
+    }
+
     if (showDecoderPriorityDialog) {
         DecoderPriorityDialog(
             selectedPriority = decoderPriority,
@@ -770,17 +840,6 @@ private fun PlaybackSettingsSection(
                 showDecoderPriorityDialog = false
             },
             onDismiss = { showDecoderPriorityDialog = false },
-        )
-    }
-
-    if (showPlayerEngineDialog) {
-        PlayerEngineDialog(
-            selectedEngine = playerEngine,
-            onEngineSelected = { engine ->
-                PlayerSettingsRepository.setPlayerEngine(engine)
-                showPlayerEngineDialog = false
-            },
-            onDismiss = { showPlayerEngineDialog = false },
         )
     }
 
@@ -896,6 +955,100 @@ private data class LanguageSelectionOption(
     val value: String?,
     val label: String,
 )
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun ExternalPlayerSelectionDialog(
+    players: List<ExternalPlayerApp>,
+    selectedPlayerId: String?,
+    onPlayerSelected: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    BasicAlertDialog(
+        onDismissRequest = onDismiss,
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.settings_playback_external_player_app),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
+                if (players.isEmpty()) {
+                    Text(
+                        text = stringResource(Res.string.settings_playback_external_player_none_available),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        players.forEach { player ->
+                            val isSelected = player.id == selectedPlayerId
+                            val containerColor = if (isSelected) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                            }
+
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onPlayerSelected(player.id) },
+                                shape = RoundedCornerShape(12.dp),
+                                color = containerColor,
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = player.name,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Box(
+                                        modifier = Modifier.size(24.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        if (isSelected) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = stringResource(Res.string.settings_playback_dialog_close),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1042,93 +1195,6 @@ private fun ReuseCacheDurationDialog(
                             ) {
                                 Text(
                                     text = formatReuseCacheDuration(hours),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Box(
-                                    modifier = Modifier.size(24.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    if (isSelected) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Check,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = stringResource(Res.string.settings_playback_dialog_close),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun PlayerEngineDialog(
-    selectedEngine: PlayerEngineType,
-    onEngineSelected: (PlayerEngineType) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val options = listOf(PlayerEngineType.MEDIA3, PlayerEngineType.MPV)
-
-    BasicAlertDialog(
-        onDismissRequest = onDismiss,
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    text = stringResource(Res.string.settings_playback_player_engine),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold,
-                )
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    options.forEach { engine ->
-                        val isSelected = engine == selectedEngine
-                        val containerColor = if (isSelected) {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
-                        } else {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                        }
-
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onEngineSelected(engine) },
-                            shape = RoundedCornerShape(12.dp),
-                            color = containerColor,
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = playerEngineLabel(engine),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.weight(1f),
@@ -2036,6 +2102,107 @@ private fun AnimeSkipClientIdDialog(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
+private fun IntroDbApiKeyDialog(
+    initialValue: String,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var value by remember { mutableStateOf(initialValue) }
+    var isVerifying by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    BasicAlertDialog(onDismissRequest = { if (!isVerifying) onDismiss() }) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.settings_playback_introdb_api_key),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(Res.string.settings_playback_introdb_api_key_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                SettingsSecretTextField(
+                    value = value,
+                    onValueChange = {
+                        value = it
+                        errorMessage = null
+                    },
+                    label = stringResource(Res.string.settings_playback_introdb_api_key),
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = errorMessage != null,
+                )
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    TextButton(onClick = onDismiss, enabled = !isVerifying) { 
+                        Text(stringResource(Res.string.action_cancel)) 
+                    }
+                    TextButton(
+                        onClick = { 
+                            val trimmed = value.trim()
+                            if (trimmed.isEmpty()) {
+                                onSave(trimmed)
+                                return@TextButton
+                            }
+                            
+                            if (trimmed == initialValue) {
+                                onDismiss()
+                                return@TextButton
+                            }
+
+                            isVerifying = true
+                            errorMessage = null
+                            scope.launch {
+                                val isValid = com.nuvio.app.features.player.skip.SkipIntroRepository.verifyIntroDbApiKey(trimmed)
+                                isVerifying = false
+                                if (isValid) {
+                                    onSave(trimmed)
+                                } else {
+                                    errorMessage = "Invalid API Key or connection failed"
+                                }
+                            }
+                        },
+                        enabled = !isVerifying
+                    ) { 
+                        if (isVerifying) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Text(stringResource(Res.string.action_save)) 
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun NextEpisodeThresholdModeDialog(
     selected: com.nuvio.app.features.player.skip.NextEpisodeThresholdMode,
     onSelect: (com.nuvio.app.features.player.skip.NextEpisodeThresholdMode) -> Unit,
@@ -2122,14 +2289,6 @@ private fun decoderPriorityRes(priority: Int): StringResource = when (priority) 
 
 @Composable
 private fun decoderPriorityLabel(priority: Int): String = stringResource(decoderPriorityRes(priority))
-
-private fun playerEngineRes(engine: PlayerEngineType): StringResource = when (engine) {
-    PlayerEngineType.MEDIA3 -> Res.string.settings_playback_player_engine_media3
-    PlayerEngineType.MPV -> Res.string.settings_playback_player_engine_mpv
-}
-
-@Composable
-private fun playerEngineLabel(engine: PlayerEngineType): String = stringResource(playerEngineRes(engine))
 
 private fun StreamAutoPlaySource.labelRes(pluginsEnabled: Boolean): StringResource = when (this) {
     StreamAutoPlaySource.ALL_SOURCES ->
