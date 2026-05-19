@@ -94,10 +94,12 @@ import com.nuvio.app.core.ui.configurePlatformImageLoader
 import com.nuvio.app.core.ui.NuvioToastHost
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.NuvioFloatingPrompt
+import com.nuvio.app.core.ui.LocalNuvioBottomOverlayScrollPadding
 import com.nuvio.app.core.ui.TraktListPickerDialog
 import com.nuvio.app.core.ui.NuvioTheme
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.NativeNavigationTab
+import com.nuvio.app.core.ui.NuvioNavigationBarScrollClearance
 import com.nuvio.app.core.ui.NativeTabBridge
 import com.nuvio.app.core.ui.isLiquidGlassNativeTabBarSupported
 import com.nuvio.app.core.ui.localizedContinueWatchingSubtitle
@@ -1074,7 +1076,14 @@ private fun MainAppContent(
                         val isTabletLayout = maxWidth >= 768.dp
                         val useNativeBottomTabs =
                             liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
+                        val useFloatingBottomTabs = !isTabletLayout && !useNativeBottomTabs
                         val tabsRouteActive = currentBackStackEntry?.destination?.hasRoute<TabsRoute>() == true
+                        val rootTabs = listOf(
+                            AppScreenTab.Home,
+                            AppScreenTab.Search,
+                            AppScreenTab.Library,
+                            AppScreenTab.Settings,
+                        )
                         val onProfileSelected: (NuvioProfile) -> Unit = { profile ->
                             profileSwitchLoading = true
                             selectedTab = AppScreenTab.Home
@@ -1089,8 +1098,14 @@ private fun MainAppContent(
                             containerColor = Color.Transparent,
                             contentWindowInsets = WindowInsets(0),
                             bottomBar = {
-                                if (!isTabletLayout && !useNativeBottomTabs) {
-                                    NuvioNavigationBar {
+                                if (useFloatingBottomTabs) {
+                                    NuvioNavigationBar(
+                                        selectedIndex = rootTabs.indexOf(selectedTab).coerceAtLeast(0),
+                                        itemCount = rootTabs.size,
+                                        onSelectedIndexChange = { index ->
+                                            rootTabs.getOrNull(index)?.let(::handleRootTabClick)
+                                        },
+                                    ) {
                                         NavItem(
                                             selected = selectedTab == AppScreenTab.Home,
                                             onClick = { handleRootTabClick(AppScreenTab.Home) },
@@ -1123,15 +1138,18 @@ private fun MainAppContent(
                                     }
                                 }
                             },
-                        ) { innerPadding ->
+                        ) { _ ->
                             Box(modifier = Modifier.fillMaxSize()) {
                                 CompositionLocalProvider(
                                     LocalNuvioBottomNavigationOverlayPadding provides if (useNativeBottomTabs) 49.dp else 0.dp,
+                                    LocalNuvioBottomOverlayScrollPadding provides if (useFloatingBottomTabs) {
+                                        NuvioNavigationBarScrollClearance
+                                    } else {
+                                        0.dp
+                                    },
                                 ) {
                                     AppTabHost(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(innerPadding),
+                                        modifier = Modifier.fillMaxSize(),
                                         selectedTab = selectedTab,
                                         searchFocusRequestCount = searchFocusRequestCount,
                                         rootActionsEnabled = tabsRouteActive,
