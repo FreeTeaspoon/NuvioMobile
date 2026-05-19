@@ -254,7 +254,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
                 loadRequest(request)
             }
             setPaused(isPaused)
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e(TAG, "Failed to initialize MPV", e)
             setPlaybackError("MPV initialization failed: ${e.message}")
         }

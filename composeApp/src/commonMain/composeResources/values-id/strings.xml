@@ -1274,4 +1274,7 @@
     <string name="unit_bytes_kb">KB</string>
     <string name="unit_bytes_mb">MB</string>
     <string name="unit_bytes_gb">GB</string>
+    <string name="settings_playback_player_engine">Player Engine</string>
+    <string name="settings_playback_player_engine_media3">Media3</string>
+    <string name="settings_playback_player_engine_mpv">MPV</string>
 </resources>

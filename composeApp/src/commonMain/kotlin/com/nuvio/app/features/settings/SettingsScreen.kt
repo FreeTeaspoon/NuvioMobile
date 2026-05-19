@@ -509,6 +509,7 @@ private fun MobileSettingsScreen(
                 SettingsPage.Playback -> playbackSettingsContent(
                     isTablet = false,
                     showLoadingOverlay = showLoadingOverlay,
+                    playerEngine = playerEngine,
                     holdToSpeedEnabled = holdToSpeedEnabled,
                     holdToSpeedValue = holdToSpeedValue,
                     preferredAudioLanguage = preferredAudioLanguage,
@@ -880,6 +881,7 @@ private fun TabletSettingsScreen(
                     SettingsPage.Playback -> playbackSettingsContent(
                         isTablet = true,
                         showLoadingOverlay = showLoadingOverlay,
+                        playerEngine = playerEngine,
                         holdToSpeedEnabled = holdToSpeedEnabled,
                         holdToSpeedValue = holdToSpeedValue,
                         preferredAudioLanguage = preferredAudioLanguage,

@@ -737,6 +737,9 @@
     <string name="settings_playback_external_player_description_android">Open new playback with Android&apos;s default video app or system chooser.</string>
     <string name="settings_playback_external_player_description_ios">Open new playback with the selected installed player.</string>
     <string name="settings_playback_external_player_none_available">No supported external players installed</string>
+    <string name="settings_playback_player_engine">Player Engine</string>
+    <string name="settings_playback_player_engine_media3">Media3</string>
+    <string name="settings_playback_player_engine_mpv">MPV</string>
     <string name="settings_playback_hold_speed">Hold Speed</string>
     <string name="settings_playback_hold_to_speed">Hold To Speed</string>
     <string name="settings_playback_hold_to_speed_description">Long-press anywhere on the player surface to temporarily boost playback speed.</string>
