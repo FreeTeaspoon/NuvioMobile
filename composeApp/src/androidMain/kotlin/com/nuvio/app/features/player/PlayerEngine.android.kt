@@ -231,6 +231,10 @@ internal fun AndroidMedia3PlayerSurface(
     var terminalSnapshotOverride by remember(exoPlayer) { mutableStateOf<PlayerPlaybackSnapshot?>(null) }
     var hasRenderedFirstFrame by remember(exoPlayer) { mutableStateOf(false) }
 
+    fun syncPlayerViewKeepScreenOn() {
+        playerViewRef?.keepScreenOn = exoPlayer.shouldKeepPlayerScreenOn()
+    }
+
     fun currentSnapshotForUi(): PlayerPlaybackSnapshot =
         terminalSnapshotOverride ?: exoPlayer.snapshot().keepLoadingUntilFirstFrame(hasRenderedFirstFrame)
 
