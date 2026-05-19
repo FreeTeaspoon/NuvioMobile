@@ -74,6 +74,8 @@ import coil3.compose.setSingletonImageLoaderFactory
 import coil3.request.CachePolicy
 import coil3.request.crossfade
 import coil3.svg.SvgDecoder
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
@@ -1077,6 +1079,7 @@ private fun MainAppContent(
                         val useNativeBottomTabs =
                             liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
                         val useFloatingBottomTabs = !isTabletLayout && !useNativeBottomTabs
+                        val floatingBottomTabsBackdrop = rememberLayerBackdrop()
                         val tabsRouteActive = currentBackStackEntry?.destination?.hasRoute<TabsRoute>() == true
                         val rootTabs = listOf(
                             AppScreenTab.Home,
@@ -1102,6 +1105,7 @@ private fun MainAppContent(
                                     NuvioNavigationBar(
                                         selectedIndex = rootTabs.indexOf(selectedTab).coerceAtLeast(0),
                                         itemCount = rootTabs.size,
+                                        backdrop = floatingBottomTabsBackdrop,
                                         onSelectedIndexChange = { index ->
                                             rootTabs.getOrNull(index)?.let(::handleRootTabClick)
                                         },
@@ -1149,7 +1153,15 @@ private fun MainAppContent(
                                     },
                                 ) {
                                     AppTabHost(
-                                        modifier = Modifier.fillMaxSize(),
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .then(
+                                                if (useFloatingBottomTabs) {
+                                                    Modifier.layerBackdrop(floatingBottomTabsBackdrop)
+                                                } else {
+                                                    Modifier
+                                                },
+                                            ),
                                         selectedTab = selectedTab,
                                         searchFocusRequestCount = searchFocusRequestCount,
                                         rootActionsEnabled = tabsRouteActive,

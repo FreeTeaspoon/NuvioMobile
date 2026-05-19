@@ -66,7 +66,6 @@ fun NuvioNavigationBar(
             tabsCount = count,
             isBlurEnabled = true,
             isInLightTheme = isInLightTheme,
-            accentColor = Color.White,
             containerColor = containerColor,
             indicatorRestColor = Color.White.copy(alpha = 0.10f),
             indicatorPressedOverlayColor = Color.Black.copy(alpha = 0.03f),
