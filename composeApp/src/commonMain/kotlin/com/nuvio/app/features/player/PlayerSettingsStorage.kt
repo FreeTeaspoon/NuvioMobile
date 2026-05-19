@@ -65,6 +65,8 @@ internal expect object PlayerSettingsStorage {
     fun saveAnimeSkipEnabled(enabled: Boolean)
     fun loadAnimeSkipClientId(): String?
     fun saveAnimeSkipClientId(clientId: String)
+    fun loadIntroDbApiKey(): String?
+    fun saveIntroDbApiKey(apiKey: String)
     fun loadStreamAutoPlayNextEpisodeEnabled(): Boolean?
     fun saveStreamAutoPlayNextEpisodeEnabled(enabled: Boolean)
     fun loadStreamAutoPlayPreferBingeGroup(): Boolean?

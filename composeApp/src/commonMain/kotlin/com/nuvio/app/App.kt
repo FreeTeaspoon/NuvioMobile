@@ -1725,6 +1725,7 @@ private fun MainAppContent(
                             episodeNumber = launch.episodeNumber,
                             episodeTitle = launch.episodeTitle,
                             episodeThumbnail = launch.episodeThumbnail,
+                            episodeMeta = episodeMeta,
                             resumePositionMs = launch.resumePositionMs,
                             resumeProgressFraction = launch.resumeProgressFraction,
                             manualSelection = launch.manualSelection,

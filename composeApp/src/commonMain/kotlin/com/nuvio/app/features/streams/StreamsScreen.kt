@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
@@ -111,6 +112,7 @@ fun StreamsScreen(
     episodeNumber: Int? = null,
     episodeTitle: String? = null,
     episodeThumbnail: String? = null,
+    episodeMeta: StreamEpisodeMeta? = null,
     resumePositionMs: Long? = null,
     resumeProgressFraction: Float? = null,
     manualSelection: Boolean = false,
@@ -138,6 +140,13 @@ fun StreamsScreen(
         DownloadsRepository.ensureLoaded()
     }
     val isEpisode = seasonNumber != null && episodeNumber != null
+    val uriHandler = LocalUriHandler.current
+    val openImdbUrl: (String) -> Unit = remember(uriHandler) {
+        { url ->
+            runCatching { uriHandler.openUri(url) }
+            Unit
+        }
+    }
     val clipboardManager = LocalClipboardManager.current
     val streamLinkCopiedText = stringResource(Res.string.streams_link_copied)
     val noDirectStreamLinkText = stringResource(Res.string.streams_no_direct_link)
@@ -215,6 +224,7 @@ fun StreamsScreen(
                 seasonNumber = seasonNumber,
                 episodeNumber = episodeNumber,
                 episodeTitle = episodeTitle,
+                episodeMeta = episodeMeta,
                 uiState = uiState,
                 resumePositionMs = effectiveResumePositionMs,
                 resumeProgressFraction = effectiveResumeProgressFraction,
@@ -226,6 +236,7 @@ fun StreamsScreen(
                     }
                 },
                 onStreamLongPress = { stream -> streamActionsTarget = stream },
+                onOpenImdbUrl = openImdbUrl,
             )
         } else {
             MobileStreamsLayout(
@@ -236,6 +247,7 @@ fun StreamsScreen(
                 seasonNumber = seasonNumber,
                 episodeNumber = episodeNumber,
                 episodeTitle = episodeTitle,
+                episodeMeta = episodeMeta,
                 uiState = uiState,
                 resumePositionMs = effectiveResumePositionMs,
                 resumeProgressFraction = effectiveResumeProgressFraction,
@@ -247,6 +259,7 @@ fun StreamsScreen(
                     }
                 },
                 onStreamLongPress = { stream -> streamActionsTarget = stream },
+                onOpenImdbUrl = openImdbUrl,
             )
         }
 
@@ -385,11 +398,13 @@ private fun MobileStreamsLayout(
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
+    episodeMeta: StreamEpisodeMeta?,
     uiState: StreamsUiState,
     resumePositionMs: Long?,
     resumeProgressFraction: Float?,
     onStreamSelected: (stream: StreamItem, resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit,
     onStreamLongPress: (StreamItem) -> Unit,
+    onOpenImdbUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -419,6 +434,8 @@ private fun MobileStreamsLayout(
                     episodeTitle = episodeTitle ?: title,
                     thumbnail = heroArtwork,
                     showTitle = title,
+                    episodeMeta = episodeMeta,
+                    onOpenImdbUrl = onOpenImdbUrl,
                 )
             } else {
                 MovieHeroBlock(
@@ -566,6 +583,8 @@ private fun EpisodeHeroBlock(
     episodeTitle: String,
     thumbnail: String?,
     showTitle: String,
+    episodeMeta: StreamEpisodeMeta?,
+    onOpenImdbUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val heroBlendColor = MaterialTheme.colorScheme.background
@@ -651,6 +670,11 @@ private fun EpisodeHeroBlock(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            EpisodeMetadataRow(
+                episodeMeta = episodeMeta,
+                onOpenImdbUrl = onOpenImdbUrl,
             )
         }
     }

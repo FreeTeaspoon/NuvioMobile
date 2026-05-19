@@ -2,6 +2,7 @@ package com.nuvio.app.features.player.skip
 
 import com.nuvio.app.features.addons.httpGetText
 import com.nuvio.app.features.addons.httpPostJsonWithHeaders
+import com.nuvio.app.features.addons.httpRequestRaw
 import kotlinx.serialization.json.Json
 
 internal object SkipIntroApi {
@@ -27,6 +28,52 @@ internal object SkipIntroApi {
             json.decodeFromString<IntroDbSegmentsResponse>(text)
         } catch (_: Exception) {
             null
+        }
+    }
+
+    suspend fun submitIntro(
+        apiKey: String,
+        request: SubmitIntroRequest,
+    ): Boolean {
+        val baseUrl = IntroDbConfig.URL.trimEnd('/')
+        if (baseUrl.isBlank() || apiKey.isBlank()) return false
+        val url = "$baseUrl/submit"
+        val body = json.encodeToString(SubmitIntroRequest.serializer(), request)
+        val headers = mapOf(
+            "Authorization" to "Bearer $apiKey",
+            "Content-Type" to "application/json",
+        )
+        return try {
+            val response = httpRequestRaw(
+                method = "POST",
+                url = url,
+                headers = headers,
+                body = body,
+            )
+            response.status in 200..299
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    suspend fun verifyIntroDbApiKey(apiKey: String): Boolean {
+        val baseUrl = IntroDbConfig.URL.trimEnd('/')
+        if (baseUrl.isBlank() || apiKey.isBlank()) return false
+        val url = "$baseUrl/submit"
+        val headers = mapOf(
+            "Authorization" to "Bearer $apiKey",
+            "Content-Type" to "application/json",
+        )
+        return try {
+            val response = httpRequestRaw(
+                method = "POST",
+                url = url,
+                headers = headers,
+                body = "{}",
+            )
+            response.status != 401 && response.status != 403
+        } catch (_: Exception) {
+            false
         }
     }
 

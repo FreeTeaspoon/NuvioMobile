@@ -36,6 +36,7 @@ data class PlayerSettingsUiState(
     val skipIntroEnabled: Boolean = true,
     val animeSkipEnabled: Boolean = false,
     val animeSkipClientId: String = "",
+    val introDbApiKey: String = "",
     val streamAutoPlayNextEpisodeEnabled: Boolean = false,
     val streamAutoPlayPreferBingeGroup: Boolean = true,
     val nextEpisodeThresholdMode: NextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
@@ -77,6 +78,7 @@ object PlayerSettingsRepository {
     private var skipIntroEnabled = true
     private var animeSkipEnabled = false
     private var animeSkipClientId = ""
+    private var introDbApiKey = ""
     private var streamAutoPlayNextEpisodeEnabled = false
     private var streamAutoPlayPreferBingeGroup = true
     private var nextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE
@@ -125,6 +127,7 @@ object PlayerSettingsRepository {
         skipIntroEnabled = true
         animeSkipEnabled = false
         animeSkipClientId = ""
+        introDbApiKey = ""
         streamAutoPlayNextEpisodeEnabled = false
         streamAutoPlayPreferBingeGroup = true
         nextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE
@@ -203,6 +206,7 @@ object PlayerSettingsRepository {
         skipIntroEnabled = PlayerSettingsStorage.loadSkipIntroEnabled() ?: true
         animeSkipEnabled = PlayerSettingsStorage.loadAnimeSkipEnabled() ?: false
         animeSkipClientId = PlayerSettingsStorage.loadAnimeSkipClientId() ?: ""
+        introDbApiKey = PlayerSettingsStorage.loadIntroDbApiKey() ?: ""
         streamAutoPlayNextEpisodeEnabled = PlayerSettingsStorage.loadStreamAutoPlayNextEpisodeEnabled() ?: false
         streamAutoPlayPreferBingeGroup = PlayerSettingsStorage.loadStreamAutoPlayPreferBingeGroup() ?: true
         nextEpisodeThresholdMode = PlayerSettingsStorage.loadNextEpisodeThresholdMode()
@@ -453,6 +457,14 @@ object PlayerSettingsRepository {
         PlayerSettingsStorage.saveAnimeSkipClientId(clientId)
     }
 
+    fun setIntroDbApiKey(apiKey: String) {
+        ensureLoaded()
+        if (introDbApiKey == apiKey) return
+        introDbApiKey = apiKey
+        publish()
+        PlayerSettingsStorage.saveIntroDbApiKey(apiKey)
+    }
+
     fun setStreamAutoPlayNextEpisodeEnabled(enabled: Boolean) {
         ensureLoaded()
         if (streamAutoPlayNextEpisodeEnabled == enabled) return
@@ -541,6 +553,7 @@ object PlayerSettingsRepository {
             skipIntroEnabled = skipIntroEnabled,
             animeSkipEnabled = animeSkipEnabled,
             animeSkipClientId = animeSkipClientId,
+            introDbApiKey = introDbApiKey,
             streamAutoPlayNextEpisodeEnabled = streamAutoPlayNextEpisodeEnabled,
             streamAutoPlayPreferBingeGroup = streamAutoPlayPreferBingeGroup,
             nextEpisodeThresholdMode = nextEpisodeThresholdMode,
