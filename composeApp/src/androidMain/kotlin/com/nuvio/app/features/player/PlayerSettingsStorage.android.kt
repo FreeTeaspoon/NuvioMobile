@@ -60,6 +60,20 @@ actual object PlayerSettingsStorage {
     private const val nextEpisodeThresholdMinutesBeforeEndKey = "next_episode_threshold_minutes_before_end_v2"
     private const val useLibassKey = "use_libass"
     private const val libassRenderTypeKey = "libass_render_type"
+    private const val iosVideoOutputPresetKey = "ios_video_output_preset"
+    private const val iosToneMappingModeKey = "ios_tone_mapping_mode"
+    private const val iosTargetPrimariesKey = "ios_target_primaries"
+    private const val iosTargetTransferKey = "ios_target_transfer"
+    private const val iosHardwareDecoderModeKey = "ios_hardware_decoder_mode"
+    private const val iosExtendedDynamicRangeEnabledKey = "ios_extended_dynamic_range_enabled"
+    private const val iosTargetColorspaceHintEnabledKey = "ios_target_colorspace_hint_enabled"
+    private const val iosHdrComputePeakEnabledKey = "ios_hdr_compute_peak_enabled"
+    private const val iosDebandEnabledKey = "ios_deband_enabled"
+    private const val iosInterpolationEnabledKey = "ios_interpolation_enabled"
+    private const val iosBrightnessKey = "ios_brightness"
+    private const val iosContrastKey = "ios_contrast"
+    private const val iosSaturationKey = "ios_saturation"
+    private const val iosGammaKey = "ios_gamma"
     private const val rememberedAudioSelectionsKey = "remembered_audio_selections"
     private val syncKeys = listOf(
         showLoadingOverlayKey,
@@ -736,6 +750,120 @@ actual object PlayerSettingsStorage {
             ?.edit()
             ?.putString(ProfileScopedKey.of(libassRenderTypeKey), renderType)
             ?.apply()
+    }
+
+    actual fun loadIosVideoOutputPreset(): String? =
+        preferences?.getString(ProfileScopedKey.of(iosVideoOutputPresetKey), null)
+
+    actual fun saveIosVideoOutputPreset(preset: String) {
+        preferences?.edit()?.putString(ProfileScopedKey.of(iosVideoOutputPresetKey), preset)?.apply()
+    }
+
+    actual fun loadIosToneMappingMode(): String? =
+        preferences?.getString(ProfileScopedKey.of(iosToneMappingModeKey), null)
+
+    actual fun saveIosToneMappingMode(mode: String) {
+        preferences?.edit()?.putString(ProfileScopedKey.of(iosToneMappingModeKey), mode)?.apply()
+    }
+
+    actual fun loadIosTargetPrimaries(): String? =
+        preferences?.getString(ProfileScopedKey.of(iosTargetPrimariesKey), null)
+
+    actual fun saveIosTargetPrimaries(primaries: String) {
+        preferences?.edit()?.putString(ProfileScopedKey.of(iosTargetPrimariesKey), primaries)?.apply()
+    }
+
+    actual fun loadIosTargetTransfer(): String? =
+        preferences?.getString(ProfileScopedKey.of(iosTargetTransferKey), null)
+
+    actual fun saveIosTargetTransfer(transfer: String) {
+        preferences?.edit()?.putString(ProfileScopedKey.of(iosTargetTransferKey), transfer)?.apply()
+    }
+
+    actual fun loadIosHardwareDecoderMode(): String? =
+        preferences?.getString(ProfileScopedKey.of(iosHardwareDecoderModeKey), null)
+
+    actual fun saveIosHardwareDecoderMode(mode: String) {
+        preferences?.edit()?.putString(ProfileScopedKey.of(iosHardwareDecoderModeKey), mode)?.apply()
+    }
+
+    private fun loadIosBoolean(keyBase: String, defaultValue: Boolean): Boolean? =
+        preferences?.let { sharedPreferences ->
+            val key = ProfileScopedKey.of(keyBase)
+            if (sharedPreferences.contains(key)) sharedPreferences.getBoolean(key, defaultValue) else null
+        }
+
+    private fun saveIosBoolean(keyBase: String, enabled: Boolean) {
+        preferences?.edit()?.putBoolean(ProfileScopedKey.of(keyBase), enabled)?.apply()
+    }
+
+    private fun loadIosInt(keyBase: String): Int? =
+        preferences?.let { sharedPreferences ->
+            val key = ProfileScopedKey.of(keyBase)
+            if (sharedPreferences.contains(key)) sharedPreferences.getInt(key, 0) else null
+        }
+
+    private fun saveIosInt(keyBase: String, value: Int) {
+        preferences?.edit()?.putInt(ProfileScopedKey.of(keyBase), value)?.apply()
+    }
+
+    actual fun loadIosExtendedDynamicRangeEnabled(): Boolean? =
+        loadIosBoolean(iosExtendedDynamicRangeEnabledKey, true)
+
+    actual fun saveIosExtendedDynamicRangeEnabled(enabled: Boolean) {
+        saveIosBoolean(iosExtendedDynamicRangeEnabledKey, enabled)
+    }
+
+    actual fun loadIosTargetColorspaceHintEnabled(): Boolean? =
+        loadIosBoolean(iosTargetColorspaceHintEnabledKey, true)
+
+    actual fun saveIosTargetColorspaceHintEnabled(enabled: Boolean) {
+        saveIosBoolean(iosTargetColorspaceHintEnabledKey, enabled)
+    }
+
+    actual fun loadIosHdrComputePeakEnabled(): Boolean? =
+        loadIosBoolean(iosHdrComputePeakEnabledKey, true)
+
+    actual fun saveIosHdrComputePeakEnabled(enabled: Boolean) {
+        saveIosBoolean(iosHdrComputePeakEnabledKey, enabled)
+    }
+
+    actual fun loadIosDebandEnabled(): Boolean? =
+        loadIosBoolean(iosDebandEnabledKey, false)
+
+    actual fun saveIosDebandEnabled(enabled: Boolean) {
+        saveIosBoolean(iosDebandEnabledKey, enabled)
+    }
+
+    actual fun loadIosInterpolationEnabled(): Boolean? =
+        loadIosBoolean(iosInterpolationEnabledKey, false)
+
+    actual fun saveIosInterpolationEnabled(enabled: Boolean) {
+        saveIosBoolean(iosInterpolationEnabledKey, enabled)
+    }
+
+    actual fun loadIosBrightness(): Int? = loadIosInt(iosBrightnessKey)
+
+    actual fun saveIosBrightness(value: Int) {
+        saveIosInt(iosBrightnessKey, value)
+    }
+
+    actual fun loadIosContrast(): Int? = loadIosInt(iosContrastKey)
+
+    actual fun saveIosContrast(value: Int) {
+        saveIosInt(iosContrastKey, value)
+    }
+
+    actual fun loadIosSaturation(): Int? = loadIosInt(iosSaturationKey)
+
+    actual fun saveIosSaturation(value: Int) {
+        saveIosInt(iosSaturationKey, value)
+    }
+
+    actual fun loadIosGamma(): Int? = loadIosInt(iosGammaKey)
+
+    actual fun saveIosGamma(value: Int) {
+        saveIosInt(iosGammaKey, value)
     }
 
     actual fun loadRememberedAudioSelections(): String? =

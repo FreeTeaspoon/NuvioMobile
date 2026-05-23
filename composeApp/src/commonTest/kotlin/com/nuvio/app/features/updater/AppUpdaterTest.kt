@@ -21,8 +21,8 @@ class AppUpdaterTest {
                 "html_url": "https://github.com/FreeTeaspoon/NuvioMobile/releases/tag/0.1.12",
                 "assets": [
                   {
-                    "name": "com.nuvio.app.freeteaspoon",
-                    "browser_download_url": "https://github.com/FreeTeaspoon/NuvioMobile/releases/download/0.1.12/com.nuvio.app.freeteaspoon",
+                    "name": "nuvio-freeteaspoon-full-0.1.12.apk",
+                    "browser_download_url": "https://github.com/FreeTeaspoon/NuvioMobile/releases/download/0.1.12/nuvio-freeteaspoon-full-0.1.12.apk",
                     "size": 1234,
                     "content_type": "application/vnd.android.package-archive"
                   }
@@ -35,8 +35,8 @@ class AppUpdaterTest {
                 "prerelease": false,
                 "assets": [
                   {
-                    "name": "com.nuvio.app.freeteaspoon",
-                    "browser_download_url": "https://github.com/FreeTeaspoon/NuvioMobile/releases/download/cmp-rewrite-0.1.10.3/com.nuvio.app.freeteaspoon"
+                    "name": "nuvio-freeteaspoon-full-0.1.10.3.apk",
+                    "browser_download_url": "https://github.com/FreeTeaspoon/NuvioMobile/releases/download/cmp-rewrite-0.1.10.3/nuvio-freeteaspoon-full-0.1.10.3.apk"
                   }
                 ]
               }
@@ -46,7 +46,7 @@ class AppUpdaterTest {
 
         assertEquals("0.1.12", update.tag)
         assertEquals("0.1.12", update.title)
-        assertEquals("com.nuvio.app.freeteaspoon", update.assetName)
+        assertEquals("nuvio-freeteaspoon-full-0.1.12.apk", update.assetName)
     }
 
     @Test
@@ -73,8 +73,8 @@ class AppUpdaterTest {
                 "prerelease": false,
                 "assets": [
                   {
-                    "name": "com.nuvio.app.freeteaspoon",
-                    "browser_download_url": "https://github.com/FreeTeaspoon/NuvioMobile/releases/download/0.1.12.1/com.nuvio.app.freeteaspoon"
+                    "name": "nuvio-freeteaspoon-full-0.1.12.1.apk",
+                    "browser_download_url": "https://github.com/FreeTeaspoon/NuvioMobile/releases/download/0.1.12.1/nuvio-freeteaspoon-full-0.1.12.1.apk"
                   }
                 ]
               }
@@ -97,8 +97,8 @@ class AppUpdaterTest {
                 "prerelease": false,
                 "assets": [
                   {
-                    "name": "com.nuvio.app.freeteaspoon",
-                    "browser_download_url": "https://github.com/FreeTeaspoon/NuvioMobile/releases/download/0.1.11.2/com.nuvio.app.freeteaspoon"
+                    "name": "nuvio-freeteaspoon-full-0.1.11.2.apk",
+                    "browser_download_url": "https://github.com/FreeTeaspoon/NuvioMobile/releases/download/0.1.11.2/nuvio-freeteaspoon-full-0.1.11.2.apk"
                   }
                 ]
               },
@@ -109,8 +109,8 @@ class AppUpdaterTest {
                 "prerelease": false,
                 "assets": [
                   {
-                    "name": "com.nuvio.app.freeteaspoon",
-                    "browser_download_url": "https://github.com/FreeTeaspoon/NuvioMobile/releases/download/0.1.12/com.nuvio.app.freeteaspoon"
+                    "name": "nuvio-freeteaspoon-full-0.1.12.apk",
+                    "browser_download_url": "https://github.com/FreeTeaspoon/NuvioMobile/releases/download/0.1.12/nuvio-freeteaspoon-full-0.1.12.apk"
                   }
                 ]
               }
