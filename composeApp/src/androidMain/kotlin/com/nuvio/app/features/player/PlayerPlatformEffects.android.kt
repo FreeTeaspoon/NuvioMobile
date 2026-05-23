@@ -39,6 +39,10 @@ actual fun LockPlayerToLandscape() {
 @Composable
 actual fun EnterImmersivePlayerMode(keepScreenAwake: Boolean) {
     val activity = LocalContext.current.findActivity() ?: return
+    val keepScreenOnWasSet = remember(activity) {
+        val flags = activity.window.attributes.flags
+        (flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) != 0
+    }
 
     DisposableEffect(activity) {
         val window = activity.window
@@ -52,6 +56,19 @@ actual fun EnterImmersivePlayerMode(keepScreenAwake: Boolean) {
         onDispose {
             controller.show(WindowInsetsCompat.Type.systemBars())
             controller.systemBarsBehavior = previousBehavior
+            if (keepScreenOnWasSet) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+    }
+
+    SideEffect {
+        if (keepScreenAwake || keepScreenOnWasSet) {
+            activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 }

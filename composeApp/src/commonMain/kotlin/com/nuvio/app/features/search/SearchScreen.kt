@@ -89,11 +89,13 @@ fun SearchScreen(
     scrollToTopRequests: Flow<Unit> = emptyFlow(),
 ) {
     val focusRequester = remember { FocusRequester() }
+    var handledSearchFocusRequestCount by remember { mutableStateOf(searchFocusRequestCount) }
 
     LaunchedEffect(searchFocusRequestCount) {
-        if (searchFocusRequestCount > 0) {
+        if (searchFocusRequestCount > handledSearchFocusRequestCount) {
             focusRequester.requestFocus()
         }
+        handledSearchFocusRequestCount = searchFocusRequestCount
     }
 
     LaunchedEffect(Unit) {
