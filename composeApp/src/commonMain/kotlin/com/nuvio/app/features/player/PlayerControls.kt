@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Forward10
 import androidx.compose.material.icons.rounded.Lock
@@ -120,6 +121,7 @@ internal fun PlayerControlsShell(
     onSpeedClick: () -> Unit,
     onSubtitleClick: () -> Unit,
     onAudioClick: () -> Unit,
+    onVideoSettingsClick: (() -> Unit)? = null,
     onSourcesClick: (() -> Unit)? = null,
     onEpisodesClick: (() -> Unit)? = null,
     onSubmitIntroClick: (() -> Unit)? = null,
@@ -183,6 +185,7 @@ internal fun PlayerControlsShell(
                 showParentalGuide = showParentalGuide,
                 onParentalGuideAnimationComplete = onParentalGuideAnimationComplete,
                 onLockToggle = onLockToggle,
+                onVideoSettingsClick = onVideoSettingsClick,
                 onBack = onBack,
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -249,6 +252,7 @@ private fun PlayerHeader(
     showParentalGuide: Boolean,
     onParentalGuideAnimationComplete: () -> Unit,
     onLockToggle: () -> Unit,
+    onVideoSettingsClick: (() -> Unit)?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -359,6 +363,15 @@ private fun PlayerHeader(
                         iconSize = metrics.headerIconSize,
                         onClick = onLockToggle,
                     )
+                    if (onVideoSettingsClick != null) {
+                        PlayerHeaderIconButton(
+                            icon = Icons.Rounded.Build,
+                            contentDescription = "Video settings",
+                            buttonSize = metrics.headerIconSize + 16.dp,
+                            iconSize = metrics.headerIconSize,
+                            onClick = onVideoSettingsClick,
+                        )
+                    }
                     NuvioBackButton(
                         onClick = onBack,
                         containerColor = Color.Black.copy(alpha = 0.35f),
