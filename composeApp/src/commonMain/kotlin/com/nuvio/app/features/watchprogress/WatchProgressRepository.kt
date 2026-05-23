@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.features.addons.AddonRepository
+import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.player.PlayerPlaybackSnapshot
 import com.nuvio.app.features.profiles.ProfileRepository
@@ -12,6 +13,7 @@ import com.nuvio.app.features.trakt.TraktProgressRepository
 import com.nuvio.app.features.trakt.TraktSettingsRepository
 import com.nuvio.app.features.trakt.shouldUseTraktProgress as shouldUseTraktProgressSource
 import com.nuvio.app.features.watching.application.WatchingActions
+import com.nuvio.app.features.watching.sync.ProgressSyncRecord
 import com.nuvio.app.features.watching.sync.ProgressSyncAdapter
 import com.nuvio.app.features.watching.sync.SupabaseProgressSyncAdapter
 import kotlinx.coroutines.CancellationException
@@ -19,15 +21,28 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
 
 private const val NUVIO_SYNC_PERIODIC_INTERVAL_MS = 5L * 60L * 1000L
+private const val WATCH_PROGRESS_METADATA_RESOLUTION_CONCURRENCY = 4
+
+private data class RemoteMetadataResolutionResult(
+    val key: Pair<String, String>,
+    val entries: List<WatchProgressEntry>,
+    val meta: MetaDetails?,
+)
 
 object WatchProgressRepository {
     private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -180,38 +195,28 @@ object WatchProgressRepository {
             }
 
             runCatching {
-                val serverEntries = syncAdapter.pull(profileId = profileId)
-
+                val sinceLastWatched = entriesByVideoId.values
+                    .maxOfOrNull { entry -> entry.lastUpdatedEpochMs }
+                    ?.takeIf { hasCompletedInitialNuvioSyncPull }
+                val serverEntries = syncAdapter.pull(
+                    profileId = profileId,
+                    sinceLastWatched = sinceLastWatched,
+                )
+                val isIncrementalPull = sinceLastWatched != null
+                if (isIncrementalPull && serverEntries.isEmpty()) {
+                    hasLoaded = true
+                    hasCompletedInitialNuvioSyncPull = true
+                    return@runCatching
+                }
                 val oldLocal = entriesByVideoId.toMap()
-                val newMap = mutableMapOf<String, WatchProgressEntry>()
+                val newMap = if (isIncrementalPull) {
+                    entriesByVideoId.toMutableMap()
+                } else {
+                    mutableMapOf()
+                }
 
                 serverEntries.forEach { entry ->
-                    val videoId = entry.videoId
-                    val cached = oldLocal[videoId]
-                    newMap[videoId] = WatchProgressEntry(
-                        contentType = entry.contentType,
-                        parentMetaId = entry.contentId,
-                        parentMetaType = cached?.parentMetaType ?: entry.contentType,
-                        videoId = videoId,
-                        title = cached?.title?.takeIf { it.isNotBlank() } ?: entry.contentId,
-                        logo = cached?.logo,
-                        poster = cached?.poster,
-                        background = cached?.background,
-                        seasonNumber = entry.season,
-                        episodeNumber = entry.episode,
-                        episodeTitle = cached?.episodeTitle,
-                        episodeThumbnail = cached?.episodeThumbnail,
-                        lastPositionMs = entry.position,
-                        durationMs = entry.duration,
-                        lastUpdatedEpochMs = entry.lastWatched,
-                        providerName = cached?.providerName,
-                        providerAddonId = cached?.providerAddonId,
-                        lastStreamTitle = cached?.lastStreamTitle,
-                        lastStreamSubtitle = cached?.lastStreamSubtitle,
-                        pauseDescription = cached?.pauseDescription,
-                        lastSourceUrl = cached?.lastSourceUrl,
-                        isCompleted = isWatchProgressComplete(entry.position, entry.duration, false),
-                    )
+                    newMap[entry.videoId] = entry.toWatchProgressEntry(cached = oldLocal[entry.videoId])
                 }
 
                 entriesByVideoId = newMap
@@ -232,9 +237,37 @@ object WatchProgressRepository {
         }
     }
 
+    private fun ProgressSyncRecord.toWatchProgressEntry(cached: WatchProgressEntry?): WatchProgressEntry =
+        WatchProgressEntry(
+            contentType = contentType,
+            parentMetaId = contentId,
+            parentMetaType = cached?.parentMetaType ?: contentType,
+            videoId = videoId,
+            title = cached?.title?.takeIf { it.isNotBlank() } ?: contentId,
+            logo = cached?.logo,
+            poster = cached?.poster,
+            background = cached?.background,
+            seasonNumber = season,
+            episodeNumber = episode,
+            episodeTitle = cached?.episodeTitle,
+            episodeThumbnail = cached?.episodeThumbnail,
+            lastPositionMs = position,
+            durationMs = duration,
+            lastUpdatedEpochMs = lastWatched,
+            providerName = cached?.providerName,
+            providerAddonId = cached?.providerAddonId,
+            lastStreamTitle = cached?.lastStreamTitle,
+            lastStreamSubtitle = cached?.lastStreamSubtitle,
+            pauseDescription = cached?.pauseDescription,
+            lastSourceUrl = cached?.lastSourceUrl,
+            isCompleted = isWatchProgressComplete(position, duration, false),
+        )
+
     private fun resolveRemoteMetadata() {
-        val needsResolution = entriesByVideoId.values
+        val missingMetadataEntries = entriesByVideoId.values
             .filter { it.poster.isNullOrBlank() || it.background.isNullOrBlank() }
+        val entriesToResolve = missingMetadataEntries.continueWatchingEntries(limit = ContinueWatchingLimit)
+        val needsResolution = entriesToResolve
             .groupBy { it.parentMetaId to it.contentType }
 
         if (needsResolution.isEmpty()) {
@@ -250,39 +283,77 @@ object WatchProgressRepository {
                 return@launch
             }
 
-            for ((key, entries) in needsResolution) {
-                val (metaId, metaType) = key
-                val meta = runCatching {
-                    MetaDetailsRepository.fetch(metaType, metaId)
-                }.getOrNull()
+            var resolvedEntries = 0
+            val semaphore = Semaphore(WATCH_PROGRESS_METADATA_RESOLUTION_CONCURRENCY)
+            val resolutionResults = coroutineScope {
+                needsResolution.map { (key, entries) ->
+                    async {
+                        semaphore.withPermit {
+                            fetchRemoteMetadataGroup(key = key, entries = entries)
+                        }
+                    }
+                }.awaitAll()
+            }
+
+            for (result in resolutionResults) {
+                ensureActive()
+                val meta = result.meta
                 if (meta == null) {
                     continue
                 }
 
-                for (entry in entries) {
-                    val episodeVideo = if (entry.seasonNumber != null && entry.episodeNumber != null) {
+                var appliedEntries = 0
+                for (entry in result.entries) {
+                    val current = entriesByVideoId[entry.videoId] ?: continue
+                    val episodeVideo = if (current.seasonNumber != null && current.episodeNumber != null) {
                         meta.videos.find { v ->
-                            v.season == entry.seasonNumber && v.episode == entry.episodeNumber
+                            v.season == current.seasonNumber && v.episode == current.episodeNumber
                         }
                     } else null
 
-                    entriesByVideoId[entry.videoId] = entry.copy(
+                    entriesByVideoId[current.videoId] = current.copy(
                         title = meta.name,
                         poster = meta.poster,
                         background = meta.background,
                         logo = meta.logo,
-                        episodeTitle = episodeVideo?.title ?: entry.episodeTitle,
-                        episodeThumbnail = episodeVideo?.thumbnail ?: entry.episodeThumbnail,
+                        episodeTitle = episodeVideo?.title ?: current.episodeTitle,
+                        episodeThumbnail = episodeVideo?.thumbnail ?: current.episodeThumbnail,
                         pauseDescription = episodeVideo?.overview
                             ?: meta.description
-                            ?: entry.pauseDescription,
+                            ?: current.pauseDescription,
                     )
+                    appliedEntries += 1
+                }
+                if (appliedEntries == 0) {
+                    continue
                 }
 
-                publish()
+                resolvedEntries += appliedEntries
             }
-            persist()
+            if (resolvedEntries > 0) {
+                publish()
+                persist()
+            }
         }
+    }
+
+    private suspend fun fetchRemoteMetadataGroup(
+        key: Pair<String, String>,
+        entries: List<WatchProgressEntry>,
+    ): RemoteMetadataResolutionResult {
+        val (metaId, metaType) = key
+        val meta = try {
+            MetaDetailsRepository.fetch(metaType, metaId)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Throwable) {
+            null
+        }
+        return RemoteMetadataResolutionResult(
+            key = key,
+            entries = entries,
+            meta = meta,
+        )
     }
 
     fun upsertPlaybackProgress(
@@ -482,13 +553,14 @@ object WatchProgressRepository {
     private fun publish() {
         val entries = currentEntries()
         val sortedEntries = entries.sortedByDescending { it.lastUpdatedEpochMs }
+        val hasLoadedRemoteProgress = if (shouldUseTraktProgress()) {
+            TraktProgressRepository.uiState.value.hasLoadedRemoteProgress
+        } else {
+            hasLoaded
+        }
         _uiState.value = WatchProgressUiState(
             entries = sortedEntries,
-            hasLoadedRemoteProgress = if (shouldUseTraktProgress()) {
-                TraktProgressRepository.uiState.value.hasLoadedRemoteProgress
-            } else {
-                hasLoaded
-            },
+            hasLoadedRemoteProgress = hasLoadedRemoteProgress,
         )
     }
 

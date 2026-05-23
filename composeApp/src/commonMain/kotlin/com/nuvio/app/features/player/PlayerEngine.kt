@@ -20,6 +20,7 @@ interface PlayerEngineController {
     fun clearExternalSubtitleAndSelect(trackIndex: Int)
     fun setVideoZoom(state: PlayerVideoZoomState) {}
     fun applySubtitleStyle(style: SubtitleStyleState) {}
+    fun configureIosVideoOutput(settings: PlayerSettingsUiState) {}
 }
 
 internal fun sanitizePlaybackHeaders(headers: Map<String, String>?): Map<String, String> {
