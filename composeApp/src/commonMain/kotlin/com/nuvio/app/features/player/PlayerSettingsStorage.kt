@@ -115,6 +115,8 @@ internal expect object PlayerSettingsStorage {
     fun saveIosGamma(value: Int)
     fun loadRememberedAudioSelections(): String?
     fun saveRememberedAudioSelections(json: String)
+    fun loadRememberedSubtitleSelections(): String?
+    fun saveRememberedSubtitleSelections(json: String)
     fun exportToSyncPayload(): JsonObject
     fun replaceFromSyncPayload(payload: JsonObject)
 }

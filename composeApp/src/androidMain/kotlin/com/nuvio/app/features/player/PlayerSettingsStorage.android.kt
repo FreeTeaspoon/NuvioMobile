@@ -75,6 +75,7 @@ actual object PlayerSettingsStorage {
     private const val iosSaturationKey = "ios_saturation"
     private const val iosGammaKey = "ios_gamma"
     private const val rememberedAudioSelectionsKey = "remembered_audio_selections"
+    private const val rememberedSubtitleSelectionsKey = "remembered_subtitle_selections"
     private val syncKeys = listOf(
         showLoadingOverlayKey,
         resizeModeKey,
@@ -873,6 +874,16 @@ actual object PlayerSettingsStorage {
         preferences
             ?.edit()
             ?.putString(ProfileScopedKey.of(rememberedAudioSelectionsKey), json)
+            ?.apply()
+    }
+
+    actual fun loadRememberedSubtitleSelections(): String? =
+        preferences?.getString(ProfileScopedKey.of(rememberedSubtitleSelectionsKey), null)
+
+    actual fun saveRememberedSubtitleSelections(json: String) {
+        preferences
+            ?.edit()
+            ?.putString(ProfileScopedKey.of(rememberedSubtitleSelectionsKey), json)
             ?.apply()
     }
 
