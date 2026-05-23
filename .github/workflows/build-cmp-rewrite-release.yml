@@ -12,7 +12,6 @@ concurrency:
 
 env:
   UPSTREAM_REPO: NuvioMedia/NuvioMobile
-  RELEASE_APK_NAME: com.nuvio.app.freeteaspoon
 
 jobs:
   build:
@@ -164,6 +163,7 @@ jobs:
           echo "app_version=${app_version}" >> "${GITHUB_OUTPUT}"
           echo "base_version=${base_version}" >> "${GITHUB_OUTPUT}"
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "apk_name=nuvio-freeteaspoon-full-${tag}.apk" >> "${GITHUB_OUTPUT}"
           echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
           echo "notes_file=${notes_file}" >> "${GITHUB_OUTPUT}"
 
@@ -247,7 +247,7 @@ jobs:
             exit 1
           fi
 
-          cp "${apk}" "dist/${RELEASE_APK_NAME}"
+          cp "${apk}" "dist/${{ steps.release.outputs.apk_name }}"
           ls -lh dist
 
       - name: Publish release
@@ -297,4 +297,4 @@ jobs:
               --input "${release_file}" >/dev/null
           fi
 
-          gh release upload "${tag}" "dist/${RELEASE_APK_NAME}" --repo "${GITHUB_REPOSITORY}" --clobber
+          gh release upload "${tag}" "dist/${{ steps.release.outputs.apk_name }}" --repo "${GITHUB_REPOSITORY}" --clobber

@@ -56,6 +56,9 @@ import com.nuvio.app.features.player.AudioLanguageOption
 import com.nuvio.app.features.player.AvailableLanguageOptions
 import com.nuvio.app.features.player.ExternalPlayerApp
 import com.nuvio.app.features.player.ExternalPlayerPlatform
+import com.nuvio.app.features.player.IosHardwareDecoderMode
+import com.nuvio.app.features.player.IosTargetPrimaries
+import com.nuvio.app.features.player.IosTargetTransfer
 import com.nuvio.app.features.player.PlayerEngineType
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.STREAM_AUTO_PLAY_TIMEOUT_VALUES

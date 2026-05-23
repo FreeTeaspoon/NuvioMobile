@@ -20,7 +20,6 @@ concurrency:
 env:
   UPSTREAM_REPO: NuvioMedia/NuvioMobile
   TARGET_BRANCH: cmp-rewrite
-  RELEASE_APK_NAME: com.nuvio.app.freeteaspoon
 
 jobs:
   build:
@@ -165,6 +164,7 @@ jobs:
           echo "upstream_version=${upstream_version}" >> "${GITHUB_OUTPUT}"
           echo "tag=${fork_tag}" >> "${GITHUB_OUTPUT}"
           echo "name=${fork_tag}" >> "${GITHUB_OUTPUT}"
+          echo "apk_name=nuvio-freeteaspoon-full-${fork_tag}.apk" >> "${GITHUB_OUTPUT}"
           echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
           echo "body_file=${body_file}" >> "${GITHUB_OUTPUT}"
 
@@ -257,8 +257,20 @@ jobs:
           release_id="$(jq -r '.id' <<<"${release_json}")"
           existing_target="$(jq -r '.target_commitish // ""' <<<"${release_json}")"
           build_commit="${{ steps.sync_source.outputs.build_commit }}"
-          desired_apk_count="$(jq -r --arg desired "${RELEASE_APK_NAME}" '[.assets[]? | select(.name == $desired)] | length' <<<"${release_json}")"
-          apk_asset_ids="$(jq -r --arg desired "${RELEASE_APK_NAME}" '.assets[]? | select(.name | endswith(".apk")) | select(.name != $desired) | .id' <<<"${release_json}")"
+          desired_apk_name="${{ steps.release.outputs.apk_name }}"
+          desired_apk_count="$(jq -r --arg desired "${desired_apk_name}" '[.assets[]? | select(.name == $desired)] | length' <<<"${release_json}")"
+          apk_asset_ids="$(
+            jq -r --arg desired "${desired_apk_name}" '
+              .assets[]?
+              | select(.name != $desired)
+              | select(
+                  (.name | endswith(".apk")) or
+                  (.content_type == "application/vnd.android.package-archive") or
+                  (.name == "com.nuvio.app.freeteaspoon")
+                )
+              | .id
+            ' <<<"${release_json}"
+          )"
           has_release_apk="false"
 
           if [ "${desired_apk_count}" -gt 0 ]; then
@@ -271,9 +283,9 @@ jobs:
               gh api \
                 --method PATCH \
                 "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" \
-                -f "name=${RELEASE_APK_NAME}" >/dev/null
+                -f "name=${desired_apk_name}" >/dev/null
             done <<<"${apk_asset_ids}"
-            echo "Renamed existing APK release asset to ${RELEASE_APK_NAME}."
+            echo "Renamed existing APK release asset to ${desired_apk_name}."
             has_release_apk="true"
           fi
 
@@ -290,13 +302,13 @@ jobs:
             --input "${release_patch}" >/dev/null
 
           if [ "${has_release_apk}" = "true" ] && [ "${existing_target}" = "${build_commit}" ]; then
-            echo "Release ${tag} already exists with ${RELEASE_APK_NAME}; release title, notes, and target are current."
+            echo "Release ${tag} already exists with ${desired_apk_name}; release title, notes, and target are current."
             echo "skip=true" >> "${GITHUB_OUTPUT}"
           elif [ "${has_release_apk}" = "true" ]; then
             echo "Release ${tag} exists with an APK, but it targets ${existing_target}; rebuilding for ${build_commit}."
             echo "skip=false" >> "${GITHUB_OUTPUT}"
           else
-            echo "Release ${tag} exists without ${RELEASE_APK_NAME}; rebuilding APK."
+            echo "Release ${tag} exists without ${desired_apk_name}; rebuilding APK."
             echo "skip=false" >> "${GITHUB_OUTPUT}"
           fi
 
@@ -369,7 +381,7 @@ jobs:
             exit 1
           fi
 
-          cp "${apk}" "dist/${RELEASE_APK_NAME}"
+          cp "${apk}" "dist/${{ steps.release.outputs.apk_name }}"
           ls -lh dist
 
       - name: Publish fork release
@@ -415,4 +427,4 @@ jobs:
               --input "${release_file}" >/dev/null
           fi
 
-          gh release upload "${tag}" "dist/${RELEASE_APK_NAME}" --repo "${GITHUB_REPOSITORY}" --clobber
+          gh release upload "${tag}" "dist/${{ steps.release.outputs.apk_name }}" --repo "${GITHUB_REPOSITORY}" --clobber

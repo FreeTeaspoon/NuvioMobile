@@ -94,6 +94,7 @@ private const val PlayerLockedOverlayDurationMs = 2_000L
 private const val PlayerLeftGestureBoundary = 0.4f
 private const val PlayerRightGestureBoundary = 0.6f
 private const val PlayerVerticalGestureSensitivity = 1f
+private const val NEXT_EPISODE_HARD_TIMEOUT_MS = 120_000L
 private val PlayerTopSideGestureExclusionHeight = 72.dp
 private val PlayerSliderOverlayGap = 12.dp
 private val PlayerTimeRowHeight = 36.dp
@@ -518,6 +519,7 @@ fun PlayerScreen(
         var showSubtitleModal by remember { mutableStateOf(false) }
         var showSpeedModal by remember { mutableStateOf(false) }
         var showVideoZoomModal by remember { mutableStateOf(false) }
+        var showVideoSettingsModal by remember { mutableStateOf(false) }
         var audioTracks by remember { mutableStateOf<List<AudioTrack>>(emptyList()) }
         var subtitleTracks by remember { mutableStateOf<List<SubtitleTrack>>(emptyList()) }
         var selectedAudioIndex by remember { mutableStateOf(-1) }

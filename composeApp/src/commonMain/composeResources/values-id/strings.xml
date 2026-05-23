@@ -324,6 +324,12 @@
     <string name="compose_player_resize_fill">Penuh</string>
     <string name="compose_player_resize_fit">Sesuaikan</string>
     <string name="compose_player_resize_zoom">Perbesar</string>
+    <string name="compose_player_video_zoom">Video Zoom</string>
+    <string name="compose_player_pan_and_zoom">Pan &amp; Zoom</string>
+    <string name="compose_player_set_as_default">Set as default</string>
+    <string name="compose_player_reset">Reset</string>
+    <string name="compose_player_zoom_decrease">Decrease video zoom</string>
+    <string name="compose_player_zoom_increase">Increase video zoom</string>
     <string name="compose_player_seek_back_10">Mundur 10 detik</string>
     <string name="compose_player_seek_delta_backward">-%1$ds</string>
     <string name="compose_player_seek_delta_forward">+%1$ds</string>

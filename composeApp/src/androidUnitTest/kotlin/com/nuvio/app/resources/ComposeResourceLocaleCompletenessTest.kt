@@ -20,10 +20,15 @@ class ComposeResourceLocaleCompletenessTest {
                 .forEach { localeDir ->
                     val localeNames = parseStringNames(localeDir.resolve("strings.xml"))
                     val missingNames = defaultNames - localeNames
+                    val extraNames = localeNames - defaultNames
 
                     assertTrue(
                         actual = missingNames.isEmpty(),
                         message = "${localeDir.name}/strings.xml is missing default strings: ${missingNames.joinToString()}",
+                    )
+                    assertTrue(
+                        actual = extraNames.isEmpty(),
+                        message = "${localeDir.name}/strings.xml defines strings missing from default values: ${extraNames.joinToString()}",
                     )
                 }
         }
