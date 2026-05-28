@@ -849,6 +849,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     private fun markFrameRendered() {
         if (!hasRenderedFrameForCurrentRequest) {
             hasRenderedFrameForCurrentRequest = true
+            applyVideoZoom()
         }
         isSeekFramePending = false
         if (isPlayerLoading) {
