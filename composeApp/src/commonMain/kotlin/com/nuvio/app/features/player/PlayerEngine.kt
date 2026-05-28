@@ -276,3 +276,12 @@ expect fun PlatformPlayerSurface(
     onSnapshot: (PlayerPlaybackSnapshot) -> Unit,
     onError: (String?) -> Unit,
 )
+
+@Composable
+expect fun PlatformSystemMediaControls(
+    title: String?,
+    subtitle: String?,
+    controller: PlayerEngineController?,
+    snapshot: PlayerPlaybackSnapshot,
+    enabled: Boolean,
+)
