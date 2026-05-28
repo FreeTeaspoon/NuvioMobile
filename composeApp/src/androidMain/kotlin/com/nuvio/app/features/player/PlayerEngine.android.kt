@@ -796,12 +796,43 @@ private fun PlayerView.applyVideoZoom(state: PlayerVideoZoomState) {
     resetSubtitleLayerTransforms()
 
     val videoSurface = videoSurfaceView ?: return
-    videoSurface.scaleX = scale
-    videoSurface.scaleY = scale
-    videoSurface.pivotX = videoSurface.width / 2f
-    videoSurface.pivotY = videoSurface.height / 2f
-    videoSurface.translationX = 0f
-    videoSurface.translationY = 0f
+    videoSurface.applyCenteredVideoZoom(scale)
+}
+
+private fun View.applyCenteredVideoZoom(scale: Float) {
+    fun applyTransform() {
+        scaleX = scale
+        scaleY = scale
+        pivotX = width / 2f
+        pivotY = height / 2f
+        translationX = 0f
+        translationY = 0f
+    }
+
+    if (width > 0 && height > 0) {
+        applyTransform()
+    } else {
+        post { applyTransform() }
+    }
+
+    addOnLayoutChangeListener(
+        object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(
+                v: View,
+                left: Int,
+                top: Int,
+                right: Int,
+                bottom: Int,
+                oldLeft: Int,
+                oldTop: Int,
+                oldRight: Int,
+                oldBottom: Int,
+            ) {
+                v.removeOnLayoutChangeListener(this)
+                applyTransform()
+            }
+        }
+    )
 }
 
 private fun PlayerView.resetSubtitleLayerTransforms() {
