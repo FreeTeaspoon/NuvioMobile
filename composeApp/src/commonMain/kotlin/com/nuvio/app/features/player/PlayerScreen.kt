@@ -112,6 +112,24 @@ private fun sliderOverlayBottomPadding(metrics: PlayerLayoutMetrics) =
         PlayerActionRowHeight +
         PlayerSliderOverlayGap
 
+private fun buildSystemMediaControlsSubtitle(
+    providerName: String,
+    seasonNumber: Int?,
+    episodeNumber: Int?,
+    episodeTitle: String?,
+): String {
+    val episodeLabel = if (seasonNumber != null && episodeNumber != null) {
+        "S${seasonNumber} E${episodeNumber}"
+    } else {
+        null
+    }
+    return listOfNotNull(
+        episodeLabel,
+        episodeTitle?.takeIf { it.isNotBlank() },
+        providerName.takeIf { it.isNotBlank() },
+    ).joinToString(" - ")
+}
+
 private enum class PlayerSideGesture {
     Brightness,
     Volume,
@@ -257,6 +275,18 @@ fun PlayerScreen(
         val keepScreenAwake = errorMessage == null &&
             (playbackSnapshot.isPlaying || (shouldPlay && playbackSnapshot.isLoading))
         EnterImmersivePlayerMode(keepScreenAwake = keepScreenAwake)
+        PlatformSystemMediaControls(
+            title = title,
+            subtitle = buildSystemMediaControlsSubtitle(
+                providerName = activeProviderName,
+                seasonNumber = activeSeasonNumber,
+                episodeNumber = activeEpisodeNumber,
+                episodeTitle = activeEpisodeTitle,
+            ),
+            controller = playerController,
+            snapshot = playbackSnapshot,
+            enabled = errorMessage == null,
+        )
         var isScrubbingTimeline by remember { mutableStateOf(false) }
         var scrubbingPositionMs by remember { mutableStateOf<Long?>(null) }
         var isScrubbing by remember { mutableStateOf(false) }

@@ -42,6 +42,9 @@
         <receiver
             android:name="com.nuvio.app.features.downloads.DownloadsNotificationActionReceiver"
             android:exported="false" />
+        <receiver
+            android:name="com.nuvio.app.features.player.PlayerMediaButtonReceiver"
+            android:exported="false" />
 
         <service
             android:name="com.nuvio.app.features.downloads.DownloadsForegroundService"
