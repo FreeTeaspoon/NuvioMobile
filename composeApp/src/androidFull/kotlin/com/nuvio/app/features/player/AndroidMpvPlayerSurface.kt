@@ -726,10 +726,17 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     private fun applyVideoZoom() {
         resetViewTransform()
         val normalizedZoom = videoZoomState.zoom.coerceIn(PlayerVideoZoomMin, PlayerVideoZoomMax)
+        val scale = java.lang.Math.pow(2.0, normalizedZoom.toDouble()).toFloat()
         MPVLib.setPropertyDouble("panscan", 0.0)
-        MPVLib.setPropertyDouble("video-zoom", normalizedZoom.toDouble())
+        MPVLib.setPropertyDouble("video-zoom", 0.0)
         applyZoomIndependentSubtitleRendering()
         resetVideoPan()
+        scaleX = scale
+        scaleY = scale
+        pivotX = width / 2f
+        pivotY = height / 2f
+        translationX = 0f
+        translationY = 0f
     }
 
     private fun resetVideoPan() {
