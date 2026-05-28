@@ -10,7 +10,7 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ### Fixed
 
-## 0.1.25.2
+## 0.1.25.3
 
 ### Fixed
 
