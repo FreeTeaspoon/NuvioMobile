@@ -260,6 +260,8 @@
     <string name="detail_trailers_title">Τρέιλερ</string>
     <string name="downloads_empty_episodes">Δεν υπάρχουν ολοκληρωμένα επεισόδια</string>
     <string name="downloads_empty_title">Δεν υπάρχουν λήψεις ακόμα</string>
+    <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>
+    <string name="downloads_delete_confirm_title">Delete download?</string>
     <string name="downloads_episode_count">%1$d ληφθέν(τα) επεισόδιο(α)</string>
     <string name="downloads_section_active">Ενεργές</string>
     <string name="downloads_section_movies">Ταινίες</string>

@@ -518,12 +518,29 @@ fun NuvioToastHost(
                 tonalElevation = 6.dp,
                 shadowElevation = 10.dp,
             ) {
-                Text(
-                    text = currentToast.message,
+                Row(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = currentToast.message,
+                        modifier = Modifier.weight(1f, fill = false),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    currentToast.actionLabel?.let { actionLabel ->
+                        Text(
+                            text = actionLabel,
+                            modifier = Modifier.clickable {
+                                NuvioToastController.performAction(currentToast.id)
+                            },
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
             }
         }
     }
@@ -533,6 +550,8 @@ data class NuvioToastMessage(
     val id: Long,
     val message: String,
     val durationMillis: Long,
+    val actionLabel: String? = null,
+    val onAction: (() -> Unit)? = null,
 )
 
 object NuvioToastController {
@@ -543,13 +562,24 @@ object NuvioToastController {
     fun show(
         message: String,
         durationMillis: Long = 2500L,
+        actionLabel: String? = null,
+        onAction: (() -> Unit)? = null,
     ) {
         nextToastId += 1L
         _currentToast.value = NuvioToastMessage(
             id = nextToastId,
             message = message,
             durationMillis = durationMillis,
+            actionLabel = actionLabel,
+            onAction = onAction,
         )
+    }
+
+    fun performAction(id: Long) {
+        val activeToast = _currentToast.value ?: return
+        if (activeToast.id != id) return
+        _currentToast.value = null
+        activeToast.onAction?.invoke()
     }
 
     fun dismiss(id: Long? = null) {

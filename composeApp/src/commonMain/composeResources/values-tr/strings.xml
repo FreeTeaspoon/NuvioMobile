@@ -260,6 +260,8 @@
     <string name="detail_trailers_title">Fragmanlar</string>
     <string name="downloads_empty_episodes">Tamamlanmış bölüm yok</string>
     <string name="downloads_empty_title">Henüz indirme yok</string>
+    <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>
+    <string name="downloads_delete_confirm_title">Delete download?</string>
     <string name="downloads_episode_count">%1$d indirilmiş bölüm</string>
     <string name="downloads_section_active">Aktif</string>
     <string name="downloads_section_movies">Filmler</string>

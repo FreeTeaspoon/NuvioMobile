@@ -2,20 +2,16 @@ package com.nuvio.app.features.player
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class PlayerVideoZoomTest {
 
     @Test
-    fun normalized_clampsZoomAndKeepsPanSetting() {
-        val high = PlayerVideoZoomState(zoom = 4f, panAndZoomEnabled = true).normalized()
-        val low = PlayerVideoZoomState(zoom = -4f, panAndZoomEnabled = false).normalized()
+    fun normalized_clampsZoom() {
+        val high = PlayerVideoZoomState(zoom = 4f).normalized()
+        val low = PlayerVideoZoomState(zoom = -4f).normalized()
 
         assertEquals(PlayerVideoZoomMax, high.zoom)
-        assertTrue(high.panAndZoomEnabled)
         assertEquals(PlayerVideoZoomMin, low.zoom)
-        assertFalse(low.panAndZoomEnabled)
     }
 
     @Test

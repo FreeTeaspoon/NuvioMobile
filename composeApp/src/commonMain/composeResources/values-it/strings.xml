@@ -260,6 +260,8 @@
   <string name="detail_trailers_title">Trailer</string>
   <string name="downloads_empty_episodes">Nessun episodio completato</string>
   <string name="downloads_empty_title">Ancora nessun download</string>
+  <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>
+  <string name="downloads_delete_confirm_title">Delete download?</string>
   <string name="downloads_episode_count">%1$d episodi scaricati</string>
   <string name="downloads_section_active">Attivi</string>
   <string name="downloads_section_movies">Film</string>

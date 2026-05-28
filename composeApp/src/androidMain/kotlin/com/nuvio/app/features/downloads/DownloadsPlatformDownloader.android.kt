@@ -51,6 +51,9 @@ private val downloadHttpClient = OkHttpClient.Builder()
 
 internal actual object DownloadsPlatformDownloader {
     private var appContext: Context? = null
+    private val foregroundLock = Any()
+    private val activeForegroundTokens = mutableSetOf<Int>()
+    private var nextForegroundToken = 0
 
     fun initialize(context: Context) {
         appContext = context.applicationContext
@@ -65,6 +68,7 @@ internal actual object DownloadsPlatformDownloader {
         val job = SupervisorJob()
         val scope = CoroutineScope(job + Dispatchers.IO)
         var call: Call? = null
+        var foregroundToken: Int? = null
 
         scope.launch {
             val context = appContext
@@ -72,6 +76,7 @@ internal actual object DownloadsPlatformDownloader {
                 onFailure(runBlocking { getString(Res.string.downloads_error_not_initialized) })
                 return@launch
             }
+            foregroundToken = registerForegroundDownload(context)
 
             val downloadsDir = File(context.filesDir, "downloads").apply { mkdirs() }
             val destination = File(downloadsDir, request.destinationFileName)
@@ -172,6 +177,7 @@ internal actual object DownloadsPlatformDownloader {
 
         job.invokeOnCompletion {
             call?.cancel()
+            foregroundToken?.let(::unregisterForegroundDownload)
         }
 
         return AndroidDownloadsTaskHandle(job)
@@ -207,6 +213,25 @@ internal actual object DownloadsPlatformDownloader {
         val downloadsDir = File(context.filesDir, "downloads")
         val localFile = File(downloadsDir, fileName)
         return localFile.takeIf { it.exists() }?.toURI()?.toString()
+    }
+
+    private fun registerForegroundDownload(context: Context): Int =
+        synchronized(foregroundLock) {
+            nextForegroundToken += 1
+            val token = nextForegroundToken
+            activeForegroundTokens += token
+            DownloadsForegroundService.start(context)
+            token
+        }
+
+    private fun unregisterForegroundDownload(token: Int) {
+        val shouldStop = synchronized(foregroundLock) {
+            activeForegroundTokens.remove(token)
+            activeForegroundTokens.isEmpty()
+        }
+        if (shouldStop) {
+            appContext?.let(DownloadsForegroundService::stop)
+        }
     }
 }
 

@@ -465,6 +465,8 @@
     <string name="detail_trailers_title">Trailers</string>
     <string name="downloads_empty_episodes">No completed episodes</string>
     <string name="downloads_empty_title">No downloads yet</string>
+    <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>
+    <string name="downloads_delete_confirm_title">Delete download?</string>
     <string name="downloads_episode_count">%1$d downloaded episode(s)</string>
     <string name="downloads_section_active">Active</string>
     <string name="downloads_section_movies">Movies</string>
@@ -484,6 +486,7 @@
     <string name="hero_remove_from_library">Remove from library</string>
     <string name="home_view_all">View All</string>
     <string name="play_manually">Play manually</string>
+    <string name="compose_player_playback_speed">Playback speed</string>
     <string name="poster_logo_content_description">%1$s logo</string>
     <string name="settings_account">Account</string>
     <string name="settings_account_delete_account">Delete Account</string>

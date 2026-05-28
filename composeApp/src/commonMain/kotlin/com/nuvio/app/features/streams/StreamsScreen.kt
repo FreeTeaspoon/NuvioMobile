@@ -89,6 +89,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
+import com.nuvio.app.features.downloads.DownloadEnqueueResult
 import com.nuvio.app.features.debrid.DebridProviders
 import com.nuvio.app.features.debrid.DebridSettingsRepository
 import com.nuvio.app.features.player.PlayerSettingsRepository
@@ -129,6 +130,7 @@ fun StreamsScreen(
         resumePositionMs: Long?,
         resumeProgressFraction: Float?,
     ) -> Unit = { _, _, _, _ -> },
+    onOpenDownloads: () -> Unit = {},
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -158,6 +160,7 @@ fun StreamsScreen(
     }
     val clipboardManager = LocalClipboardManager.current
     val streamLinkCopiedText = stringResource(Res.string.streams_link_copied)
+    val downloadsActionText = "View"
     val noDirectStreamLinkText = stringResource(Res.string.streams_no_direct_link)
     var streamActionsTarget by remember(videoId) { mutableStateOf<StreamItem?>(null) }
     var preferredFilterApplied by remember(videoId) { mutableStateOf(false) }
@@ -381,7 +384,15 @@ fun StreamsScreen(
                     episodeThumbnail = episodeThumbnail,
                     stream = stream,
                 )
-                NuvioToastController.show(result.toastMessage())
+                if (result == DownloadEnqueueResult.Started || result == DownloadEnqueueResult.Replaced) {
+                    NuvioToastController.show(
+                        message = result.toastMessage(),
+                        actionLabel = downloadsActionText,
+                        onAction = onOpenDownloads,
+                    )
+                } else {
+                    NuvioToastController.show(result.toastMessage())
+                }
             },
             onOpen = { stream, openExternally ->
                 onStreamActionOpen(

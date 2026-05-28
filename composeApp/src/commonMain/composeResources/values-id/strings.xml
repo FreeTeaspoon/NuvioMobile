@@ -444,6 +444,8 @@
     <string name="detail_trailers_title">Trailer</string>
     <string name="downloads_empty_episodes">Tidak ada episode yang selesai diunduh</string>
     <string name="downloads_empty_title">Belum ada unduhan</string>
+    <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>
+    <string name="downloads_delete_confirm_title">Delete download?</string>
     <string name="downloads_episode_count">%1$d episode diunduh</string>
     <string name="downloads_section_active">Aktif</string>
     <string name="downloads_section_movies">Film</string>
@@ -463,6 +465,7 @@
     <string name="hero_remove_from_library">Hapus dari perpustakaan</string>
     <string name="home_view_all">Lihat Semua</string>
     <string name="play_manually">Putar secara manual</string>
+    <string name="compose_player_playback_speed">Playback speed</string>
     <string name="poster_logo_content_description">Logo %1$s</string>
     <string name="settings_account">Akun</string>
     <string name="settings_account_delete_account">Hapus Akun</string>

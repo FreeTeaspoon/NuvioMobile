@@ -1959,6 +1959,12 @@ private fun MainAppContent(
                                     forceInternal = !openExternally,
                                 )
                             },
+                            onOpenDownloads = {
+                                selectedTab = AppScreenTab.Settings
+                                navController.navigate(DownloadsSettingsRoute) {
+                                    launchSingleTop = true
+                                }
+                            },
                             onBack = {
                                 StreamsRepository.clear()
                                 navController.popBackStack()

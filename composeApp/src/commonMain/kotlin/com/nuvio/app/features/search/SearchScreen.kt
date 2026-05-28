@@ -34,7 +34,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -89,7 +91,14 @@ fun SearchScreen(
     scrollToTopRequests: Flow<Unit> = emptyFlow(),
 ) {
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
     var handledSearchFocusRequestCount by remember { mutableStateOf(searchFocusRequestCount) }
+    var searchFieldCanFocus by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        focusManager.clearFocus(force = true)
+        searchFieldCanFocus = true
+    }
 
     LaunchedEffect(searchFocusRequestCount) {
         if (searchFocusRequestCount > handledSearchFocusRequestCount) {
@@ -260,7 +269,9 @@ fun SearchScreen(
                         value = query,
                         onValueChange = { query = it },
                         placeholder = stringResource(Res.string.compose_search_placeholder),
-                        modifier = Modifier.focusRequester(focusRequester),
+                        modifier = Modifier
+                            .focusProperties { canFocus = searchFieldCanFocus }
+                            .focusRequester(focusRequester),
                         trailingContent = if (query.isNotBlank()) {
                             {
                                 IconButton(onClick = { query = "" }) {

@@ -34,7 +34,6 @@ fun snapToAllowedTimeout(value: Int): Int {
 data class PlayerSettingsUiState(
     val showLoadingOverlay: Boolean = true,
     val resizeMode: PlayerResizeMode = PlayerResizeMode.Fit,
-    val videoZoomState: PlayerVideoZoomState = PlayerVideoZoomState(),
     val playerEngine: PlayerEngineType = PlayerEngineType.MEDIA3,
     val holdToSpeedEnabled: Boolean = true,
     val holdToSpeedValue: Float = 2f,
@@ -92,7 +91,6 @@ object PlayerSettingsRepository {
     private var hasLoaded = false
     private var showLoadingOverlay = true
     private var resizeMode = PlayerResizeMode.Fit
-    private var videoZoomState = PlayerVideoZoomState()
     private var playerEngine = PlayerEngineType.MEDIA3
     private var holdToSpeedEnabled = true
     private var holdToSpeedValue = 2f
@@ -150,16 +148,17 @@ object PlayerSettingsRepository {
     fun onProfileChanged() {
         RememberedAudioSelectionRepository.onProfileChanged()
         RememberedSubtitleSelectionRepository.onProfileChanged()
+        RememberedVideoZoomRepository.onProfileChanged()
         loadFromDisk()
     }
 
     fun clearLocalState() {
         RememberedAudioSelectionRepository.clearLocalState()
         RememberedSubtitleSelectionRepository.clearLocalState()
+        RememberedVideoZoomRepository.clearLocalState()
         hasLoaded = false
         showLoadingOverlay = true
         resizeMode = PlayerResizeMode.Fit
-        videoZoomState = PlayerVideoZoomState()
         playerEngine = PlayerEngineType.MEDIA3
         holdToSpeedEnabled = true
         holdToSpeedValue = 2f
@@ -217,10 +216,6 @@ object PlayerSettingsRepository {
         resizeMode = PlayerSettingsStorage.loadResizeMode()
             ?.let { runCatching { PlayerResizeMode.valueOf(it) }.getOrNull() }
             ?: PlayerResizeMode.Fit
-        videoZoomState = PlayerVideoZoomState(
-            zoom = PlayerSettingsStorage.loadVideoZoom() ?: 0f,
-            panAndZoomEnabled = PlayerSettingsStorage.loadPanAndZoomEnabled() ?: false,
-        ).normalized()
         playerEngine = resolvePlayerEngine(
             rawEngine = PlayerSettingsStorage.loadPlayerEngine(),
             mpvSelectable = AppFeaturePolicy.mpvPlaybackEngineSelectable,
@@ -340,16 +335,6 @@ object PlayerSettingsRepository {
         resizeMode = mode
         publish()
         PlayerSettingsStorage.saveResizeMode(mode.name)
-    }
-
-    fun setVideoZoomDefault(state: PlayerVideoZoomState) {
-        ensureLoaded()
-        val normalized = state.normalized()
-        if (videoZoomState == normalized) return
-        videoZoomState = normalized
-        publish()
-        PlayerSettingsStorage.saveVideoZoom(normalized.zoom)
-        PlayerSettingsStorage.savePanAndZoomEnabled(normalized.panAndZoomEnabled)
     }
 
     fun setPlayerEngine(engine: PlayerEngineType) {
@@ -806,7 +791,6 @@ object PlayerSettingsRepository {
         _uiState.value = PlayerSettingsUiState(
             showLoadingOverlay = showLoadingOverlay,
             resizeMode = resizeMode,
-            videoZoomState = videoZoomState,
             playerEngine = resolvePlayerEngine(
                 rawEngine = playerEngine.name,
                 mpvSelectable = AppFeaturePolicy.mpvPlaybackEngineSelectable,
