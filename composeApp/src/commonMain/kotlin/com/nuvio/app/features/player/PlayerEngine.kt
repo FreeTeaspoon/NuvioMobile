@@ -281,6 +281,7 @@ expect fun PlatformPlayerSurface(
 expect fun PlatformSystemMediaControls(
     title: String?,
     subtitle: String?,
+    artworkUrl: String?,
     controller: PlayerEngineController?,
     snapshot: PlayerPlaybackSnapshot,
     enabled: Boolean,
