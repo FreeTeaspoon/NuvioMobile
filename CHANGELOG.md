@@ -10,7 +10,12 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ### Fixed
 
+## 0.1.25.2
+
+### Fixed
+
 - MDBList ratings now load more reliably on newly opened uncached movie and show meta screens.
+- Player playback now relocks to landscape after returning from other apps or picture-in-picture.
 
 ## 0.1.12.2
 
