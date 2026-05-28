@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.SurfaceTexture
+import android.net.Uri
 import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
@@ -424,7 +425,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         removeExternalSubtitleTracks()
         MPVLib.setPropertyString("sub-visibility", "yes")
         applySubtitleStyle(subtitleStyle)
-        MPVLib.command(arrayOf("sub-add", url, "select"))
+        MPVLib.command(arrayOf("sub-add", url.toMpvLoadTarget(), "select"))
         logSubtitleState("setSubtitleUri command")
         postDelayed({
             if (isMpvInitialized) {
@@ -631,7 +632,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         val generation = loadGeneration
         applyHttpHeadersAsOptions(request.requestHeaders)
         resetVideoPan()
-        MPVLib.command(arrayOf("loadfile", request.videoUrl))
+        MPVLib.command(arrayOf("loadfile", request.videoUrl.toMpvLoadTarget()))
         scheduleVideoZoomApply(request, generation, 0L)
         scheduleVideoZoomApply(request, generation, 100L)
         scheduleVideoZoomApply(request, generation, 500L)
@@ -659,7 +660,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         if (!audioUrl.isNullOrBlank()) {
             postDelayed({
                 if (isMpvInitialized && activeRequest == request) {
-                    MPVLib.command(arrayOf("audio-add", audioUrl, "select"))
+                    MPVLib.command(arrayOf("audio-add", audioUrl.toMpvLoadTarget(), "select"))
                 }
             }, 200L)
         }
@@ -1001,6 +1002,20 @@ private fun Color.toMpvColorString(): String {
 
 private fun Double.formatSeconds(): String =
     String.format(Locale.US, "%.3f", this)
+
+private fun String.toMpvLoadTarget(): String {
+    val value = trim()
+    if (!value.startsWith("file:", ignoreCase = true)) return value
+
+    return runCatching {
+        Uri.parse(value).path?.takeIf { it.isNotBlank() }
+    }.getOrNull()
+        ?: Uri.decode(
+            value
+                .removePrefix("file://")
+                .removePrefix("file:")
+        )
+}
 
 private tailrec fun Context.findActivity(): Activity? =
     when (this) {
