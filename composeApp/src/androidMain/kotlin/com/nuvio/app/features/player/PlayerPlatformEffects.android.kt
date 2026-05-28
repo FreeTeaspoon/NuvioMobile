@@ -17,18 +17,45 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlin.math.roundToInt
 
 @Composable
 actual fun LockPlayerToLandscape() {
     val activity = LocalContext.current.findActivity() ?: return
+    val lifecycleOwner = LocalLifecycleOwner.current
     if (!activity.shouldForceLandscapePlayer()) return
 
-    DisposableEffect(activity) {
+    DisposableEffect(activity, lifecycleOwner) {
         val previousOrientation = activity.requestedOrientation
-        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        fun lockToLandscapeIfNeeded() {
+            if (activity.shouldForceLandscapePlayer()) {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            }
+        }
+        lockToLandscapeIfNeeded()
+
+        val lifecycleObserver = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START,
+                Lifecycle.Event.ON_RESUME,
+                -> lockToLandscapeIfNeeded()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(lifecycleObserver)
+
+        PlayerPictureInPictureManager.registerPictureInPictureExitCallback { callbackActivity ->
+            if (callbackActivity === activity) {
+                lockToLandscapeIfNeeded()
+            }
+        }
 
         onDispose {
+            lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
+            PlayerPictureInPictureManager.registerPictureInPictureExitCallback(null)
             activity.requestedOrientation = previousOrientation
                 .takeUnless { it == ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
                 ?: ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
