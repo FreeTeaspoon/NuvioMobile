@@ -20,6 +20,7 @@ interface PlayerEngineController {
     fun clearExternalSubtitleAndSelect(trackIndex: Int)
     fun setVideoZoom(state: PlayerVideoZoomState) {}
     fun applySubtitleStyle(style: SubtitleStyleState) {}
+    fun setSubtitleDelayMs(delayMs: Int) {}
     fun configureIosVideoOutput(settings: PlayerSettingsUiState) {}
 }
 
