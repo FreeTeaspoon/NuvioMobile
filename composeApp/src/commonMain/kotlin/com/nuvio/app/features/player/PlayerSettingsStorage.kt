@@ -9,8 +9,6 @@ internal expect object PlayerSettingsStorage {
     fun saveResizeMode(mode: String)
     fun loadVideoZoom(): Float?
     fun saveVideoZoom(zoom: Float)
-    fun loadPanAndZoomEnabled(): Boolean?
-    fun savePanAndZoomEnabled(enabled: Boolean)
     fun loadPlayerEngine(): String?
     fun savePlayerEngine(engine: String)
     fun loadHoldToSpeedEnabled(): Boolean?
@@ -117,6 +115,8 @@ internal expect object PlayerSettingsStorage {
     fun saveRememberedAudioSelections(json: String)
     fun loadRememberedSubtitleSelections(): String?
     fun saveRememberedSubtitleSelections(json: String)
+    fun loadRememberedVideoZooms(): String?
+    fun saveRememberedVideoZooms(json: String)
     fun exportToSyncPayload(): JsonObject
     fun replaceFromSyncPayload(payload: JsonObject)
 }

@@ -225,7 +225,6 @@ enum class IosHardwareDecoderMode(
 
 data class PlayerVideoZoomState(
     val zoom: Float = 0f,
-    val panAndZoomEnabled: Boolean = false,
 ) {
     fun normalized(): PlayerVideoZoomState =
         copy(zoom = zoom.coerceIn(PlayerVideoZoomMin, PlayerVideoZoomMax))

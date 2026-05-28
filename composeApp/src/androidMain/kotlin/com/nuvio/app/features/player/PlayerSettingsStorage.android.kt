@@ -22,7 +22,6 @@ actual object PlayerSettingsStorage {
     private const val showLoadingOverlayKey = "show_loading_overlay"
     private const val resizeModeKey = "resize_mode"
     private const val videoZoomKey = "video_zoom"
-    private const val panAndZoomEnabledKey = "pan_and_zoom_enabled"
     private const val playerEngineKey = "player_engine"
     private const val holdToSpeedEnabledKey = "hold_to_speed_enabled"
     private const val holdToSpeedValueKey = "hold_to_speed_value"
@@ -76,11 +75,10 @@ actual object PlayerSettingsStorage {
     private const val iosGammaKey = "ios_gamma"
     private const val rememberedAudioSelectionsKey = "remembered_audio_selections"
     private const val rememberedSubtitleSelectionsKey = "remembered_subtitle_selections"
+    private const val rememberedVideoZoomsKey = "remembered_video_zooms"
     private val syncKeys = listOf(
         showLoadingOverlayKey,
         resizeModeKey,
-        videoZoomKey,
-        panAndZoomEnabledKey,
         playerEngineKey,
         holdToSpeedEnabledKey,
         holdToSpeedValueKey,
@@ -181,23 +179,6 @@ actual object PlayerSettingsStorage {
         preferences
             ?.edit()
             ?.putFloat(ProfileScopedKey.of(videoZoomKey), clampPlayerVideoZoom(zoom))
-            ?.apply()
-    }
-
-    actual fun loadPanAndZoomEnabled(): Boolean? =
-        preferences?.let { sharedPreferences ->
-            val key = ProfileScopedKey.of(panAndZoomEnabledKey)
-            if (sharedPreferences.contains(key)) {
-                sharedPreferences.getBoolean(key, false)
-            } else {
-                null
-            }
-        }
-
-    actual fun savePanAndZoomEnabled(enabled: Boolean) {
-        preferences
-            ?.edit()
-            ?.putBoolean(ProfileScopedKey.of(panAndZoomEnabledKey), enabled)
             ?.apply()
     }
 
@@ -887,11 +868,19 @@ actual object PlayerSettingsStorage {
             ?.apply()
     }
 
+    actual fun loadRememberedVideoZooms(): String? =
+        preferences?.getString(ProfileScopedKey.of(rememberedVideoZoomsKey), null)
+
+    actual fun saveRememberedVideoZooms(json: String) {
+        preferences
+            ?.edit()
+            ?.putString(ProfileScopedKey.of(rememberedVideoZoomsKey), json)
+            ?.apply()
+    }
+
     actual fun exportToSyncPayload(): JsonObject = buildJsonObject {
         loadShowLoadingOverlay()?.let { put(showLoadingOverlayKey, encodeSyncBoolean(it)) }
         loadResizeMode()?.let { put(resizeModeKey, encodeSyncString(it)) }
-        loadVideoZoom()?.let { put(videoZoomKey, encodeSyncFloat(it)) }
-        loadPanAndZoomEnabled()?.let { put(panAndZoomEnabledKey, encodeSyncBoolean(it)) }
         loadPlayerEngine()?.let { put(playerEngineKey, encodeSyncString(it)) }
         loadHoldToSpeedEnabled()?.let { put(holdToSpeedEnabledKey, encodeSyncBoolean(it)) }
         loadHoldToSpeedValue()?.let { put(holdToSpeedValueKey, encodeSyncFloat(it)) }
@@ -952,8 +941,6 @@ actual object PlayerSettingsStorage {
 
         payload.decodeSyncBoolean(showLoadingOverlayKey)?.let(::saveShowLoadingOverlay)
         payload.decodeSyncString(resizeModeKey)?.let(::saveResizeMode)
-        payload.decodeSyncFloat(videoZoomKey)?.let(::saveVideoZoom)
-        payload.decodeSyncBoolean(panAndZoomEnabledKey)?.let(::savePanAndZoomEnabled)
         payload.decodeSyncString(playerEngineKey)?.let(::savePlayerEngine)
         payload.decodeSyncBoolean(holdToSpeedEnabledKey)?.let(::saveHoldToSpeedEnabled)
         payload.decodeSyncFloat(holdToSpeedValueKey)?.let(::saveHoldToSpeedValue)

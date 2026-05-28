@@ -31,14 +31,12 @@ import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.ZoomIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -49,7 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import nuvio.composeapp.generated.resources.Res
-import nuvio.composeapp.generated.resources.compose_player_pan_and_zoom
 import nuvio.composeapp.generated.resources.compose_player_reset
 import nuvio.composeapp.generated.resources.compose_player_set_as_default
 import nuvio.composeapp.generated.resources.compose_player_video_zoom
@@ -175,26 +172,6 @@ internal fun VideoZoomModal(
                                     ),
                                 )
                             },
-                        )
-                    }
-
-                    HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.65f))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Switch(
-                            checked = normalizedState.panAndZoomEnabled,
-                            onCheckedChange = { enabled ->
-                                onStateChanged(normalizedState.copy(panAndZoomEnabled = enabled))
-                            },
-                        )
-                        Text(
-                            text = stringResource(Res.string.compose_player_pan_and_zoom),
-                            color = colorScheme.onSurface,
-                            fontSize = 17.sp,
-                            modifier = Modifier.padding(start = 12.dp),
                         )
                     }
 

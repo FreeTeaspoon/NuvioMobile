@@ -235,15 +235,14 @@ fun PlayerScreen(
         var activeInitialProgressFraction by rememberSaveable { mutableStateOf(initialProgressFraction) }
         var shouldPlay by rememberSaveable(activeSourceUrl) { mutableStateOf(true) }
         val resizeMode = PlayerResizeMode.Fit
-        var videoZoom by rememberSaveable(activeSourceUrl, playerSettingsUiState.videoZoomState.zoom) {
-            mutableStateOf(playerSettingsUiState.videoZoomState.zoom)
+        val videoZoomContentKey = remember(parentMetaType, parentMetaId) {
+            rememberedVideoZoomContentKey(parentMetaType, parentMetaId)
         }
-        var panAndZoomEnabled by rememberSaveable(activeSourceUrl, playerSettingsUiState.videoZoomState.panAndZoomEnabled) {
-            mutableStateOf(playerSettingsUiState.videoZoomState.panAndZoomEnabled)
+        var videoZoom by rememberSaveable(activeSourceUrl, videoZoomContentKey) {
+            mutableStateOf(RememberedVideoZoomRepository.zoomFor(videoZoomContentKey) ?: 0f)
         }
         val videoZoomState = PlayerVideoZoomState(
             zoom = videoZoom,
-            panAndZoomEnabled = panAndZoomEnabled,
         ).normalized()
         var layoutSize by remember { mutableStateOf(IntSize.Zero) }
         var playbackSnapshot by remember { mutableStateOf(PlayerPlaybackSnapshot()) }
@@ -891,7 +890,6 @@ fun PlayerScreen(
         fun applyVideoZoomState(state: PlayerVideoZoomState) {
             val normalized = state.normalized()
             videoZoom = normalized.zoom
-            panAndZoomEnabled = normalized.panAndZoomEnabled
             playerController?.setVideoZoom(normalized)
         }
 
@@ -2379,7 +2377,7 @@ fun PlayerScreen(
                 state = videoZoomState,
                 onStateChanged = ::applyVideoZoomState,
                 onSetDefault = {
-                    PlayerSettingsRepository.setVideoZoomDefault(videoZoomState)
+                    RememberedVideoZoomRepository.saveZoom(videoZoomContentKey, videoZoomState.zoom)
                     showGestureMessage(formatPlayerVideoZoomLabel(videoZoomState.zoom))
                     scope.launch {
                         delay(200)

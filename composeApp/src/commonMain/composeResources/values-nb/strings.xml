@@ -459,6 +459,8 @@
     <string name="detail_trailers_title">Trailere</string>
     <string name="downloads_empty_episodes">Ingen fullførte episoder</string>
     <string name="downloads_empty_title">Ingen nedlastinger ennå</string>
+    <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>
+    <string name="downloads_delete_confirm_title">Delete download?</string>
     <string name="downloads_episode_count">%1$d nedlastet episode(r)</string>
     <string name="downloads_section_active">Aktive</string>
     <string name="downloads_section_movies">Filmer</string>
@@ -478,6 +480,7 @@
     <string name="hero_remove_from_library">Fjern fra bibliotek</string>
     <string name="home_view_all">Vis alle</string>
     <string name="play_manually">Spill av manuelt</string>
+    <string name="compose_player_playback_speed">Playback speed</string>
     <string name="poster_logo_content_description">%1$s logo</string>
     <string name="settings_account">Konto</string>
     <string name="settings_account_delete_account">Slett konto</string>

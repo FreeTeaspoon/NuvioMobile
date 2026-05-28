@@ -718,10 +718,8 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         MPVLib.setPropertyDouble("panscan", panscan)
         MPVLib.setPropertyDouble("video-zoom", normalizedZoom.toDouble())
         applyZoomIndependentSubtitleRendering()
-        if (!videoZoomState.panAndZoomEnabled || videoZoomState.zoom == 0f) {
-            MPVLib.setPropertyDouble("video-pan-x", 0.0)
-            MPVLib.setPropertyDouble("video-pan-y", 0.0)
-        }
+        MPVLib.setPropertyDouble("video-pan-x", 0.0)
+        MPVLib.setPropertyDouble("video-pan-y", 0.0)
     }
 
     private fun applyZoomIndependentSubtitleRendering() {
