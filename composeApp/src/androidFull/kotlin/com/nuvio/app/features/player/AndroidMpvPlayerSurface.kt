@@ -632,9 +632,9 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         applyHttpHeadersAsOptions(request.requestHeaders)
         resetVideoPan()
         MPVLib.command(arrayOf("loadfile", request.videoUrl))
-        scheduleVideoPanReset(request, generation, 0L)
-        scheduleVideoPanReset(request, generation, 100L)
-        scheduleVideoPanReset(request, generation, 500L)
+        scheduleVideoZoomApply(request, generation, 0L)
+        scheduleVideoZoomApply(request, generation, 100L)
+        scheduleVideoZoomApply(request, generation, 500L)
         postDelayed({
             if (
                 isMpvInitialized &&
@@ -726,8 +726,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     private fun applyVideoZoom() {
         resetViewTransform()
         val normalizedZoom = videoZoomState.zoom.coerceIn(PlayerVideoZoomMin, PlayerVideoZoomMax)
-        val panscan = normalizedZoom.coerceAtLeast(0f).coerceAtMost(1f).toDouble()
-        MPVLib.setPropertyDouble("panscan", panscan)
+        MPVLib.setPropertyDouble("panscan", 0.0)
         MPVLib.setPropertyDouble("video-zoom", normalizedZoom.toDouble())
         applyZoomIndependentSubtitleRendering()
         resetVideoPan()
@@ -736,6 +735,8 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     private fun resetVideoPan() {
         MPVLib.setPropertyDouble("video-pan-x", 0.0)
         MPVLib.setPropertyDouble("video-pan-y", 0.0)
+        MPVLib.setPropertyDouble("video-align-x", 0.0)
+        MPVLib.setPropertyDouble("video-align-y", 0.0)
     }
 
     private fun resetViewTransform() {
@@ -747,10 +748,10 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         pivotY = height / 2f
     }
 
-    private fun scheduleVideoPanReset(request: MpvPlaybackRequest, generation: Int, delayMs: Long) {
+    private fun scheduleVideoZoomApply(request: MpvPlaybackRequest, generation: Int, delayMs: Long) {
         postDelayed({
             if (isMpvInitialized && activeRequest == request && loadGeneration == generation) {
-                resetVideoPan()
+                applyVideoZoom()
             }
         }, delayMs)
     }
@@ -850,6 +851,13 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         if (!hasRenderedFrameForCurrentRequest) {
             hasRenderedFrameForCurrentRequest = true
             applyVideoZoom()
+            val request = activeRequest
+            if (request != null) {
+                val generation = loadGeneration
+                scheduleVideoZoomApply(request, generation, 50L)
+                scheduleVideoZoomApply(request, generation, 150L)
+                scheduleVideoZoomApply(request, generation, 350L)
+            }
         }
         isSeekFramePending = false
         if (isPlayerLoading) {
