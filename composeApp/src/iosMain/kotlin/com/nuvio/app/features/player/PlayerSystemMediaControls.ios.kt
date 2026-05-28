@@ -6,12 +6,14 @@ import androidx.compose.runtime.Composable
 actual fun PlatformSystemMediaControls(
     title: String?,
     subtitle: String?,
+    artworkUrl: String?,
     controller: PlayerEngineController?,
     snapshot: PlayerPlaybackSnapshot,
     enabled: Boolean,
 ) {
     title
     subtitle
+    artworkUrl
     controller
     snapshot
     enabled

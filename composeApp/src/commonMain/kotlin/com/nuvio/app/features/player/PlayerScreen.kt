@@ -283,6 +283,7 @@ fun PlayerScreen(
                 episodeNumber = activeEpisodeNumber,
                 episodeTitle = activeEpisodeTitle,
             ),
+            artworkUrl = activeEpisodeThumbnail ?: poster ?: background,
             controller = playerController,
             snapshot = playbackSnapshot,
             enabled = errorMessage == null,

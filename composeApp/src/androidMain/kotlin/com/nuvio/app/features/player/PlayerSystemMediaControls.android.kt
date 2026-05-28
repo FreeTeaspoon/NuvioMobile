@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
@@ -14,16 +16,24 @@ import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
 import com.nuvio.app.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
 
 @Composable
 actual fun PlatformSystemMediaControls(
     title: String?,
     subtitle: String?,
+    artworkUrl: String?,
     controller: PlayerEngineController?,
     snapshot: PlayerPlaybackSnapshot,
     enabled: Boolean,
@@ -33,6 +43,7 @@ actual fun PlatformSystemMediaControls(
         AndroidPlayerSystemMediaControls(context.applicationContext)
     }
     val latestController = rememberUpdatedState(controller)
+    var artworkBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     DisposableEffect(session) {
         session.setControllerProvider { latestController.value }
@@ -41,10 +52,16 @@ actual fun PlatformSystemMediaControls(
         }
     }
 
-    LaunchedEffect(session, title, subtitle, controller, snapshot, enabled) {
+    LaunchedEffect(artworkUrl) {
+        artworkBitmap = artworkUrl?.let { loadArtworkBitmap(it) }
+    }
+
+    LaunchedEffect(session, title, subtitle, artworkUrl, artworkBitmap, controller, snapshot, enabled) {
         session.update(
             title = title,
             subtitle = subtitle,
+            artworkUrl = artworkUrl,
+            artwork = artworkBitmap,
             snapshot = snapshot,
             enabled = enabled && controller != null,
         )
@@ -99,6 +116,8 @@ private class AndroidPlayerSystemMediaControls(
     fun update(
         title: String?,
         subtitle: String?,
+        artworkUrl: String?,
+        artwork: Bitmap?,
         snapshot: PlayerPlaybackSnapshot,
         enabled: Boolean,
     ) {
@@ -109,13 +128,15 @@ private class AndroidPlayerSystemMediaControls(
 
         activeControls = this
         ensureNotificationChannel()
-        session.setMetadata(snapshot.toMediaMetadata(title, subtitle))
+        session.setMetadata(snapshot.toMediaMetadata(title, subtitle, artwork))
         session.setPlaybackState(snapshot.toPlaybackState())
         session.isActive = true
 
         val signature = listOf(
             title.orEmpty(),
             subtitle.orEmpty(),
+            artworkUrl.orEmpty(),
+            artwork?.generationId ?: 0,
             snapshot.isPlaying,
             snapshot.isLoading,
             snapshot.isEnded,
@@ -124,7 +145,7 @@ private class AndroidPlayerSystemMediaControls(
         if (notificationSignature != signature) {
             notificationSignature = signature
             runCatching {
-                notificationManager.notify(NotificationId, buildNotification(title, subtitle, snapshot))
+                notificationManager.notify(NotificationId, buildNotification(title, subtitle, artwork, snapshot))
             }
         }
     }
@@ -147,6 +168,7 @@ private class AndroidPlayerSystemMediaControls(
     private fun buildNotification(
         title: String?,
         subtitle: String?,
+        artwork: Bitmap?,
         snapshot: PlayerPlaybackSnapshot,
     ): Notification {
         val playPauseAction = if (snapshot.isPlaying) {
@@ -174,6 +196,7 @@ private class AndroidPlayerSystemMediaControls(
             .setSmallIcon(R.drawable.ic_notification_small)
             .setContentTitle(title?.takeIf { it.isNotBlank() } ?: "Nuvio")
             .setContentText(subtitle?.takeIf { it.isNotBlank() } ?: "Now playing")
+            .setLargeIcon(artwork)
             .setContentIntent(context.launchPendingIntent())
             .setShowWhen(false)
             .setOnlyAlertOnce(true)
@@ -265,11 +288,19 @@ private class AndroidPlayerSystemMediaControls(
 private fun PlayerPlaybackSnapshot.toMediaMetadata(
     title: String?,
     subtitle: String?,
+    artwork: Bitmap?,
 ): MediaMetadata =
     MediaMetadata.Builder()
         .putString(MediaMetadata.METADATA_KEY_TITLE, title?.takeIf { it.isNotBlank() } ?: "Nuvio")
         .putString(MediaMetadata.METADATA_KEY_ARTIST, subtitle?.takeIf { it.isNotBlank() } ?: "Nuvio")
         .putLong(MediaMetadata.METADATA_KEY_DURATION, durationMs.coerceAtLeast(0L))
+        .apply {
+            if (artwork != null) {
+                putBitmap(MediaMetadata.METADATA_KEY_ART, artwork)
+                putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, artwork)
+                putBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON, artwork)
+            }
+        }
         .build()
 
 private fun PlayerPlaybackSnapshot.toPlaybackState(): PlaybackState {
@@ -294,4 +325,38 @@ private fun PlayerPlaybackSnapshot.toPlaybackState(): PlaybackState {
         )
         .setBufferedPosition(bufferedPositionMs.coerceAtLeast(0L))
         .build()
+}
+
+private suspend fun loadArtworkBitmap(url: String): Bitmap? =
+    withContext(Dispatchers.IO) {
+        val normalizedUrl = url.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+            ?: return@withContext null
+        runCatching {
+            val connection = (URL(normalizedUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 7_500
+                readTimeout = 7_500
+                instanceFollowRedirects = true
+                setRequestProperty("Accept", "image/*")
+            }
+            try {
+                connection.inputStream.use { input ->
+                    BitmapFactory.decodeStream(input)?.scaleForMediaArtwork()
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }.getOrNull()
+    }
+
+private fun Bitmap.scaleForMediaArtwork(): Bitmap {
+    val maxSide = 512
+    val largestSide = maxOf(width, height)
+    if (largestSide <= maxSide || largestSide <= 0) return this
+    val scale = maxSide.toFloat() / largestSide.toFloat()
+    return Bitmap.createScaledBitmap(
+        this,
+        (width * scale).toInt().coerceAtLeast(1),
+        (height * scale).toInt().coerceAtLeast(1),
+        true,
+    )
 }
