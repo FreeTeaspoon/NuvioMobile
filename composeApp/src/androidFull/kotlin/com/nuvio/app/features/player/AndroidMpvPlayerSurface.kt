@@ -247,6 +247,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
             MPVLib.setPropertyString("android-surface-size", "${width}x$height")
             observeProperties()
             isMpvInitialized = true
+            resetViewTransform()
             applyResizeMode()
             applySubtitleStyle(subtitleStyle)
             pendingRequest?.let { request ->
@@ -263,6 +264,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     override fun onSurfaceTextureSizeChanged(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
         if (isMpvInitialized) {
             MPVLib.setPropertyString("android-surface-size", "${width}x$height")
+            resetVideoPan()
         }
     }
 
@@ -564,6 +566,10 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         MPVLib.setOptionString("osd-level", "1")
         MPVLib.setOptionString("terminal", "no")
         MPVLib.setOptionString("input-default-bindings", "no")
+        MPVLib.setOptionString("video-pan-x", "0")
+        MPVLib.setOptionString("video-pan-y", "0")
+        MPVLib.setOptionString("video-align-x", "0")
+        MPVLib.setOptionString("video-align-y", "0")
     }
 
     private fun applySubtitleRenderDefaults() {
@@ -624,7 +630,11 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         loadGeneration++
         val generation = loadGeneration
         applyHttpHeadersAsOptions(request.requestHeaders)
+        resetVideoPan()
         MPVLib.command(arrayOf("loadfile", request.videoUrl))
+        scheduleVideoPanReset(request, generation, 0L)
+        scheduleVideoPanReset(request, generation, 100L)
+        scheduleVideoPanReset(request, generation, 500L)
         postDelayed({
             if (
                 isMpvInitialized &&
@@ -692,6 +702,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     }
 
     private fun applyResizeMode() {
+        resetViewTransform()
         when (resizeMode) {
             PlayerResizeMode.Fit -> {
                 MPVLib.setPropertyString("video-unscaled", "no")
@@ -713,13 +724,35 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     }
 
     private fun applyVideoZoom() {
+        resetViewTransform()
         val normalizedZoom = videoZoomState.zoom.coerceIn(PlayerVideoZoomMin, PlayerVideoZoomMax)
         val panscan = normalizedZoom.coerceAtLeast(0f).coerceAtMost(1f).toDouble()
         MPVLib.setPropertyDouble("panscan", panscan)
         MPVLib.setPropertyDouble("video-zoom", normalizedZoom.toDouble())
         applyZoomIndependentSubtitleRendering()
+        resetVideoPan()
+    }
+
+    private fun resetVideoPan() {
         MPVLib.setPropertyDouble("video-pan-x", 0.0)
         MPVLib.setPropertyDouble("video-pan-y", 0.0)
+    }
+
+    private fun resetViewTransform() {
+        scaleX = 1f
+        scaleY = 1f
+        translationX = 0f
+        translationY = 0f
+        pivotX = width / 2f
+        pivotY = height / 2f
+    }
+
+    private fun scheduleVideoPanReset(request: MpvPlaybackRequest, generation: Int, delayMs: Long) {
+        postDelayed({
+            if (isMpvInitialized && activeRequest == request && loadGeneration == generation) {
+                resetVideoPan()
+            }
+        }, delayMs)
     }
 
     private fun applyZoomIndependentSubtitleRendering() {
@@ -889,6 +922,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         when (eventId) {
             mpvEventFileLoaded -> {
                 clearPlaybackError()
+                applyVideoZoom()
                 applyInitialPositionSeekIfNeeded()
                 if (!isPaused) {
                     MPVLib.setPropertyBoolean("pause", false)
@@ -897,6 +931,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
             mpvEventVideoReconfig,
             mpvEventPlaybackRestart -> {
                 clearPlaybackError()
+                applyVideoZoom()
                 if (!isPaused) {
                     MPVLib.setPropertyBoolean("pause", false)
                 }
