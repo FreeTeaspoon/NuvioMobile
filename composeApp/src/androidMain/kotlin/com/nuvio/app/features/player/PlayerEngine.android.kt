@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.text.SpannableString
-import android.net.Uri
 import android.util.Log
 import android.util.TypedValue
 import android.graphics.Typeface
@@ -269,6 +268,9 @@ internal fun AndroidMedia3PlayerSurface(
     var subtitleSelectionJob by remember { mutableStateOf<Job?>(null) }
     var terminalSnapshotOverride by remember(exoPlayer) { mutableStateOf<PlayerPlaybackSnapshot?>(null) }
     var hasRenderedFirstFrame by remember(exoPlayer) { mutableStateOf(false) }
+    var externalSubtitleCues by remember(playerSourceKey) { mutableStateOf<List<TimedExternalSubtitleCue>>(emptyList()) }
+    var externalSubtitleLoadGeneration by remember(playerSourceKey) { mutableStateOf(0) }
+    var lastExternalSubtitleText by remember(playerSourceKey) { mutableStateOf<String?>(null) }
 
     fun syncPlayerViewKeepScreenOn() {
         playerViewRef?.keepScreenOn = exoPlayer.shouldKeepPlayerScreenOn()
@@ -282,6 +284,29 @@ internal fun AndroidMedia3PlayerSurface(
         val selection = exoPlayer.captureSelectedTrack(C.TRACK_TYPE_AUDIO) ?: return
         pendingAudioTrackSelection.add(selection)
         Log.d(TAG, "$reason: preserving audio track index=${selection.index} id=${selection.id}")
+    }
+
+    fun clearExternalSubtitleOverlay() {
+        externalSubtitleLoadGeneration++
+        externalSubtitleCues = emptyList()
+        lastExternalSubtitleText = null
+        playerViewRef?.subtitleView?.setCues(emptyList())
+    }
+
+    fun syncExternalSubtitleOverlay(positionMs: Long) {
+        if (externalSubtitleCues.isEmpty()) return
+        val adjustedPositionMs = (positionMs - subtitleDelayMs).coerceAtLeast(0L)
+        val cueText = externalSubtitleCues.firstOrNull { cue ->
+            adjustedPositionMs in cue.startTimeMs until cue.endTimeMs
+        }?.text
+        if (cueText == lastExternalSubtitleText) return
+        lastExternalSubtitleText = cueText
+        playerViewRef?.subtitleView?.setCues(
+            cueText
+                ?.takeIf { it.isNotBlank() }
+                ?.let { listOf(Cue.Builder().setText(it).build()) }
+                ?: emptyList()
+        )
     }
 
     DisposableEffect(exoPlayer) {
@@ -479,6 +504,7 @@ internal fun AndroidMedia3PlayerSurface(
 
                 override fun selectSubtitleTrack(index: Int) {
                     Log.d(TAG, "selectSubtitleTrack: index=$index")
+                    clearExternalSubtitleOverlay()
                     if (index < 0) {
                         Log.d(TAG, "selectSubtitleTrack: disabling text tracks")
                         exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
@@ -497,45 +523,49 @@ internal fun AndroidMedia3PlayerSurface(
                 }
 
                 override fun setSubtitleUri(url: String) {
+                    setSubtitleUri(url) {}
+                }
+
+                override fun setSubtitleUri(url: String, onLoaded: (Boolean) -> Unit) {
                     Log.d(TAG, "setSubtitleUri: url=$url")
                     subtitleSelectionJob?.cancel()
+                    val loadGeneration = externalSubtitleLoadGeneration + 1
+                    externalSubtitleLoadGeneration = loadGeneration
+                    externalSubtitleCues = emptyList()
+                    lastExternalSubtitleText = null
+                    playerViewRef?.subtitleView?.setCues(emptyList())
                     subtitleSelectionJob = coroutineScope.launch {
-                        val currentPosition = exoPlayer.currentPosition
-                        val wasPlaying = exoPlayer.isPlaying
-                        val currentMediaItem = exoPlayer.currentMediaItem ?: run {
-                            Log.e(TAG, "setSubtitleUri: currentMediaItem is null, aborting")
+                        var resolvedMime = MimeTypes.TEXT_VTT
+                        val loadedCues = runCatching {
+                            withContext(Dispatchers.IO) {
+                                resolvedMime = resolveSubtitleMimeType(url)
+                                parseExternalSubtitleCues(
+                                    text = fetchExternalSubtitleText(url),
+                                    sourceUrl = url,
+                                    mimeType = resolvedMime,
+                                )
+                            }
+                        }
+                        if (externalSubtitleLoadGeneration != loadGeneration) {
                             return@launch
                         }
-                        preserveAudioSelectionForReload("setSubtitleUri")
-                        val resolvedMime = withContext(Dispatchers.IO) {
-                            resolveSubtitleMimeType(url)
+                        val cues = loadedCues.getOrNull().orEmpty()
+                        if (loadedCues.isFailure || cues.isEmpty()) {
+                            Log.e(TAG, "setSubtitleUri: failed to load external subtitle", loadedCues.exceptionOrNull())
+                            onLoaded(false)
+                            return@launch
                         }
                         selectedExternalSubtitleMimeType = resolvedMime
-                        Log.d(TAG, "setSubtitleUri: currentPosition=$currentPosition, wasPlaying=$wasPlaying")
-                        val subtitleConfig = MediaItem.SubtitleConfiguration.Builder(Uri.parse(url))
-                            .setMimeType(resolvedMime)
-                            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                            .setRoleFlags(C.ROLE_FLAG_SUBTITLE)
-                            .build()
-                        Log.d(
-                            TAG,
-                            "setSubtitleUri: subtitleConfig built, uri=${subtitleConfig.uri}, mime=${subtitleConfig.mimeType}, selectionFlags=${subtitleConfig.selectionFlags}"
-                        )
-                        val newMediaItem = currentMediaItem.buildUpon()
-                            .setSubtitleConfigurations(listOf(subtitleConfig))
-                            .build()
-                        Log.d(TAG, "setSubtitleUri: newMediaItem subtitleConfigs count=${newMediaItem.localConfiguration?.subtitleConfigurations?.size}")
+                        externalSubtitleCues = cues
+                        lastExternalSubtitleText = null
                         exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
                             .buildUpon()
-                            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                             .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-                            .setPreferredTextRoleFlags(C.ROLE_FLAG_SUBTITLE)
                             .build()
-                        Log.d(TAG, "setSubtitleUri: track params set before prepare, textDisabled=${exoPlayer.trackSelectionParameters.disabledTrackTypes.contains(C.TRACK_TYPE_TEXT)}")
-                        exoPlayer.setPlaybackMediaItem(newMediaItem, currentPosition)
-                        exoPlayer.prepare()
-                        exoPlayer.playWhenReady = wasPlaying
-                        Log.d(TAG, "setSubtitleUri: prepare() called, waiting for STATE_READY")
+                        syncExternalSubtitleOverlay(exoPlayer.currentPosition)
+                        Log.d(TAG, "setSubtitleUri: loaded ${cues.size} cues without media reload")
+                        onLoaded(true)
                     }
                 }
 
@@ -543,36 +573,22 @@ internal fun AndroidMedia3PlayerSurface(
                     Log.d(TAG, "clearExternalSubtitle called")
                     subtitleSelectionJob?.cancel()
                     selectedExternalSubtitleMimeType = null
-                    val currentPosition = exoPlayer.currentPosition
-                    val wasPlaying = exoPlayer.isPlaying
-                    val currentMediaItem = exoPlayer.currentMediaItem ?: return
-                    preserveAudioSelectionForReload("clearExternalSubtitle")
-                    val newMediaItem = currentMediaItem.buildUpon()
-                        .setSubtitleConfigurations(emptyList())
+                    clearExternalSubtitleOverlay()
+                    exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
+                        .buildUpon()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                        .clearOverridesOfType(C.TRACK_TYPE_TEXT)
                         .build()
-                    exoPlayer.setPlaybackMediaItem(newMediaItem, currentPosition)
-                    exoPlayer.prepare()
-                    exoPlayer.playWhenReady = wasPlaying
-                    Log.d(TAG, "clearExternalSubtitle: done, position=$currentPosition")
+                    Log.d(TAG, "clearExternalSubtitle: done")
                 }
 
                 override fun clearExternalSubtitleAndSelect(trackIndex: Int) {
                     Log.d(TAG, "clearExternalSubtitleAndSelect: trackIndex=$trackIndex")
                     subtitleSelectionJob?.cancel()
                     selectedExternalSubtitleMimeType = null
-                    pendingSubtitleTrackIndex.clear()
-                    pendingSubtitleTrackIndex.add(trackIndex)
-                    val currentPosition = exoPlayer.currentPosition
-                    val wasPlaying = exoPlayer.isPlaying
-                    val currentMediaItem = exoPlayer.currentMediaItem ?: return
-                    preserveAudioSelectionForReload("clearExternalSubtitleAndSelect")
-                    val newMediaItem = currentMediaItem.buildUpon()
-                        .setSubtitleConfigurations(emptyList())
-                        .build()
-                    exoPlayer.setPlaybackMediaItem(newMediaItem, currentPosition)
-                    exoPlayer.prepare()
-                    exoPlayer.playWhenReady = wasPlaying
-                    Log.d(TAG, "clearExternalSubtitleAndSelect: done, pending=$trackIndex position=$currentPosition")
+                    clearExternalSubtitleOverlay()
+                    selectSubtitleTrack(trackIndex)
+                    Log.d(TAG, "clearExternalSubtitleAndSelect: done, selected=$trackIndex")
                 }
 
                 override fun applySubtitleStyle(style: SubtitleStyleState) {
@@ -589,6 +605,7 @@ internal fun AndroidMedia3PlayerSurface(
 
     LaunchedEffect(exoPlayer) {
         while (isActive) {
+            syncExternalSubtitleOverlay(exoPlayer.currentPosition)
             latestOnSnapshot.value(currentSnapshotForUi())
             delay(250L)
         }
@@ -1265,3 +1282,131 @@ private fun guessSubtitleMime(url: String): String {
         else -> MimeTypes.TEXT_VTT
     }
 }
+
+private data class TimedExternalSubtitleCue(
+    val startTimeMs: Long,
+    val endTimeMs: Long,
+    val text: String,
+)
+
+private fun fetchExternalSubtitleText(url: String): String {
+    val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+        requestMethod = "GET"
+        connectTimeout = 10_000
+        readTimeout = 15_000
+        instanceFollowRedirects = true
+        setRequestProperty("Accept", "*/*")
+    }
+    return try {
+        connection.inputStream.bufferedReader().use { it.readText() }
+    } finally {
+        connection.disconnect()
+    }
+}
+
+private fun parseExternalSubtitleCues(
+    text: String,
+    sourceUrl: String,
+    mimeType: String,
+): List<TimedExternalSubtitleCue> {
+    val normalized = text
+        .removePrefix("\uFEFF")
+        .replace("\r\n", "\n")
+        .replace('\r', '\n')
+        .trim()
+    if (normalized.isBlank()) return emptyList()
+
+    return when {
+        mimeType == MimeTypes.TEXT_SSA ||
+            sourceUrl.endsWith(".ass", ignoreCase = true) ||
+            sourceUrl.endsWith(".ssa", ignoreCase = true) -> parseSsaExternalSubtitleCues(normalized)
+        mimeType == MimeTypes.TEXT_VTT ||
+            sourceUrl.endsWith(".vtt", ignoreCase = true) ||
+            normalized.startsWith("WEBVTT") -> parseWebVttExternalSubtitleCues(normalized)
+        else -> parseSrtExternalSubtitleCues(normalized)
+    }.sortedBy { it.startTimeMs }
+}
+
+private fun parseSrtExternalSubtitleCues(text: String): List<TimedExternalSubtitleCue> =
+    text.split(Regex("\n{2,}")).mapNotNull { block ->
+        val lines = block.lines()
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+        val timingIndex = lines.indexOfFirst { it.contains("-->") }
+        if (timingIndex < 0) return@mapNotNull null
+        val (start, end) = parseExternalCueTiming(lines[timingIndex]) ?: return@mapNotNull null
+        val body = lines.drop(timingIndex + 1)
+            .joinToString("\n")
+            .cleanExternalSubtitleText()
+        if (body.isBlank()) null else TimedExternalSubtitleCue(start, end, body)
+    }
+
+private fun parseWebVttExternalSubtitleCues(text: String): List<TimedExternalSubtitleCue> =
+    text.lines()
+        .dropWhile { it.trim().isEmpty() || it.trim().startsWith("WEBVTT") }
+        .joinToString("\n")
+        .split(Regex("\n{2,}"))
+        .mapNotNull { block ->
+            val lines = block.lines()
+                .map { it.trim() }
+                .filter { it.isNotBlank() && !it.startsWith("NOTE") }
+            val timingIndex = lines.indexOfFirst { it.contains("-->") }
+            if (timingIndex < 0) return@mapNotNull null
+            val (start, end) = parseExternalCueTiming(lines[timingIndex]) ?: return@mapNotNull null
+            val body = lines.drop(timingIndex + 1)
+                .joinToString("\n")
+                .cleanExternalSubtitleText()
+            if (body.isBlank()) null else TimedExternalSubtitleCue(start, end, body)
+        }
+
+private fun parseSsaExternalSubtitleCues(text: String): List<TimedExternalSubtitleCue> =
+    text.lines().mapNotNull { line ->
+        if (!line.startsWith("Dialogue:", ignoreCase = true)) return@mapNotNull null
+        val parts = line.substringAfter(':').split(',', limit = 10)
+        if (parts.size < 10) return@mapNotNull null
+        val start = parseExternalSubtitleTimestamp(parts[1].trim()) ?: return@mapNotNull null
+        val end = parseExternalSubtitleTimestamp(parts[2].trim()) ?: return@mapNotNull null
+        val body = parts[9]
+            .replace("\\N", "\n")
+            .replace("\\n", "\n")
+            .replace(Regex("\\{[^}]*}"), "")
+            .cleanExternalSubtitleText()
+        if (body.isBlank()) null else TimedExternalSubtitleCue(start, end.coerceAtLeast(start + 1), body)
+    }
+
+private fun parseExternalCueTiming(timingLine: String): Pair<Long, Long>? {
+    val startPart = timingLine.substringBefore("-->").trim()
+    val endPart = timingLine.substringAfter("-->", missingDelimiterValue = "").trim()
+        .substringBefore(' ')
+    val start = parseExternalSubtitleTimestamp(startPart) ?: return null
+    val end = parseExternalSubtitleTimestamp(endPart) ?: return null
+    return start to end.coerceAtLeast(start + 1)
+}
+
+private fun parseExternalSubtitleTimestamp(raw: String): Long? {
+    val cleaned = raw.substringBefore(' ').replace(',', '.')
+    val parts = cleaned.split(':')
+    if (parts.size !in 2..3) return null
+
+    val secondsPart = parts.last()
+    val seconds = secondsPart.substringBefore('.').toLongOrNull() ?: return null
+    val millis = secondsPart.substringAfter('.', "")
+        .take(3)
+        .padEnd(3, '0')
+        .toLongOrNull()
+        ?: 0L
+    val minutes = parts[parts.size - 2].toLongOrNull() ?: return null
+    val hours = if (parts.size == 3) parts[0].toLongOrNull() ?: return null else 0L
+
+    return maxOf(0L, hours * 3_600_000L + minutes * 60_000L + seconds * 1_000L + millis)
+}
+
+private fun String.cleanExternalSubtitleText(): String =
+    replace(Regex("<[^>]+>"), "")
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .lines()
+        .joinToString("\n") { line -> line.replace(Regex("\\s+"), " ").trim() }
+        .trim()

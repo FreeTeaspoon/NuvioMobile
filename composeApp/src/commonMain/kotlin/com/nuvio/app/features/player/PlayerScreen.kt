@@ -612,6 +612,7 @@ fun PlayerScreen(
         var selectedAudioIndex by remember { mutableStateOf(-1) }
         var selectedSubtitleIndex by remember { mutableStateOf(-1) }
         var selectedAddonSubtitleId by remember { mutableStateOf<String?>(null) }
+        var loadingAddonSubtitleId by remember { mutableStateOf<String?>(null) }
         var useCustomSubtitles by remember { mutableStateOf(false) }
         var preferredAudioSelectionApplied by rememberSaveable(sourceUrl) { mutableStateOf(false) }
         var preferredSubtitleSelectionApplied by rememberSaveable(sourceUrl) { mutableStateOf(false) }
@@ -2750,6 +2751,7 @@ fun PlayerScreen(
                 selectedSubtitleIndex = selectedSubtitleIndex,
                 addonSubtitles = visibleAddonSubtitles,
                 selectedAddonSubtitleId = selectedAddonSubtitleId,
+                loadingAddonSubtitleId = loadingAddonSubtitleId,
                 isLoadingAddonSubtitles = isLoadingAddonSubtitles,
                 subtitleStyle = subtitleStyle,
                 subtitleDelayMs = subtitleDelayMs,
@@ -2758,6 +2760,7 @@ fun PlayerScreen(
                 onTabSelected = { activeSubtitleTab = it },
                 onBuiltInTrackSelected = { index ->
                     val wasCustom = useCustomSubtitles
+                    loadingAddonSubtitleId = null
                     selectedSubtitleIndex = index
                     selectedAddonSubtitleId = null
                     useCustomSubtitles = false
@@ -2772,12 +2775,29 @@ fun PlayerScreen(
                     }
                 },
                 onAddonSubtitleSelected = { addon ->
+                    loadingAddonSubtitleId = addon.id
                     selectedAddonSubtitleId = addon.id
                     selectedSubtitleIndex = -1
                     useCustomSubtitles = true
-                    persistAddonSubtitlePreference(addon)
-                    playerController?.setSubtitleUri(addon.url)
-                    RememberedSubtitleSelectionRepository.saveAddonSelection(rememberedSubtitleKeys, addon)
+                    val controller = playerController
+                    if (controller == null) {
+                        loadingAddonSubtitleId = null
+                        selectedAddonSubtitleId = null
+                        useCustomSubtitles = false
+                    } else {
+                        controller.setSubtitleUri(addon.url) { loaded ->
+                            if (loadingAddonSubtitleId == addon.id) {
+                                loadingAddonSubtitleId = null
+                            }
+                            if (loaded) {
+                                persistAddonSubtitlePreference(addon)
+                                RememberedSubtitleSelectionRepository.saveAddonSelection(rememberedSubtitleKeys, addon)
+                            } else if (selectedAddonSubtitleId == addon.id) {
+                                selectedAddonSubtitleId = null
+                                useCustomSubtitles = false
+                            }
+                        }
+                    }
                 },
                 onFetchAddonSubtitles = ::fetchAddonSubtitlesForActiveItem,
                 onStyleChanged = PlayerSettingsRepository::setSubtitleStyle,
