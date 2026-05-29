@@ -29,7 +29,6 @@ actual fun LockPlayerToLandscape() {
     if (!activity.shouldForceLandscapePlayer()) return
 
     DisposableEffect(activity, lifecycleOwner) {
-        val previousOrientation = activity.requestedOrientation
         fun lockToLandscapeIfNeeded() {
             if (activity.shouldForceLandscapePlayer()) {
                 activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
@@ -56,9 +55,7 @@ actual fun LockPlayerToLandscape() {
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
             PlayerPictureInPictureManager.registerPictureInPictureExitCallback(null)
-            activity.requestedOrientation = previousOrientation
-                .takeUnless { it == ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
-                ?: ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            activity.restoreDefaultOrientationAfterPlayer()
         }
     }
 }
@@ -156,6 +153,12 @@ private fun Activity.shouldForceLandscapePlayer(): Boolean {
     if (resources.configuration.smallestScreenWidthDp >= 600) return false
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode) return false
     return true
+}
+
+private fun Activity.restoreDefaultOrientationAfterPlayer() {
+    if (resources.configuration.smallestScreenWidthDp >= 600) return
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode) return
+    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 }
 
 private class AndroidPlayerGestureController(
