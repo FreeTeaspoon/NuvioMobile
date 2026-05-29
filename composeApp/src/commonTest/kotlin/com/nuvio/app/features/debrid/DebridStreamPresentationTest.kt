@@ -182,6 +182,89 @@ class DebridStreamPresentationTest {
     }
 
     @Test
+    fun `attaches imported badge urls to normal addon streams`() {
+        val stream = StreamItem(
+            name = "Movie.2024.2160p.BluRay.REMUX-GRP",
+            url = "https://example.test/movie.mkv",
+            addonName = "Addon",
+            addonId = "addon:test",
+        )
+
+        val presented = DebridStreamPresentation.apply(
+            groups = listOf(
+                AddonStreamGroup(
+                    addonName = "Addon",
+                    addonId = "addon:test",
+                    streams = listOf(stream),
+                ),
+            ),
+            settings = DebridSettings(
+                enabled = true,
+                providerApiKeys = mapOf(DebridProviders.TORBOX_ID to "key"),
+                streamBadgeRules = StreamBadgeRules(
+                    imports = listOf(
+                        StreamBadgeImport(
+                            sourceUrl = "https://example.test/badges.json",
+                            filters = listOf(
+                                StreamBadgeFilter(
+                                    name = "REMUX",
+                                    pattern = "(?i)\\bremux\\b",
+                                    imageURL = "https://example.test/remux.png",
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ).single().streams.single()
+
+        assertEquals("Movie.2024.2160p.BluRay.REMUX-GRP", presented.name)
+        assertEquals(listOf("REMUX"), presented.badges.map { it.name })
+        assertEquals("https://example.test/remux.png", presented.badges.single().imageURL)
+    }
+
+    @Test
+    fun `attaches imported badge urls when connected service resolving is off`() {
+        val stream = StreamItem(
+            name = "Movie.2024.1080p.WEB-DL.H265-GRP",
+            url = "https://example.test/movie.mkv",
+            addonName = "Addon",
+            addonId = "addon:test",
+        )
+
+        val presented = DebridStreamPresentation.apply(
+            groups = listOf(
+                AddonStreamGroup(
+                    addonName = "Addon",
+                    addonId = "addon:test",
+                    streams = listOf(stream),
+                ),
+            ),
+            settings = DebridSettings(
+                enabled = false,
+                providerApiKeys = mapOf(DebridProviders.TORBOX_ID to "key"),
+                streamBadgeRules = StreamBadgeRules(
+                    imports = listOf(
+                        StreamBadgeImport(
+                            sourceUrl = "https://example.test/badges.json",
+                            filters = listOf(
+                                StreamBadgeFilter(
+                                    name = "WEB-DL",
+                                    pattern = "(?i)\\bweb-dl\\b",
+                                    imageURL = "https://example.test/webdl.png",
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ).single().streams.single()
+
+        assertEquals(listOf("WEB-DL"), presented.badges.map { it.name })
+        assertEquals("https://example.test/webdl.png", presented.badges.single().imageURL)
+    }
+
+    @Test
     fun `default formatter replaces addon source labels for managed streams`() {
         val stream = premiumizeDirectStream(
             name = "[P2P] Torrentio 2160p - PM Instant",
