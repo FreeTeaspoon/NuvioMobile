@@ -16,6 +16,10 @@ interface PlayerEngineController {
     fun selectAudioTrack(index: Int)
     fun selectSubtitleTrack(index: Int)
     fun setSubtitleUri(url: String)
+    fun setSubtitleUri(url: String, onLoaded: (Boolean) -> Unit) {
+        setSubtitleUri(url)
+        onLoaded(true)
+    }
     fun clearExternalSubtitle()
     fun clearExternalSubtitleAndSelect(trackIndex: Int)
     fun setVideoZoom(state: PlayerVideoZoomState) {}

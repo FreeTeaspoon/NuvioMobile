@@ -60,6 +60,7 @@ fun SubtitleModal(
     selectedSubtitleIndex: Int,
     addonSubtitles: List<AddonSubtitle>,
     selectedAddonSubtitleId: String?,
+    loadingAddonSubtitleId: String?,
     isLoadingAddonSubtitles: Boolean,
     subtitleStyle: SubtitleStyleState,
     subtitleDelayMs: Int,
@@ -153,6 +154,7 @@ fun SubtitleModal(
                                 SubtitleTab.Addons -> AddonSubtitleList(
                                     addons = addonSubtitles,
                                     selectedId = selectedAddonSubtitleId,
+                                    loadingId = loadingAddonSubtitleId,
                                     isLoading = isLoadingAddonSubtitles,
                                     onSubtitleSelected = onAddonSubtitleSelected,
                                     onFetch = onFetchAddonSubtitles,
@@ -304,6 +306,7 @@ private fun BuiltInSubtitleList(
 private fun AddonSubtitleList(
     addons: List<AddonSubtitle>,
     selectedId: String?,
+    loadingId: String?,
     isLoading: Boolean,
     onSubtitleSelected: (AddonSubtitle) -> Unit,
     onFetch: () -> Unit,
@@ -362,6 +365,7 @@ private fun AddonSubtitleList(
     ) {
         addons.forEach { sub ->
             val isSelected = sub.id == selectedId
+            val isSubtitleLoading = sub.id == loadingId
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -390,7 +394,15 @@ private fun AddonSubtitleList(
                         modifier = Modifier.padding(bottom = 3.dp),
                     )
                 }
-                if (isSelected) {
+                if (isSubtitleLoading) {
+                    CircularProgressIndicator(
+                        color = colorScheme.primary,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .padding(end = 2.dp),
+                    )
+                } else if (isSelected) {
                     Icon(
                         imageVector = Icons.Rounded.Check,
                         contentDescription = null,
