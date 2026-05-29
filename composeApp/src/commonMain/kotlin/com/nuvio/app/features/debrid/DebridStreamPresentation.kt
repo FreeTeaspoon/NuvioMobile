@@ -8,15 +8,16 @@ object DebridStreamPresentation {
     private val formatter = DebridStreamFormatter()
 
     fun apply(groups: List<AddonStreamGroup>, settings: DebridSettings): List<AddonStreamGroup> {
-        if (!settings.canResolvePlayableLinks) return groups
+        val compiledBadgeFilters = StreamBadgeMatcher.compile(settings.streamBadgeRules)
+        if (!settings.canResolvePlayableLinks) {
+            return groups.applyImportedBadges(compiledBadgeFilters)
+        }
         return groups.map { group ->
             val visibleStreams = group.streams
                 .filterNot { stream -> stream.isInactiveResolverStream(settings) }
                 .filterNot { stream -> stream.isUncachedDebridStream }
             val debridStreams = visibleStreams.filter { stream -> stream.isManagedDebridStream }
-            if (debridStreams.isEmpty()) return@map group.copy(streams = visibleStreams)
 
-            val compiledBadgeFilters = StreamBadgeMatcher.compile(settings.streamBadgeRules)
             val shouldFormatStreams = settings.hasCustomStreamFormatting || compiledBadgeFilters.isNotEmpty()
             val presentedDebridStreams = applyPreferences(debridStreams, settings)
                 .map { stream ->
@@ -26,10 +27,34 @@ object DebridStreamPresentation {
                         stream
                     }
                 }
-            val passthroughStreams = visibleStreams.filterNot { stream -> stream.isManagedDebridStream }
+            val passthroughStreams = visibleStreams
+                .filterNot { stream -> stream.isManagedDebridStream }
+                .map { stream -> stream.withImportedBadges(compiledBadgeFilters) }
 
             group.copy(streams = presentedDebridStreams + passthroughStreams)
         }
+    }
+
+    private fun List<AddonStreamGroup>.applyImportedBadges(
+        compiledBadgeFilters: List<CompiledStreamBadgeFilter>,
+    ): List<AddonStreamGroup> {
+        if (compiledBadgeFilters.isEmpty()) return this
+        return map { group ->
+            group.copy(
+                streams = group.streams.map { stream ->
+                    stream.withImportedBadges(compiledBadgeFilters)
+                },
+            )
+        }
+    }
+
+    private fun StreamItem.withImportedBadges(
+        compiledBadgeFilters: List<CompiledStreamBadgeFilter>,
+    ): StreamItem {
+        if (compiledBadgeFilters.isEmpty()) return this
+        val matchedBadges = StreamBadgeMatcher.matchedBadges(this, compiledBadgeFilters)
+        if (matchedBadges.isEmpty()) return this
+        return copy(badges = (badges + matchedBadges).distinctBy { it.dedupeKey() })
     }
 
     internal fun applyPreferences(streams: List<StreamItem>, settings: DebridSettings): List<StreamItem> {
@@ -140,6 +165,9 @@ object DebridStreamPresentation {
         }
     }
 }
+
+private fun com.nuvio.app.features.streams.StreamBadge.dedupeKey(): String =
+    imageURL.takeIf { it.isNotBlank() } ?: name
 
 internal object DebridStreamMetadata {
     fun effectivePreferences(settings: DebridSettings): DebridStreamPreferences {
