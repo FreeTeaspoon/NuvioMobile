@@ -49,6 +49,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.runBlocking
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -57,6 +58,7 @@ private const val gitHubOwner = "FreeTeaspoon"
 private const val gitHubRepo = "NuvioMobile"
 private const val gitHubApiBase = "https://api.github.com"
 private const val forkApkAssetPrefix = "nuvio-freeteaspoon-full-"
+private const val releaseChannelBranch = "cmp-rewrite"
 
 data class AppUpdate(
     val tag: String,
@@ -87,6 +89,7 @@ private data class GitHubReleaseDto(
     val body: String? = null,
     val draft: Boolean = false,
     val prerelease: Boolean = false,
+    @SerialName("target_commitish") val targetCommitish: String? = null,
     @SerialName("html_url") val htmlUrl: String? = null,
     val assets: List<GitHubAssetDto> = emptyList(),
 )
@@ -111,7 +114,7 @@ private val appUpdaterJson = Json {
 }
 
 private class NoForkUpdateReleaseException : IllegalStateException(
-    "No update APK has been published for this fork yet.",
+    runBlocking { getString(Res.string.updates_no_channel_release) },
 )
 
 internal object VersionUtils {
@@ -175,7 +178,7 @@ internal object AppUpdaterRepository {
             body = "",
         )
         if (response.status !in 200..299) {
-            error("GitHub releases API error: ${response.status}")
+            error(getString(Res.string.updates_github_api_error, response.status))
         }
 
         parseLatestForkUpdate(response.body)
@@ -183,8 +186,10 @@ internal object AppUpdaterRepository {
 
     internal fun parseLatestForkUpdate(responseBody: String): AppUpdate {
         val releases = appUpdaterJson.decodeFromString<List<GitHubReleaseDto>>(responseBody)
-        val candidate = releases.asSequence()
-            .filter { release -> !release.draft && !release.prerelease }
+        val eligibleReleases = releases.filter { release ->
+            !release.draft && !release.prerelease
+        }
+        val candidate = eligibleReleases.asSequence()
             .mapNotNull { release ->
                 val asset = chooseBestApkAsset(release.assets) ?: return@mapNotNull null
                 val tag = release.tagName?.takeIf { it.isNotBlank() }
@@ -204,6 +209,17 @@ internal object AppUpdaterRepository {
             assetUrl = candidate.asset.browserDownloadUrl,
             assetSizeBytes = candidate.asset.size,
         )
+    }
+
+    private fun GitHubReleaseDto.matchesRequestedChannel(): Boolean {
+        val channel = releaseChannelBranch
+        if (targetCommitish?.trim()?.equals(channel, ignoreCase = true) == true) {
+            return true
+        }
+
+        return listOf(tagName, name)
+            .filterNotNull()
+            .any { value -> value.contains(channel, ignoreCase = true) }
     }
 
     private fun chooseBestApkAsset(assets: List<GitHubAssetDto>): GitHubAssetDto? {
