@@ -623,7 +623,6 @@ private fun MainAppContent(
     val cloudLibraryPlayNotConnectedText = stringResource(Res.string.cloud_library_play_not_connected)
     val isTraktLibrarySource = libraryUiState.sourceMode == LibrarySourceMode.TRAKT
     var initialHomeReady by rememberSaveable { mutableStateOf(false) }
-    var offlineLaunchRouteHandled by rememberSaveable { mutableStateOf(false) }
     var networkToastBaselineReady by rememberSaveable { mutableStateOf(false) }
     var lastNetworkToastCondition by rememberSaveable { mutableStateOf(NetworkCondition.Unknown.name) }
 
@@ -733,40 +732,6 @@ private fun MainAppContent(
         }
 
         lastNetworkToastCondition = condition.name
-    }
-
-    LaunchedEffect(
-        initialHomeReady,
-        offlineLaunchRouteHandled,
-        networkStatusUiState.condition,
-        downloadsUiState.completedItems,
-    ) {
-        if (!initialHomeReady || offlineLaunchRouteHandled) return@LaunchedEffect
-
-        when (networkStatusUiState.condition) {
-            NetworkCondition.Unknown,
-            NetworkCondition.Checking,
-            -> return@LaunchedEffect
-
-            NetworkCondition.Online -> {
-                offlineLaunchRouteHandled = true
-            }
-
-            NetworkCondition.NoInternet,
-            NetworkCondition.ServersUnreachable,
-            -> {
-                offlineLaunchRouteHandled = true
-                val hasPlayableDownload = downloadsUiState.completedItems.any {
-                    DownloadsRepository.playableLocalFileUri(it) != null
-                }
-                if (hasPlayableDownload) {
-                    selectedTab = AppScreenTab.Settings
-                    navController.navigate(DownloadsSettingsRoute) {
-                        launchSingleTop = true
-                    }
-                }
-            }
-        }
     }
 
     LaunchedEffect(authState, profileState.activeProfile?.profileIndex) {
