@@ -100,6 +100,8 @@ internal fun LazyListScope.playbackSettingsContent(
     tunnelingEnabled: Boolean,
     useLibass: Boolean,
     libassRenderType: String,
+    autoOpenDownloadsOnOffline: Boolean,
+    onAutoOpenDownloadsOnOfflineChange: (Boolean) -> Unit,
 ) {
     item {
         PlaybackSettingsSection(
@@ -119,6 +121,8 @@ internal fun LazyListScope.playbackSettingsContent(
             tunnelingEnabled = tunnelingEnabled,
             useLibass = useLibass,
             libassRenderType = libassRenderType,
+            autoOpenDownloadsOnOffline = autoOpenDownloadsOnOffline,
+            onAutoOpenDownloadsOnOfflineChange = onAutoOpenDownloadsOnOfflineChange,
         )
     }
 }
@@ -251,6 +255,8 @@ private fun PlaybackSettingsSection(
     tunnelingEnabled: Boolean,
     useLibass: Boolean,
     libassRenderType: String,
+    autoOpenDownloadsOnOffline: Boolean,
+    onAutoOpenDownloadsOnOfflineChange: (Boolean) -> Unit,
 ) {
     var showPreferredAudioDialog by remember { mutableStateOf(false) }
     var showSecondaryAudioDialog by remember { mutableStateOf(false) }
@@ -364,6 +370,14 @@ private fun PlaybackSettingsSection(
                         onClick = { showHoldToSpeedValueDialog = true },
                     )
                 }
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.downloads_auto_open_offline_title),
+                    description = stringResource(Res.string.downloads_auto_open_offline_description),
+                    checked = autoOpenDownloadsOnOffline,
+                    isTablet = isTablet,
+                    onCheckedChange = onAutoOpenDownloadsOnOfflineChange,
+                )
             }
         }
 
