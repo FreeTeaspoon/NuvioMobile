@@ -261,6 +261,9 @@
   <string name="detail_trailers_title">Τρέιλερ</string>
   <string name="downloads_empty_episodes">Δεν υπάρχουν ολοκληρωμένα επεισόδια</string>
   <string name="downloads_empty_title">Δεν υπάρχουν λήψεις ακόμα</string>
+  <string name="downloads_preferences_section">Preferences</string>
+  <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
+  <string name="downloads_auto_open_offline_description">When Nuvio starts without a connection, open Downloads if playable files are saved.</string>
   <string name="downloads_episode_count">%1$d ληφθέν(τα) επεισόδιο(α)</string>
   <string name="downloads_section_active">Ενεργές</string>
   <string name="downloads_section_movies">Ταινίες</string>

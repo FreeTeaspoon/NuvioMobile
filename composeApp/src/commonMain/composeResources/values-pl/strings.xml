@@ -455,6 +455,9 @@
   <string name="detail_trailers_title">Zwiastuny</string>
   <string name="downloads_empty_episodes">Brak pobranych odcinków</string>
   <string name="downloads_empty_title">Brak pobranych plików</string>
+  <string name="downloads_preferences_section">Preferences</string>
+  <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
+  <string name="downloads_auto_open_offline_description">When Nuvio starts without a connection, open Downloads if playable files are saved.</string>
   <string name="downloads_episode_count">%1$d pobranych odcinków</string>
   <string name="downloads_section_active">Aktywne</string>
   <string name="downloads_section_movies">Filmy</string>
