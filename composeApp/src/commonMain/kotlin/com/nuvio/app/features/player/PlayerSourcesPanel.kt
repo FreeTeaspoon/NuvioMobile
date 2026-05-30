@@ -51,6 +51,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.i18n.localizedByteUnit
 import com.nuvio.app.features.debrid.DebridSettingsRepository
+import com.nuvio.app.features.debrid.ImportedBadgeChip
+import com.nuvio.app.features.debrid.ImportedBadgeChipSize
+import com.nuvio.app.features.streams.StreamBadge
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamsUiState
 import com.nuvio.app.features.streams.isSelectableForPlayback
@@ -318,13 +321,27 @@ private fun SourceStreamRow(
             }
 
             Spacer(modifier = Modifier.height(6.dp))
+            val badgeImages = stream.badges.filter { it.imageURL.isNotBlank() }
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                PlayerStreamFileSizeBadge(stream = stream)
+                if (badgeImages.isNotEmpty() || stream.behaviorHints.videoSize != null) {
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        badgeImages.forEach { badge ->
+                            PlayerStreamImportedBadge(badge = badge)
+                        }
+                        PlayerStreamFileSizeBadge(stream = stream)
+                    }
+                }
                 Text(
                     text = stream.addonName,
+                    modifier = Modifier.weight(1f, fill = false),
                     color = colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                     fontStyle = FontStyle.Italic,
@@ -334,6 +351,18 @@ private fun SourceStreamRow(
             }
         }
     }
+}
+
+@Composable
+private fun PlayerStreamImportedBadge(badge: StreamBadge) {
+    ImportedBadgeChip(
+        imageURL = badge.imageURL,
+        name = badge.name,
+        tagColor = badge.tagColor,
+        tagStyle = badge.tagStyle,
+        borderColor = badge.borderColor,
+        size = ImportedBadgeChipSize.STREAM,
+    )
 }
 
 @Composable
