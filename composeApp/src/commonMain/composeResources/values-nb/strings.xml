@@ -460,7 +460,6 @@
   <string name="detail_trailers_title">Trailere</string>
   <string name="downloads_empty_episodes">Ingen fullfÃ¸rte episoder</string>
   <string name="downloads_empty_title">Ingen nedlastinger ennÃ¥</string>
-  <string name="downloads_preferences_section">Preferences</string>
   <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
   <string name="downloads_auto_open_offline_description">When Nuvio starts without a connection, open Downloads if playable files are saved.</string>
   <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>

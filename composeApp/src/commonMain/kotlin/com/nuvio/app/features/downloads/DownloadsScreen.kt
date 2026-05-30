@@ -39,9 +39,6 @@ import com.nuvio.app.core.i18n.localizedByteUnit
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioStatusModal
-import com.nuvio.app.features.settings.SettingsGroup
-import com.nuvio.app.features.settings.SettingsSection
-import com.nuvio.app.features.settings.SettingsSwitchRow
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -143,23 +140,6 @@ private fun LazyListScope.downloadsRootContent(
             }
         }
         .sortedBy { (item, _) -> item.title.lowercase() }
-
-    item {
-        SettingsSection(
-            title = stringResource(Res.string.downloads_preferences_section),
-            isTablet = false,
-        ) {
-            SettingsGroup(isTablet = false) {
-                SettingsSwitchRow(
-                    title = stringResource(Res.string.downloads_auto_open_offline_title),
-                    description = stringResource(Res.string.downloads_auto_open_offline_description),
-                    checked = uiState.autoOpenOnOffline,
-                    isTablet = false,
-                    onCheckedChange = DownloadsRepository::setAutoOpenOnOffline,
-                )
-            }
-        }
-    }
 
     if (activeItems.isNotEmpty()) {
         item {

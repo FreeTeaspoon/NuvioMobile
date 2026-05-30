@@ -460,7 +460,6 @@
   <string name="detail_trailers_title">Trailers</string>
   <string name="downloads_empty_episodes">Nenhum episódio concluído</string>
   <string name="downloads_empty_title">Ainda sem transferências</string>
-  <string name="downloads_preferences_section">Preferences</string>
   <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
   <string name="downloads_auto_open_offline_description">When Nuvio starts without a connection, open Downloads if playable files are saved.</string>
   <string name="downloads_episode_count">%1$d episódio(s) transferido(s)</string>
