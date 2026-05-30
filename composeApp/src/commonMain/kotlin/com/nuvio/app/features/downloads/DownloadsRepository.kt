@@ -34,8 +34,18 @@ object DownloadsRepository {
         activeHandles.values.forEach(DownloadsTaskHandle::cancel)
         activeHandles.clear()
         hasLoaded = false
-        _uiState.value = DownloadsUiState()
+        _uiState.value = DownloadsUiState(
+            autoOpenOnOffline = _uiState.value.autoOpenOnOffline,
+        )
         notifyLiveStatusPlatform()
+    }
+
+    fun setAutoOpenOnOffline(enabled: Boolean) {
+        ensureLoaded()
+        _uiState.update { state ->
+            state.copy(autoOpenOnOffline = enabled)
+        }
+        DownloadsStorage.saveAutoOpenOnOffline(enabled)
     }
 
     fun findPlayableDownloadByVideoId(videoId: String?): DownloadItem? {
@@ -258,7 +268,9 @@ object DownloadsRepository {
         hasLoaded = true
         val payload = DownloadsStorage.loadPayload().orEmpty().trim()
         if (payload.isEmpty()) {
-            _uiState.value = DownloadsUiState()
+            _uiState.value = DownloadsUiState(
+                autoOpenOnOffline = DownloadsStorage.loadAutoOpenOnOffline() ?: true,
+            )
             notifyLiveStatusPlatform()
             return
         }
@@ -282,7 +294,10 @@ object DownloadsRepository {
                 localUriNormalized
             }
 
-        _uiState.value = DownloadsUiState(normalized)
+        _uiState.value = DownloadsUiState(
+            items = normalized,
+            autoOpenOnOffline = DownloadsStorage.loadAutoOpenOnOffline() ?: true,
+        )
         notifyLiveStatusPlatform()
         if (shouldPersistNormalized) {
             persist()
@@ -375,6 +390,7 @@ object DownloadsRepository {
     private fun publish(items: List<DownloadItem>) {
         _uiState.value = DownloadsUiState(
             items = items,
+            autoOpenOnOffline = _uiState.value.autoOpenOnOffline,
         )
         notifyLiveStatusPlatform()
     }

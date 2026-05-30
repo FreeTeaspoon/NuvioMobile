@@ -467,6 +467,9 @@
   <string name="detail_trailers_title">Bandes-annonces</string>
   <string name="downloads_empty_episodes">Aucun Ã©pisode terminÃ©</string>
   <string name="downloads_empty_title">Aucun tÃ©lÃ©chargement</string>
+  <string name="downloads_preferences_section">Preferences</string>
+  <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
+  <string name="downloads_auto_open_offline_description">When Nuvio starts without a connection, open Downloads if playable files are saved.</string>
   <string name="downloads_episode_count">%1$d Ã©pisode(s) tÃ©lÃ©chargÃ©(s)</string>
   <string name="downloads_section_active">Actifs</string>
   <string name="downloads_section_movies">Films</string>
