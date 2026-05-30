@@ -62,6 +62,7 @@ import com.nuvio.app.features.collection.CollectionRepository
 import com.nuvio.app.features.addons.enabledAddons
 import com.nuvio.app.features.debrid.DebridSettings
 import com.nuvio.app.features.debrid.DebridSettingsRepository
+import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.home.HomeCatalogSettingsItem
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.mdblist.MdbListSettings
@@ -195,6 +196,10 @@ fun SettingsScreen(
             EpisodeReleaseNotificationsRepository.ensureLoaded()
             EpisodeReleaseNotificationsRepository.uiState
         }.collectAsStateWithLifecycle()
+        val downloadsUiState by remember {
+            DownloadsRepository.ensureLoaded()
+            DownloadsRepository.uiState
+        }.collectAsStateWithLifecycle()
 
         LaunchedEffect(homescreenCatalogRefreshKey) {
             if (homescreenCatalogRefreshKey.isEmpty()) return@LaunchedEffect
@@ -283,6 +288,8 @@ fun SettingsScreen(
                 metaScreenSettingsUiState = metaScreenSettingsUiState,
                 continueWatchingPreferencesUiState = continueWatchingPreferencesUiState,
                 posterCardStyleUiState = posterCardStyleUiState,
+                autoOpenDownloadsOnOffline = downloadsUiState.autoOpenOnOffline,
+                onAutoOpenDownloadsOnOfflineChange = DownloadsRepository::setAutoOpenOnOffline,
                 onSwitchProfile = onSwitchProfile,
                 onDownloadsClick = onDownloadsClick,
                 onSupportersContributorsClick = onSupportersContributorsClick,
@@ -333,6 +340,8 @@ fun SettingsScreen(
                 metaScreenSettingsUiState = metaScreenSettingsUiState,
                 continueWatchingPreferencesUiState = continueWatchingPreferencesUiState,
                 posterCardStyleUiState = posterCardStyleUiState,
+                autoOpenDownloadsOnOffline = downloadsUiState.autoOpenOnOffline,
+                onAutoOpenDownloadsOnOfflineChange = DownloadsRepository::setAutoOpenOnOffline,
                 onSwitchProfile = onSwitchProfile,
                 onHomescreenClick = onHomescreenClick,
                 onMetaScreenClick = onMetaScreenClick,
@@ -393,6 +402,8 @@ private fun MobileSettingsScreen(
     metaScreenSettingsUiState: MetaScreenSettingsUiState,
     continueWatchingPreferencesUiState: ContinueWatchingPreferencesUiState,
     posterCardStyleUiState: PosterCardStyleUiState,
+    autoOpenDownloadsOnOffline: Boolean,
+    onAutoOpenDownloadsOnOfflineChange: (Boolean) -> Unit,
     onSwitchProfile: (() -> Unit)? = null,
     onHomescreenClick: () -> Unit = {},
     onMetaScreenClick: () -> Unit = {},
@@ -536,6 +547,8 @@ private fun MobileSettingsScreen(
                     tunnelingEnabled = tunnelingEnabled,
                     useLibass = useLibass,
                     libassRenderType = libassRenderType,
+                    autoOpenDownloadsOnOffline = autoOpenDownloadsOnOffline,
+                    onAutoOpenDownloadsOnOfflineChange = onAutoOpenDownloadsOnOfflineChange,
                 )
                 SettingsPage.Appearance -> appearanceSettingsContent(
                     isTablet = false,
@@ -706,6 +719,8 @@ private fun TabletSettingsScreen(
     metaScreenSettingsUiState: MetaScreenSettingsUiState,
     continueWatchingPreferencesUiState: ContinueWatchingPreferencesUiState,
     posterCardStyleUiState: PosterCardStyleUiState,
+    autoOpenDownloadsOnOffline: Boolean,
+    onAutoOpenDownloadsOnOfflineChange: (Boolean) -> Unit,
     onSwitchProfile: (() -> Unit)? = null,
     onDownloadsClick: () -> Unit = {},
     onSupportersContributorsClick: () -> Unit = {},
@@ -908,6 +923,8 @@ private fun TabletSettingsScreen(
                         tunnelingEnabled = tunnelingEnabled,
                         useLibass = useLibass,
                         libassRenderType = libassRenderType,
+                        autoOpenDownloadsOnOffline = autoOpenDownloadsOnOffline,
+                        onAutoOpenDownloadsOnOfflineChange = onAutoOpenDownloadsOnOfflineChange,
                     )
                     SettingsPage.Appearance -> appearanceSettingsContent(
                         isTablet = true,
