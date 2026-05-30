@@ -64,6 +64,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
@@ -72,6 +73,7 @@ private const val TAG = "NuvioPlayer"
 private const val PlaybackTargetBufferBytes = 192 * 1024 * 1024
 private const val PlaybackMaxBufferMs = 120_000
 private const val PlaybackBackBufferMs = 120_000
+private const val MaxExternalSubtitleBytes = 4 * 1024 * 1024
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -417,6 +419,8 @@ internal fun AndroidMedia3PlayerSurface(
             PlayerPictureInPictureManager.registerPausePlaybackCallback(null)
             exoPlayer.removeListener(listener)
             subtitleSelectionJob?.cancel()
+            clearExternalSubtitleOverlay()
+            playerViewRef = null
         }
     }
 
@@ -1298,7 +1302,31 @@ private fun fetchExternalSubtitleText(url: String): String {
         setRequestProperty("Accept", "*/*")
     }
     return try {
-        connection.inputStream.bufferedReader().use { it.readText() }
+        val contentLength = connection.contentLengthLong
+        if (contentLength > MaxExternalSubtitleBytes) {
+            error("Subtitle file is too large: $contentLength bytes")
+        }
+
+        connection.inputStream.use { input ->
+            val output = ByteArrayOutputStream(
+                contentLength
+                    .takeIf { it in 1..MaxExternalSubtitleBytes.toLong() }
+                    ?.toInt()
+                    ?: 8_192
+            )
+            val buffer = ByteArray(8_192)
+            var totalBytes = 0
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                totalBytes += read
+                if (totalBytes > MaxExternalSubtitleBytes) {
+                    error("Subtitle file exceeded $MaxExternalSubtitleBytes bytes")
+                }
+                output.write(buffer, 0, read)
+            }
+            output.toString(Charsets.UTF_8.name())
+        }
     } finally {
         connection.disconnect()
     }
