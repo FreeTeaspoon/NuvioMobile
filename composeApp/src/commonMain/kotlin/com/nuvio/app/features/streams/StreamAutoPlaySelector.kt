@@ -1,5 +1,7 @@
 package com.nuvio.app.features.streams
 
+import com.nuvio.app.core.build.AppFeaturePolicy
+
 object StreamAutoPlaySelector {
 
     fun orderAddonStreams(
@@ -196,6 +198,12 @@ object StreamAutoPlaySelector {
         activeResolverProviderId: String?,
     ): Boolean =
         playableDirectUrl != null ||
+            (
+                AppFeaturePolicy.p2pEnabled &&
+                    needsLocalDebridResolve &&
+                    p2pInfoHash != null &&
+                    !isCheckingDebridAutoPlayCandidate(debridEnabled, activeResolverProviderId)
+            ) ||
             (debridEnabled && isAddonDebridCandidate && isReadyDebridAutoPlay(activeResolverProviderId))
 
     private fun StreamItem.isReadyDebridAutoPlay(activeResolverProviderId: String?): Boolean =
@@ -213,6 +221,16 @@ object StreamAutoPlaySelector {
         if (!debridCacheStatus?.providerId.matchesResolver(activeResolverProviderId)) return false
         val state = debridCacheStatus?.state
         return state == null || state == StreamDebridCacheState.CHECKING
+    }
+
+    private fun StreamItem.isCheckingDebridAutoPlayCandidate(
+        debridEnabled: Boolean,
+        activeResolverProviderId: String?,
+    ): Boolean {
+        if (!debridEnabled || !isInstalledAddonStream || !needsLocalDebridResolve) return false
+        val status = debridCacheStatus ?: return false
+        return status.state == StreamDebridCacheState.CHECKING &&
+            status.providerId.matchesResolver(activeResolverProviderId)
     }
 
     private fun String?.matchesResolver(activeResolverProviderId: String?): Boolean {

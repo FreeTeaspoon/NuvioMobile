@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Forward10
@@ -124,6 +125,7 @@ internal fun PlayerControlsShell(
     onVideoSettingsClick: (() -> Unit)? = null,
     onSourcesClick: (() -> Unit)? = null,
     onEpisodesClick: (() -> Unit)? = null,
+    onOpenInExternalPlayer: (() -> Unit)? = null,
     onSubmitIntroClick: (() -> Unit)? = null,
     onScrubActiveChanged: (Boolean) -> Unit,
     parentalWarnings: List<ParentalWarning> = emptyList(),
@@ -225,6 +227,7 @@ internal fun PlayerControlsShell(
                     onSourcesClick = onSourcesClick,
                     onEpisodesClick = onEpisodesClick,
                     onScrubActiveChanged = onScrubActiveChanged,
+                    onOpenInExternalPlayer = onOpenInExternalPlayer,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
@@ -522,6 +525,7 @@ private fun ProgressControls(
     onSourcesClick: (() -> Unit)? = null,
     onEpisodesClick: (() -> Unit)? = null,
     onScrubActiveChanged: (Boolean) -> Unit,
+    onOpenInExternalPlayer: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val durationMs = playbackSnapshot.durationMs.coerceAtLeast(1L)
@@ -630,6 +634,13 @@ private fun ProgressControls(
                             label = stringResource(Res.string.compose_player_episodes),
                             icon = Icons.Rounded.VideoLibrary,
                             onClick = onEpisodesClick,
+                        )
+                    }
+                    if (onOpenInExternalPlayer != null) {
+                        PlayerActionPillButton(
+                            label = stringResource(Res.string.streams_open_external_player),
+                            icon = Icons.AutoMirrored.Rounded.OpenInNew,
+                            onClick = onOpenInExternalPlayer,
                         )
                     }
                 }
