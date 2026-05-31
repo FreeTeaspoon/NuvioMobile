@@ -57,6 +57,7 @@ class DebridStreamPresentationTest {
                     imports = listOf(
                         StreamBadgeImport(
                             sourceUrl = "https://example.test/media-badges.json",
+                            displayName = "Media badges",
                             isActive = false,
                             filters = listOf(
                                 StreamBadgeFilter(
@@ -105,6 +106,7 @@ class DebridStreamPresentationTest {
     fun `parses fusion badge url payload shape`() {
         val importedRules = StreamBadgeRulesParser.parse(
             sourceUrl = "https://example.test/fusion-tags-ume.json",
+            displayName = "Fusion",
             payload = """
                 {
                   "filters": [
@@ -135,11 +137,35 @@ class DebridStreamPresentationTest {
         )
 
         assertEquals("https://example.test/fusion-tags-ume.json", importedRules.sourceUrl)
+        assertEquals("Fusion", importedRules.displayName)
         assertEquals(1, importedRules.filters.size)
         assertEquals("REMUX", importedRules.filters.single().name)
         assertEquals("(?i)\\bremux\\b", importedRules.filters.single().pattern)
         assertEquals("https://example.test/remux.png", importedRules.filters.single().imageURL)
         assertEquals("Media Source", importedRules.groups.single().name)
+    }
+
+    @Test
+    fun `normalizes unlimited badge urls and optional names`() {
+        val imports = (1..8).map { index ->
+            StreamBadgeImport(
+                sourceUrl = " https://example.test/badges-$index.json ",
+                displayName = " Source $index ",
+                filters = listOf(
+                    StreamBadgeFilter(
+                        name = "Badge $index",
+                        pattern = "(?i)badge-$index",
+                    ),
+                ),
+            )
+        }
+
+        val normalized = StreamBadgeRules(imports = imports).normalized()
+
+        assertEquals(8, normalized.imports.size)
+        assertEquals("https://example.test/badges-8.json", normalized.imports.last().sourceUrl)
+        assertEquals("Source 8", normalized.imports.last().displayName)
+        assertEquals(1, normalized.imports.count { it.isActive })
     }
 
     @Test

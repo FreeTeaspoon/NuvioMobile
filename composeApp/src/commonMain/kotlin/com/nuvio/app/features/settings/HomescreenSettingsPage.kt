@@ -145,13 +145,14 @@ internal fun LazyListScope.homescreenSettingsContent(
                 collectionCount > 0 -> stringResource(Res.string.settings_homescreen_section_collections)
                 else -> stringResource(Res.string.settings_homescreen_section_catalogs)
             }
+            var showResetConfirm by remember { mutableStateOf(false) }
             SettingsSection(
                 title = sectionTitle,
                 isTablet = isTablet,
                 actions = {
                     NuvioActionLabel(
                         text = stringResource(Res.string.action_reset),
-                        onClick = HomeCatalogSettingsRepository::resetToDefaults,
+                        onClick = { showResetConfirm = true },
                     )
                 },
             ) {
@@ -167,6 +168,14 @@ internal fun LazyListScope.homescreenSettingsContent(
                     },
                 )
             }
+            ResetDefaultsConfirmDialog(
+                isVisible = showResetConfirm,
+                onConfirm = {
+                    showResetConfirm = false
+                    HomeCatalogSettingsRepository.resetToDefaults()
+                },
+                onDismiss = { showResetConfirm = false },
+            )
         }
     }
 }

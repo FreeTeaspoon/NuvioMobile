@@ -54,7 +54,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.features.debrid.DEBRID_PREPARE_INSTANT_PLAYBACK_DEFAULT_LIMIT
-import com.nuvio.app.features.debrid.STREAM_BADGE_IMPORT_LIMIT
 import com.nuvio.app.features.debrid.ImportedBadgeChip
 import com.nuvio.app.features.debrid.ImportedBadgeChipSize
 import com.nuvio.app.features.debrid.DebridCredentialValidator
@@ -484,6 +483,7 @@ internal fun LazyListScope.debridSettingsContent(
     item {
         var activeTemplateField by rememberSaveable { mutableStateOf<DebridTemplateField?>(null) }
         var showBadgeImportDialog by rememberSaveable { mutableStateOf(false) }
+        var showResetConfirm by rememberSaveable { mutableStateOf(false) }
 
         SettingsSection(
             title = stringResource(Res.string.settings_debrid_section_formatting),
@@ -529,7 +529,7 @@ internal fun LazyListScope.debridSettingsContent(
                     description = stringResource(Res.string.settings_debrid_formatter_reset_subtitle),
                     value = stringResource(Res.string.action_reset),
                     enabled = settings.canResolvePlayableLinks,
-                    onClick = DebridSettingsRepository::resetStreamTemplates,
+                    onClick = { showResetConfirm = true },
                 )
             }
         }
@@ -560,6 +560,14 @@ internal fun LazyListScope.debridSettingsContent(
                 onDismiss = { showBadgeImportDialog = false },
             )
         }
+        ResetDefaultsConfirmDialog(
+            isVisible = showResetConfirm,
+            onConfirm = {
+                showResetConfirm = false
+                DebridSettingsRepository.resetStreamTemplates()
+            },
+            onDismiss = { showResetConfirm = false },
+        )
     }
 
     debridLearnMoreFooterItem(isTablet)
@@ -611,7 +619,7 @@ private fun templatePreview(value: String, defaultValue: String): String {
 private fun badgeRulesPreview(rules: StreamBadgeRules): String {
     val normalizedRules = rules.normalized()
     return if (normalizedRules.hasImport) {
-        "${normalizedRules.imports.size}/$STREAM_BADGE_IMPORT_LIMIT URLs, ${normalizedRules.enabledFilterCount} active badges"
+        "${normalizedRules.imports.size} URLs, ${normalizedRules.enabledFilterCount} active badges"
     } else {
         "Not imported"
     }
@@ -719,6 +727,7 @@ private fun DebridTemplateDialog(
     onDismiss: () -> Unit,
 ) {
     var draft by rememberSaveable(currentValue) { mutableStateOf(currentValue) }
+    var showResetConfirm by rememberSaveable { mutableStateOf(false) }
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         DebridDialogSurface(title = title) {
@@ -747,7 +756,7 @@ private fun DebridTemplateDialog(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                TextButton(onClick = { draft = defaultValue }) {
+                TextButton(onClick = { showResetConfirm = true }) {
                     Text(
                         text = stringResource(Res.string.action_reset),
                         maxLines = 1,
@@ -778,6 +787,14 @@ private fun DebridTemplateDialog(
             }
         }
     }
+    ResetDefaultsConfirmDialog(
+        isVisible = showResetConfirm,
+        onConfirm = {
+            showResetConfirm = false
+            draft = defaultValue
+        },
+        onDismiss = { showResetConfirm = false },
+    )
 }
 
 @Composable
@@ -789,6 +806,7 @@ private fun BadgeUrlManagerDialog(
     val scope = rememberCoroutineScope()
     val imports = currentRules.normalized().imports
     var draftUrl by rememberSaveable { mutableStateOf("") }
+    var draftName by rememberSaveable { mutableStateOf("") }
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var isImporting by rememberSaveable { mutableStateOf(false) }
     var previewImport by remember { mutableStateOf<StreamBadgeImport?>(null) }
@@ -796,9 +814,24 @@ private fun BadgeUrlManagerDialog(
     BasicAlertDialog(onDismissRequest = onDismiss) {
         DebridDialogSurface(title = "Badge URLs") {
             Text(
-                text = "Import up to $STREAM_BADGE_IMPORT_LIMIT label badge JSON URLs. Each URL can be updated or deleted separately.",
+                text = "Import badge JSON URLs. Each URL can be named, previewed, deleted, or selected as the active source. One URL can be active at a time.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = draftName,
+                onValueChange = { draftName = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Name (optional)") },
+                singleLine = true,
+                enabled = !isImporting,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                ),
             )
             OutlinedTextField(
                 value = draftUrl,
@@ -826,7 +859,7 @@ private fun BadgeUrlManagerDialog(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "${imports.size}/$STREAM_BADGE_IMPORT_LIMIT URLs imported",
+                    text = "${imports.size} URLs imported",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
@@ -837,9 +870,10 @@ private fun BadgeUrlManagerDialog(
                         scope.launch {
                             isImporting = true
                             errorMessage = null
-                            when (val result = DebridSettingsRepository.importStreamBadgeRulesFromUrl(draftUrl)) {
+                            when (val result = DebridSettingsRepository.importStreamBadgeRulesFromUrl(draftUrl, draftName)) {
                                 is StreamBadgeImportResult.Success -> {
                                     draftUrl = ""
+                                    draftName = ""
                                     isImporting = false
                                 }
                                 is StreamBadgeImportResult.Error -> {
@@ -893,6 +927,9 @@ private fun BadgeUrlManagerDialog(
                             onActivate = {
                                 DebridSettingsRepository.setActiveStreamBadgeRulesSource(import.sourceUrl)
                             },
+                            onNameChange = { name ->
+                                DebridSettingsRepository.renameStreamBadgeRulesSource(import.sourceUrl, name)
+                            },
                             onPreview = { previewImport = import },
                             onDelete = {
                                 DebridSettingsRepository.deleteStreamBadgeRulesSource(import.sourceUrl)
@@ -933,6 +970,7 @@ private fun BadgeUrlRow(
     showActiveChoice: Boolean,
     enabled: Boolean,
     onActivate: () -> Unit,
+    onNameChange: (String) -> Unit,
     onPreview: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -952,6 +990,12 @@ private fun BadgeUrlRow(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            var draftName by rememberSaveable(import.sourceUrl) { mutableStateOf(import.displayName) }
+            LaunchedEffect(import.displayName) {
+                if (draftName != import.displayName) {
+                    draftName = import.displayName
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -964,15 +1008,44 @@ private fun BadgeUrlRow(
                         enabled = enabled,
                     )
                 }
-                Text(
-                    text = import.sourceUrl,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+                Column(
                     modifier = Modifier.weight(1f),
-                )
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = import.displayName.ifBlank { import.sourceUrl },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = import.sourceUrl,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+            OutlinedTextField(
+                value = draftName,
+                onValueChange = { value ->
+                    draftName = value
+                    onNameChange(value)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Name (optional)") },
+                singleLine = true,
+                enabled = enabled,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1023,12 +1096,21 @@ private fun BadgePreviewDialog(
     BasicAlertDialog(onDismissRequest = onDismiss) {
         DebridDialogSurface(title = "Badge preview") {
             Text(
-                text = import.sourceUrl,
+                text = import.displayName.ifBlank { import.sourceUrl },
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (import.displayName.isNotBlank()) {
+                Text(
+                    text = import.sourceUrl,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
                 text = "$badgeCount badges from this URL",
                 style = MaterialTheme.typography.bodySmall,
