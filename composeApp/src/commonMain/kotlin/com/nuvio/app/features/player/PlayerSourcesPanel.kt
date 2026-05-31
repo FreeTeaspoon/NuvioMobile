@@ -51,8 +51,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.i18n.localizedByteUnit
 import com.nuvio.app.features.debrid.DebridSettingsRepository
-import com.nuvio.app.features.debrid.ImportedBadgeChip
-import com.nuvio.app.features.debrid.ImportedBadgeChipSize
+import com.nuvio.app.features.streams.StreamBadgeChip
+import com.nuvio.app.features.streams.StreamBadgeChipSize
 import com.nuvio.app.features.streams.StreamBadge
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamsUiState
@@ -355,13 +355,13 @@ private fun SourceStreamRow(
 
 @Composable
 private fun PlayerStreamImportedBadge(badge: StreamBadge) {
-    ImportedBadgeChip(
+    StreamBadgeChip(
         imageURL = badge.imageURL,
         name = badge.name,
         tagColor = badge.tagColor,
         tagStyle = badge.tagStyle,
         borderColor = badge.borderColor,
-        size = ImportedBadgeChipSize.STREAM,
+        size = StreamBadgeChipSize.STREAM,
     )
 }
 

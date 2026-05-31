@@ -68,7 +68,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
@@ -77,6 +76,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import com.nuvio.app.core.i18n.localizedByteUnit
 import com.nuvio.app.core.ui.NuvioBackButton
@@ -85,21 +85,18 @@ import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
+import com.nuvio.app.features.downloads.DownloadEnqueueResult
 import com.nuvio.app.features.downloads.DownloadsRepository
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
-import com.nuvio.app.features.downloads.DownloadEnqueueResult
-import com.nuvio.app.features.debrid.BadgeChipDefaults
-import com.nuvio.app.features.debrid.ImportedBadgeChip
-import com.nuvio.app.features.debrid.ImportedBadgeChipSize
 import com.nuvio.app.features.debrid.DebridProviders
 import com.nuvio.app.features.debrid.DebridSettingsRepository
 import com.nuvio.app.features.player.PlayerSettingsRepository
-import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
+import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.progressForPlaybackTarget
 import kotlinx.coroutines.launch
 import kotlin.math.round
@@ -177,7 +174,8 @@ fun StreamsScreen(
         resumePositionMs: Long?,
         resumeProgressFraction: Float?,
     ) -> Unit = { _, _, _, _ -> },
-    onOpenDownloads: () -> Unit = {},
+    onOpenDownloads: (() -> Unit)? = null,
+    onOpenImdbUrl: ((String) -> Unit)? = null,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -198,16 +196,10 @@ fun StreamsScreen(
         DownloadsRepository.ensureLoaded()
     }
     val isEpisode = seasonNumber != null && episodeNumber != null
-    val uriHandler = LocalUriHandler.current
-    val openImdbUrl: (String) -> Unit = remember(uriHandler) {
-        { url ->
-            runCatching { uriHandler.openUri(url) }
-            Unit
-        }
-    }
     val clipboardManager = LocalClipboardManager.current
+    val uriHandler = LocalUriHandler.current
+    val effectiveOpenImdbUrl: (String) -> Unit = onOpenImdbUrl ?: { url -> uriHandler.openUri(url) }
     val streamLinkCopiedText = stringResource(Res.string.streams_link_copied)
-    val downloadsActionText = "View"
     val noDirectStreamLinkText = stringResource(Res.string.streams_no_direct_link)
     var streamActionsTarget by remember(videoId) { mutableStateOf<StreamItem?>(null) }
     var preferredFilterApplied by remember(videoId) { mutableStateOf(false) }
@@ -275,6 +267,7 @@ fun StreamsScreen(
                 episodeNumber = episodeNumber,
                 episodeTitle = episodeTitle,
                 episodeMeta = episodeMeta,
+                onOpenImdbUrl = effectiveOpenImdbUrl,
                 uiState = uiState,
                 debridEnabled = debridSettings.canResolvePlayableLinks,
                 appendInstantServiceToDefaultName = debridSettings.canResolvePlayableLinks && !debridSettings.hasCustomStreamFormatting,
@@ -284,7 +277,6 @@ fun StreamsScreen(
                     onStreamSelected(stream, positionMs, progressFraction)
                 },
                 onStreamLongPress = { stream -> streamActionsTarget = stream },
-                onOpenImdbUrl = openImdbUrl,
             )
         } else {
             MobileStreamsLayout(
@@ -295,7 +287,6 @@ fun StreamsScreen(
                 seasonNumber = seasonNumber,
                 episodeNumber = episodeNumber,
                 episodeTitle = episodeTitle,
-                episodeMeta = episodeMeta,
                 uiState = uiState,
                 debridEnabled = debridSettings.canResolvePlayableLinks,
                 appendInstantServiceToDefaultName = debridSettings.canResolvePlayableLinks && !debridSettings.hasCustomStreamFormatting,
@@ -305,7 +296,6 @@ fun StreamsScreen(
                     onStreamSelected(stream, positionMs, progressFraction)
                 },
                 onStreamLongPress = { stream -> streamActionsTarget = stream },
-                onOpenImdbUrl = openImdbUrl,
             )
         }
 
@@ -385,7 +375,8 @@ fun StreamsScreen(
                         strokeWidth = 2.5.dp,
                     )
                     Text(
-                        text = stringResource(Res.string.streams_finding_source),
+                        text = uiState.overlayMessage
+                            ?: stringResource(Res.string.streams_finding_source),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.8f),
                     )
@@ -422,14 +413,9 @@ fun StreamsScreen(
                     episodeThumbnail = episodeThumbnail,
                     stream = stream,
                 )
+                NuvioToastController.show(result.toastMessage())
                 if (result == DownloadEnqueueResult.Started || result == DownloadEnqueueResult.Replaced) {
-                    NuvioToastController.show(
-                        message = result.toastMessage(),
-                        actionLabel = downloadsActionText,
-                        onAction = onOpenDownloads,
-                    )
-                } else {
-                    NuvioToastController.show(result.toastMessage())
+                    onOpenDownloads?.invoke()
                 }
             },
             onOpen = { stream, openExternally ->
@@ -453,7 +439,6 @@ private fun MobileStreamsLayout(
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
-    episodeMeta: StreamEpisodeMeta?,
     uiState: StreamsUiState,
     debridEnabled: Boolean,
     appendInstantServiceToDefaultName: Boolean,
@@ -461,7 +446,6 @@ private fun MobileStreamsLayout(
     resumeProgressFraction: Float?,
     onStreamSelected: (stream: StreamItem, resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit,
     onStreamLongPress: (StreamItem) -> Unit,
-    onOpenImdbUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -491,8 +475,6 @@ private fun MobileStreamsLayout(
                     episodeTitle = episodeTitle ?: title,
                     thumbnail = heroArtwork,
                     showTitle = title,
-                    episodeMeta = episodeMeta,
-                    onOpenImdbUrl = onOpenImdbUrl,
                 )
             } else {
                 MovieHeroBlock(
@@ -642,8 +624,6 @@ private fun EpisodeHeroBlock(
     episodeTitle: String,
     thumbnail: String?,
     showTitle: String,
-    episodeMeta: StreamEpisodeMeta?,
-    onOpenImdbUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val heroBlendColor = MaterialTheme.colorScheme.background
@@ -729,11 +709,6 @@ private fun EpisodeHeroBlock(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            EpisodeMetadataRow(
-                episodeMeta = episodeMeta,
-                onOpenImdbUrl = onOpenImdbUrl,
             )
         }
     }
@@ -1112,7 +1087,7 @@ private fun StreamCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     badgeImages.forEach { badge ->
-                        StreamImportedBadge(badge = badge)
+                        StreamBadgeImage(badge = badge)
                     }
                     StreamFileSizeBadge(stream = stream)
                 }
@@ -1284,14 +1259,14 @@ private fun StreamItem.instantServiceLabel(): String? {
 }
 
 @Composable
-private fun StreamImportedBadge(badge: StreamBadge) {
-    ImportedBadgeChip(
+private fun StreamBadgeImage(badge: StreamBadge) {
+    StreamBadgeChip(
         imageURL = badge.imageURL,
         name = badge.name,
         tagColor = badge.tagColor,
         tagStyle = badge.tagStyle,
         borderColor = badge.borderColor,
-        size = ImportedBadgeChipSize.STREAM,
+        size = StreamBadgeChipSize.STREAM,
     )
 }
 
@@ -1307,23 +1282,23 @@ private fun StreamFileSizeBadge(stream: StreamItem) {
         "${round(mib).toInt()} ${localizedByteUnit("MB")}"
     }
 
-    val badgeShape = BadgeChipDefaults.shape
+    val badgeShape = StreamBadgeChipDefaults.shape
     Box(
         modifier = Modifier
-            .height(ImportedBadgeChipSize.STREAM.containerHeight)
+            .height(StreamBadgeChipSize.STREAM.containerHeight)
             .clip(badgeShape)
             .background(Color(0xFF0A0C0C))
             .border(1.dp, Color(0xFF0A0C0C), badgeShape)
-            .padding(horizontal = BadgeChipDefaults.fileSizeHorizontalPadding),
+            .padding(horizontal = StreamBadgeChipDefaults.fileSizeHorizontalPadding),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = stringResource(Res.string.streams_size, sizeLabel),
             style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = BadgeChipDefaults.fileSizeFontSize,
-                lineHeight = BadgeChipDefaults.fileSizeLineHeight,
+                fontSize = StreamBadgeChipDefaults.fileSizeFontSize,
+                lineHeight = StreamBadgeChipDefaults.fileSizeLineHeight,
                 fontWeight = FontWeight.SemiBold,
-                letterSpacing = BadgeChipDefaults.fileSizeLetterSpacing,
+                letterSpacing = StreamBadgeChipDefaults.fileSizeLetterSpacing,
             ),
             color = Color.White,
         )

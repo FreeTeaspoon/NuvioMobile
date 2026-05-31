@@ -22,6 +22,7 @@ captures
 node_modules/
 logs/
 dist/
+analysis/
 Docs
 keystore/
 scripts/build-distribution.sh
