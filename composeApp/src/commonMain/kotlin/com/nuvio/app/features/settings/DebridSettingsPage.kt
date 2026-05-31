@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
@@ -806,32 +807,17 @@ private fun BadgeUrlManagerDialog(
     val scope = rememberCoroutineScope()
     val imports = currentRules.normalized().imports
     var draftUrl by rememberSaveable { mutableStateOf("") }
-    var draftName by rememberSaveable { mutableStateOf("") }
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var isImporting by rememberSaveable { mutableStateOf(false) }
     var previewImport by remember { mutableStateOf<StreamBadgeImport?>(null) }
+    var renameImport by remember { mutableStateOf<StreamBadgeImport?>(null) }
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         DebridDialogSurface(title = "Badge URLs") {
             Text(
-                text = "Import badge JSON URLs. Each URL can be named, previewed, deleted, or selected as the active source. One URL can be active at a time.",
+                text = "Import badge JSON URLs. Each URL can be renamed after import, previewed, deleted, or selected as the active source. One URL can be active at a time.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedTextField(
-                value = draftName,
-                onValueChange = { draftName = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Name (optional)") },
-                singleLine = true,
-                enabled = !isImporting,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    disabledContainerColor = MaterialTheme.colorScheme.surface,
-                ),
             )
             OutlinedTextField(
                 value = draftUrl,
@@ -870,10 +856,9 @@ private fun BadgeUrlManagerDialog(
                         scope.launch {
                             isImporting = true
                             errorMessage = null
-                            when (val result = DebridSettingsRepository.importStreamBadgeRulesFromUrl(draftUrl, draftName)) {
+                            when (val result = DebridSettingsRepository.importStreamBadgeRulesFromUrl(draftUrl)) {
                                 is StreamBadgeImportResult.Success -> {
                                     draftUrl = ""
-                                    draftName = ""
                                     isImporting = false
                                 }
                                 is StreamBadgeImportResult.Error -> {
@@ -927,9 +912,7 @@ private fun BadgeUrlManagerDialog(
                             onActivate = {
                                 DebridSettingsRepository.setActiveStreamBadgeRulesSource(import.sourceUrl)
                             },
-                            onNameChange = { name ->
-                                DebridSettingsRepository.renameStreamBadgeRulesSource(import.sourceUrl, name)
-                            },
+                            onRename = { renameImport = import },
                             onPreview = { previewImport = import },
                             onDelete = {
                                 DebridSettingsRepository.deleteStreamBadgeRulesSource(import.sourceUrl)
@@ -962,6 +945,17 @@ private fun BadgeUrlManagerDialog(
             onDismiss = { previewImport = null },
         )
     }
+
+    renameImport?.let { import ->
+        BadgeRenameDialog(
+            import = import,
+            onSave = { name ->
+                DebridSettingsRepository.renameStreamBadgeRulesSource(import.sourceUrl, name)
+                renameImport = null
+            },
+            onDismiss = { renameImport = null },
+        )
+    }
 }
 
 @Composable
@@ -970,7 +964,7 @@ private fun BadgeUrlRow(
     showActiveChoice: Boolean,
     enabled: Boolean,
     onActivate: () -> Unit,
-    onNameChange: (String) -> Unit,
+    onRename: () -> Unit,
     onPreview: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -990,12 +984,6 @@ private fun BadgeUrlRow(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            var draftName by rememberSaveable(import.sourceUrl) { mutableStateOf(import.displayName) }
-            LaunchedEffect(import.displayName) {
-                if (draftName != import.displayName) {
-                    draftName = import.displayName
-                }
-            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -1027,33 +1015,23 @@ private fun BadgeUrlRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                IconButton(
+                    enabled = enabled,
+                    onClick = onRename,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Edit,
+                        contentDescription = "Rename",
+                    )
+                }
             }
-            OutlinedTextField(
-                value = draftName,
-                onValueChange = { value ->
-                    draftName = value
-                    onNameChange(value)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Name (optional)") },
-                singleLine = true,
-                enabled = enabled,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    disabledContainerColor = MaterialTheme.colorScheme.surface,
-                ),
-            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
             ) {
-                val status = if (import.isActive) "Active" else "Inactive"
                 Text(
-                    text = "$status, ${import.enabledFilterCount} enabled badges, ${import.groups.size} groups",
+                    text = "${import.enabledFilterCount} enabled badges, ${import.groups.size} groups",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
@@ -1078,6 +1056,53 @@ private fun BadgeUrlRow(
                         imageVector = Icons.Rounded.Delete,
                         contentDescription = stringResource(Res.string.action_delete),
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun BadgeRenameDialog(
+    import: StreamBadgeImport,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var draftName by rememberSaveable(import.sourceUrl) { mutableStateOf(import.displayName) }
+
+    BasicAlertDialog(onDismissRequest = onDismiss) {
+        DebridDialogSurface(title = "Rename badge URL") {
+            Text(
+                text = import.sourceUrl,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            OutlinedTextField(
+                value = draftName,
+                onValueChange = { draftName = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Name (optional)") },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                ),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text(text = stringResource(Res.string.action_cancel), maxLines = 1)
+                }
+                Button(onClick = { onSave(draftName) }) {
+                    Text(text = stringResource(Res.string.action_save), maxLines = 1)
                 }
             }
         }
