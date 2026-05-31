@@ -39,6 +39,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -144,13 +147,14 @@ internal fun LazyListScope.metaScreenSettingsContent(
         }
     }
     item {
+        var showResetConfirm by remember { mutableStateOf(false) }
         SettingsSection(
             title = stringResource(Res.string.settings_meta_section_sections),
             isTablet = isTablet,
             actions = {
                 NuvioActionLabel(
                     text = stringResource(Res.string.action_reset),
-                    onClick = MetaScreenSettingsRepository::resetToDefaults,
+                    onClick = { showResetConfirm = true },
                 )
             },
         ) {
@@ -162,6 +166,14 @@ internal fun LazyListScope.metaScreenSettingsContent(
                 )
             }
         }
+        ResetDefaultsConfirmDialog(
+            isVisible = showResetConfirm,
+            onConfirm = {
+                showResetConfirm = false
+                MetaScreenSettingsRepository.resetToDefaults()
+            },
+            onDismiss = { showResetConfirm = false },
+        )
     }
 }
 

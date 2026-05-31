@@ -25,6 +25,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,13 +69,14 @@ internal fun LazyListScope.posterCustomizationSettingsContent(
     uiState: PosterCardStyleUiState,
 ) {
     item {
+        var showResetConfirm by remember { mutableStateOf(false) }
         SettingsSection(
             title = stringResource(Res.string.settings_poster_card_style),
             isTablet = isTablet,
             actions = {
                 NuvioActionLabel(
                     text = stringResource(Res.string.action_reset),
-                    onClick = PosterCardStyleRepository::resetToDefaults,
+                    onClick = { showResetConfirm = true },
                 )
             },
         ) {
@@ -89,6 +94,14 @@ internal fun LazyListScope.posterCustomizationSettingsContent(
                 )
             }
         }
+        ResetDefaultsConfirmDialog(
+            isVisible = showResetConfirm,
+            onConfirm = {
+                showResetConfirm = false
+                PosterCardStyleRepository.resetToDefaults()
+            },
+            onDismiss = { showResetConfirm = false },
+        )
     }
 }
 

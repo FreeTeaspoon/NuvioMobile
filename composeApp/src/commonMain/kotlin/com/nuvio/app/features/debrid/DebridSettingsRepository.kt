@@ -230,9 +230,10 @@ object DebridSettingsRepository {
         )
     }
 
-    suspend fun importStreamBadgeRulesFromUrl(url: String): StreamBadgeImportResult {
+    suspend fun importStreamBadgeRulesFromUrl(url: String, displayName: String = ""): StreamBadgeImportResult {
         ensureLoaded()
         val normalizedUrl = url.trim()
+        val normalizedDisplayName = displayName.trim()
         if (normalizedUrl.isBlank()) {
             return StreamBadgeImportResult.Error("Enter a badge JSON URL.")
         }
@@ -244,16 +245,11 @@ object DebridSettingsRepository {
 
         return try {
             val currentRules = streamBadgeRules.normalized()
-            val isExistingImport = currentRules.imports.any { import ->
-                import.sourceUrl.equals(normalizedUrl, ignoreCase = true)
-            }
-            if (!isExistingImport && currentRules.imports.size >= STREAM_BADGE_IMPORT_LIMIT) {
-                return StreamBadgeImportResult.Error("You can import up to $STREAM_BADGE_IMPORT_LIMIT badge URLs.")
-            }
             val payload = httpGetText(normalizedUrl)
             val parsedImport = StreamBadgeRulesParser.parse(
                 sourceUrl = normalizedUrl,
                 payload = payload,
+                displayName = normalizedDisplayName,
             )
             streamBadgeRules = currentRules.upsert(parsedImport, activate = true)
             publish()
@@ -269,6 +265,16 @@ object DebridSettingsRepository {
         ensureLoaded()
         val currentRules = streamBadgeRules.normalized()
         val nextRules = currentRules.setActiveSource(sourceUrl)
+        if (nextRules == currentRules) return
+        streamBadgeRules = nextRules
+        publish()
+        saveStreamBadgeRules()
+    }
+
+    fun renameStreamBadgeRulesSource(sourceUrl: String, displayName: String) {
+        ensureLoaded()
+        val currentRules = streamBadgeRules.normalized()
+        val nextRules = currentRules.setSourceName(sourceUrl, displayName)
         if (nextRules == currentRules) return
         streamBadgeRules = nextRules
         publish()
@@ -485,6 +491,7 @@ private data class LegacyStreamBadgeRules(
             imports = listOf(
                 StreamBadgeImport(
                     sourceUrl = sourceUrl,
+                    displayName = "",
                     filters = filters,
                     groups = groups,
                 ),

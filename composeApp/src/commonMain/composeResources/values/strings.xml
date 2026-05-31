@@ -676,6 +676,8 @@
     <string name="settings_debrid_description_template_description">Controls the metadata shown under each result.</string>
     <string name="settings_debrid_formatter_reset_title">Reset formatting</string>
     <string name="settings_debrid_formatter_reset_subtitle">Restore default result formatting.</string>
+    <string name="settings_reset_confirm_message">This will restore these settings to their default values.</string>
+    <string name="settings_reset_confirm_title">Reset to default?</string>
     <string name="settings_debrid_key_valid">API key validated.</string>
     <string name="settings_debrid_key_invalid">Could not validate this API key.</string>
     <string name="settings_mdb_add_api_key_first">Add your MDBList API key below before turning ratings on.</string>
