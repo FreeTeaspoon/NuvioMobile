@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.network.SupabaseProvider
+import com.nuvio.app.core.storage.ProfileScopedKey
 import com.nuvio.app.features.collection.CollectionMobileSettingsRepository
 import com.nuvio.app.features.collection.CollectionMobileSettingsStorage
 import com.nuvio.app.features.debrid.DebridSettingsRepository
@@ -149,6 +150,19 @@ object ProfileSettingsSync {
                 pushToRemoteLocked(ProfileRepository.activeProfileId, exportSettingsBlob())
             }.onFailure { error ->
                 log.e(error) { "pushCurrentProfileToRemote() — FAILED" }
+            }
+        }
+    }
+
+    suspend fun pushProfileToRemote(profileId: Int) {
+        syncMutex.withLock {
+            runCatching {
+                ProfileScopedKey.scopedToSuspend(profileId) {
+                    ensureRepositoriesLoaded()
+                    pushToRemoteLocked(profileId, exportSettingsBlob())
+                }
+            }.onFailure { error ->
+                log.e(error) { "pushProfileToRemote(profileId=$profileId) — FAILED" }
             }
         }
     }
