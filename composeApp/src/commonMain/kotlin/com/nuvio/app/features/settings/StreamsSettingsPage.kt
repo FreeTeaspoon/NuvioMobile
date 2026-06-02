@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -48,7 +49,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.nuvio.app.features.streams.STREAM_BADGE_IMPORT_LIMIT
 import com.nuvio.app.features.streams.StreamBadgeChip
 import com.nuvio.app.features.streams.StreamBadgeChipSize
 import com.nuvio.app.features.streams.StreamBadgeFilter
@@ -100,7 +100,7 @@ internal fun LazyListScope.streamsSettingsContent(isTablet: Boolean) {
 private fun badgeRulesPreview(rules: StreamBadgeRules): String {
     val normalizedRules = rules.normalized()
     return if (normalizedRules.hasImport) {
-        "${normalizedRules.imports.size}/$STREAM_BADGE_IMPORT_LIMIT URLs, ${normalizedRules.enabledFilterCount} active badges"
+        "${normalizedRules.imports.size} URLs, ${normalizedRules.enabledFilterCount} active badges"
     } else {
         "No badge URLs imported."
     }
@@ -123,7 +123,7 @@ private fun BadgeUrlManagerDialog(
     BasicAlertDialog(onDismissRequest = onDismiss) {
         SettingsDialogSurface(title = stringResource(Res.string.settings_stream_badge_urls_title)) {
             Text(
-                text = stringResource(Res.string.settings_stream_badge_urls_description, STREAM_BADGE_IMPORT_LIMIT),
+                text = stringResource(Res.string.settings_stream_badge_urls_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -153,7 +153,7 @@ private fun BadgeUrlManagerDialog(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "${imports.size}/$STREAM_BADGE_IMPORT_LIMIT URLs imported",
+                    text = "${imports.size} URLs imported",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
@@ -269,6 +269,7 @@ private fun BadgeUrlManagerDialog(
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun BadgeUrlRow(
     import: StreamBadgeImport,
     showActiveChoice: Boolean,
@@ -327,15 +328,20 @@ private fun BadgeUrlRow(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 val status = if (import.isActive) "Active" else "Inactive"
                 Text(
                     text = "$status, ${import.enabledFilterCount} enabled badges, ${import.groups.size} groups",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
                 )
+            }
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 TextButton(
                     enabled = enabled,
                     onClick = onPreview,
@@ -508,7 +514,9 @@ private fun SettingsDialogSurface(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .widthIn(max = 560.dp)
+            .fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
     ) {

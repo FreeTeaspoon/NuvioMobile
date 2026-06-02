@@ -6,8 +6,6 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
-const val STREAM_BADGE_IMPORT_LIMIT = 3
-
 @Serializable
 data class StreamBadgeRules(
     val imports: List<StreamBadgeImport> = emptyList(),
@@ -33,7 +31,7 @@ data class StreamBadgeRules(
             val existingIndex = normalizedImports.indexOfFirst { it.sourceUrl.equals(normalizedUrl, ignoreCase = true) }
             if (existingIndex >= 0) {
                 normalizedImports[existingIndex] = normalizedImport
-            } else if (normalizedImports.size < STREAM_BADGE_IMPORT_LIMIT) {
+            } else {
                 normalizedImports += normalizedImport
             }
         }
