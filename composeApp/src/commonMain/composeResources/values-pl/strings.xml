@@ -1803,11 +1803,11 @@
   <string name="external_player_android_system">Android system player</string>
   <!-- English fallback strings added to keep localized resource keys complete. -->
   <string name="compose_settings_page_streams">Streams</string>
-  <string name="compose_settings_root_streams_description">Stream result display and badge URL rules.</string>
-  <string name="settings_stream_badges_section">Stream Badges</string>
-  <string name="settings_stream_badge_urls_title">Badge URLs</string>
-  <string name="settings_stream_badge_urls_description">Import stream badge JSON URLs. Each URL can be updated or deleted separately.</string>
-  <string name="settings_stream_badge_urls_search_description">Manage imported stream badge JSON URLs.</string>
+  <string name="compose_settings_root_streams_description">Stream result display and Fusion badge rules.</string>
+  <string name="settings_stream_badges_section">Fusion Style</string>
+  <string name="settings_stream_badge_urls_title">Fusion badge URLs</string>
+  <string name="settings_stream_badge_urls_description">Import Fusion-style stream badge JSON URLs. Each URL can be updated or deleted separately.</string>
+  <string name="settings_stream_badge_urls_search_description">Manage imported Fusion-style stream badge JSON URLs.</string>
   <string name="settings_debrid_template_original_format">Original format</string>
   <string name="settings_debrid_sort_original">Original order</string>
   <string name="settings_debrid_sort_best_quality">Best quality first</string>

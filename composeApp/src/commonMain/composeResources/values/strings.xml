@@ -434,7 +434,7 @@
     <string name="compose_settings_root_general_section">GENERAL</string>
     <string name="compose_settings_root_integrations_description">Manage available integrations</string>
     <string name="compose_settings_root_notifications_description">Manage episode release alerts and send a test notification.</string>
-    <string name="compose_settings_root_streams_description">Stream result display and badge URL rules.</string>
+    <string name="compose_settings_root_streams_description">Stream result display and Fusion badge rules.</string>
     <string name="compose_settings_root_switch_profile_description">Change to a different profile.</string>
     <string name="compose_settings_root_switch_profile_title">Switch Profile</string>
     <string name="compose_settings_root_trakt_description">Open Trakt connection screen</string>
@@ -668,12 +668,12 @@
     <string name="settings_debrid_description_template_description">Controls the metadata shown under each result. Leave blank to use the original result details.</string>
     <string name="settings_debrid_formatter_reset_title">Reset formatting</string>
     <string name="settings_debrid_formatter_reset_subtitle">Restore default result formatting.</string>
-    <string name="settings_stream_badges_section">Stream Badges</string>
+    <string name="settings_stream_badges_section">Fusion Style</string>
     <string name="settings_stream_size_badges_title">Size badges</string>
     <string name="settings_stream_size_badges_description">Show file size badges in stream results and player source panels.</string>
-    <string name="settings_stream_badge_urls_title">Badge URLs</string>
-    <string name="settings_stream_badge_urls_description">Import stream badge JSON URLs. Each URL can be updated or deleted separately.</string>
-    <string name="settings_stream_badge_urls_search_description">Manage imported stream badge JSON URLs.</string>
+    <string name="settings_stream_badge_urls_title">Fusion badge URLs</string>
+    <string name="settings_stream_badge_urls_description">Import Fusion-style stream badge JSON URLs. Each URL can be updated or deleted separately.</string>
+    <string name="settings_stream_badge_urls_search_description">Manage imported Fusion-style stream badge JSON URLs.</string>
     <string name="settings_fusion_badges_summary">%1$d URLs, %2$d active Fusion badges</string>
     <string name="settings_fusion_badges_empty">No Fusion badge URLs imported.</string>
     <string name="settings_fusion_badge_url_label">Fusion badge JSON URL</string>
