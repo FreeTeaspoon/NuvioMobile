@@ -1465,7 +1465,7 @@
   <string name="settings_continue_watching_style_card_description">TV-style landscape card</string>
   <string name="settings_stream_badges_section">Stream Badges</string>
   <string name="settings_stream_badge_urls_title">Badge URLs</string>
-  <string name="settings_stream_badge_urls_description">Import up to %1$d stream badge JSON URLs. Each URL can be updated or deleted separately.</string>
+  <string name="settings_stream_badge_urls_description">Import stream badge JSON URLs. Each URL can be updated or deleted separately.</string>
   <string name="settings_stream_badge_urls_search_description">Manage imported stream badge JSON URLs.</string>
   <string name="settings_playback_external_player_forward_subtitles">Forward Subtitles to External Player</string>
   <string name="settings_playback_external_player_forward_subtitles_description">Fetch addon subtitles in your preferred language and pass them to the external player.</string>

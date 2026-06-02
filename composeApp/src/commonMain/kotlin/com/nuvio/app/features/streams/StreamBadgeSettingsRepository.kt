@@ -59,12 +59,6 @@ object StreamBadgeSettingsRepository {
 
         return try {
             val currentRules = streamBadgeRules.normalized()
-            val isExistingImport = currentRules.imports.any { import ->
-                import.sourceUrl.equals(normalizedUrl, ignoreCase = true)
-            }
-            if (!isExistingImport && currentRules.imports.size >= STREAM_BADGE_IMPORT_LIMIT) {
-                return StreamBadgeImportResult.Error("You can import up to $STREAM_BADGE_IMPORT_LIMIT badge URLs.")
-            }
             val payload = httpGetText(normalizedUrl)
             val parsedImport = StreamBadgeRulesParser.parse(
                 sourceUrl = normalizedUrl,
