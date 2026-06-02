@@ -6,6 +6,7 @@ import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.auth.isAnonymous
 import com.nuvio.app.core.network.SupabaseProvider
 import com.nuvio.app.features.addons.AddonRepository
+import com.nuvio.app.features.backup.BackupProfilePayload
 import com.nuvio.app.features.collection.CollectionMobileSettingsRepository
 import com.nuvio.app.features.collection.CollectionRepository
 import com.nuvio.app.features.downloads.DownloadsRepository
@@ -102,6 +103,51 @@ object ProfileRepository {
         loadedCacheForUserId = null
         activeProfileIndex = 1
         _state.value = ProfileState()
+    }
+
+    internal fun importLocalProfilesFromBackup(
+        activeProfileIndex: Int,
+        profiles: List<BackupProfilePayload>,
+    ) {
+        val authState = AuthRepository.state.value as? AuthState.Authenticated ?: return
+        val importedProfiles = profiles
+            .mapNotNull { payload ->
+                val metadata = payload.profile ?: return@mapNotNull null
+                NuvioProfile(
+                    id = "",
+                    userId = authState.userId,
+                    profileIndex = payload.profileIndex,
+                    name = metadata.name,
+                    avatarColorHex = metadata.avatarColorHex,
+                    avatarId = metadata.avatarId,
+                    avatarUrl = metadata.avatarUrl,
+                    usesPrimaryAddons = metadata.usesPrimaryAddons,
+                    usesPrimaryPlugins = metadata.usesPrimaryPlugins,
+                    pinEnabled = metadata.pinEnabled,
+                )
+            }
+            .ifEmpty {
+                listOf(
+                    NuvioProfile(
+                        id = "",
+                        userId = authState.userId,
+                        profileIndex = activeProfileIndex,
+                        name = "Profile $activeProfileIndex",
+                    ),
+                )
+            }
+            .sortedBy { it.profileIndex }
+
+        this.activeProfileIndex = activeProfileIndex
+        _state.value = ProfileState(
+            profiles = importedProfiles,
+            activeProfile = importedProfiles.find { it.profileIndex == activeProfileIndex }
+                ?: importedProfiles.firstOrNull(),
+            isLoaded = importedProfiles.isNotEmpty(),
+        )
+        _state.value.activeProfile?.let { this.activeProfileIndex = it.profileIndex }
+        loadedCacheForUserId = authState.userId
+        persist()
     }
 
     suspend fun pullProfiles() {

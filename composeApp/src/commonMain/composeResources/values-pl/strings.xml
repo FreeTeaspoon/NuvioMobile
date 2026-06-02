@@ -1829,4 +1829,18 @@
   <string name="player_error_torrent">Torrent error: %1$s</string>
   <string name="settings_reset_confirm_message">This will restore these settings to their default values.</string>
   <string name="settings_reset_confirm_title">Reset to default?</string>
-</resources>
+    <string name="backup_title">Backup</string>
+    <string name="backup_export">Export backup</string>
+    <string name="backup_import">Import backup</string>
+    <string name="backup_passphrase">Backup password</string>
+    <string name="backup_confirm_passphrase">Confirm password</string>
+    <string name="backup_sensitive_warning">Backups include saved items, watch history, settings, addons, and connected service credentials. Keep the file and password private.</string>
+    <string name="backup_passphrase_mismatch">Backup passwords do not match.</string>
+    <string name="backup_import_summary_title">Import backup</string>
+    <string name="backup_import_replace_confirm">This will replace current local app data. Downloaded files and caches are not included.</string>
+    <string name="backup_export_success">Backup exported.</string>
+    <string name="backup_import_success">Backup imported.</string>
+    <string name="backup_error_invalid_file">Invalid backup file.</string>
+    <string name="backup_error_wrong_password_or_corrupt">Wrong password or corrupted backup.</string>
+    <string name="backup_error_export_failed">Backup export failed</string>
+    <string name="backup_error_import_failed">Backup import failed</string></resources>
