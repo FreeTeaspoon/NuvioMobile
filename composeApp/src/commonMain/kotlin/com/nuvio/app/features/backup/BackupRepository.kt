@@ -196,7 +196,7 @@ object BackupRepository {
             )
         }
 
-    private fun applyPayload(payload: NuvioBackupPayload, mode: BackupImportMode) {
+    private suspend fun applyPayload(payload: NuvioBackupPayload, mode: BackupImportMode) {
         if (mode == BackupImportMode.Replace) {
             LocalAccountDataCleaner.wipe()
         }
@@ -217,6 +217,7 @@ object BackupRepository {
             activeProfileIndex = payload.activeProfileIndex,
             profiles = payload.profiles,
         )
+        BackupSupabaseRestore.pushImportedPayload(payload, mode)
         reinitializeAfterImport(payload.activeProfileIndex)
     }
 

@@ -17,4 +17,14 @@ object ProfileScopedKey {
             overrideProfileId = previous
         }
     }
+
+    internal suspend fun <T> scopedToSuspend(profileId: Int, block: suspend () -> T): T {
+        val previous = overrideProfileId
+        overrideProfileId = profileId
+        return try {
+            block()
+        } finally {
+            overrideProfileId = previous
+        }
+    }
 }

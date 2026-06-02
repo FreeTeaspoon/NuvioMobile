@@ -5,6 +5,7 @@ import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.sync.MOBILE_SYNC_PLATFORM
 import com.nuvio.app.core.network.SupabaseProvider
+import com.nuvio.app.core.storage.ProfileScopedKey
 import com.nuvio.app.features.profiles.ProfileRepository
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
@@ -132,6 +133,13 @@ object HomeCatalogSettingsSyncService {
             val authState = AuthRepository.state.value
             if (authState !is AuthState.Authenticated || authState.isAnonymous) return@launch
             pushToRemote()
+        }
+    }
+
+    suspend fun pushProfileToRemote(profileId: Int) {
+        ProfileScopedKey.scopedToSuspend(profileId) {
+            HomeCatalogSettingsRepository.onProfileChanged()
+            pushToRemote(profileId)
         }
     }
 
