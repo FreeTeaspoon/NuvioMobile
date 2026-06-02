@@ -4,5 +4,17 @@ import com.nuvio.app.features.profiles.ProfileRepository
 
 
 object ProfileScopedKey {
-    fun of(baseKey: String): String = "${baseKey}_${ProfileRepository.activeProfileId}"
+    private var overrideProfileId: Int? = null
+
+    fun of(baseKey: String): String = "${baseKey}_${overrideProfileId ?: ProfileRepository.activeProfileId}"
+
+    internal fun <T> scopedTo(profileId: Int, block: () -> T): T {
+        val previous = overrideProfileId
+        overrideProfileId = profileId
+        return try {
+            block()
+        } finally {
+            overrideProfileId = previous
+        }
+    }
 }

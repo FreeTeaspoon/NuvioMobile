@@ -13,6 +13,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.nuvio.app.core.auth.AuthStorage
 import com.nuvio.app.core.deeplink.handleAppUrl
 import com.nuvio.app.core.storage.PlatformLocalAccountDataCleaner
+import com.nuvio.app.features.backup.BackupFilePlatform
 import com.nuvio.app.features.addons.AddonStorage
 import com.nuvio.app.features.collection.CollectionMobileSettingsStorage
 import com.nuvio.app.features.collection.CollectionStorage
@@ -111,6 +112,7 @@ class MainActivity : AppCompatActivity() {
         DownloadsLiveStatusPlatform.initialize(applicationContext)
         AndroidAppUpdaterPlatform.initialize(applicationContext)
         PlatformLocalAccountDataCleaner.initialize(applicationContext)
+        BackupFilePlatform.bindActivity(this)
         EpisodeReleaseNotificationPlatform.initialize(applicationContext)
         EpisodeReleaseNotificationPlatform.bindActivity(this)
         handleIncomingAppIntent(intent)
@@ -140,8 +142,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        BackupFilePlatform.unbindActivity(this)
         EpisodeReleaseNotificationPlatform.unbindActivity(this)
         super.onDestroy()
+    }
+
+    @Deprecated("Deprecated in Android framework; kept for simple document picker interop.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (BackupFilePlatform.handleActivityResult(requestCode, resultCode, data)) {
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onRequestPermissionsResult(
