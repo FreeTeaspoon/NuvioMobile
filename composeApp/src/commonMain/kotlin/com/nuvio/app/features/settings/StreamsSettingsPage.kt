@@ -19,8 +19,8 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.BasicAlertDialog
@@ -45,7 +45,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -148,7 +150,7 @@ private fun BadgeUrlManagerDialog(
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var isImporting by rememberSaveable { mutableStateOf(false) }
     var previewImport by remember { mutableStateOf<StreamBadgeImport?>(null) }
-    var renameImport by remember { mutableStateOf<StreamBadgeImport?>(null) }
+    val clipboardManager = LocalClipboardManager.current
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         SettingsDialogSurface(title = stringResource(Res.string.settings_stream_badge_urls_title)) {
@@ -254,14 +256,13 @@ private fun BadgeUrlManagerDialog(
                                 StreamBadgeSettingsRepository.setActiveStreamBadgeRulesSource(import.sourceUrl)
                             },
                             onPreview = { previewImport = import },
-                            onRename = { renameImport = import },
+                            onCopy = {
+                                clipboardManager.setText(AnnotatedString(import.sourceUrl))
+                            },
                             onDelete = {
                                 StreamBadgeSettingsRepository.deleteStreamBadgeRulesSource(import.sourceUrl)
                                 if (previewImport?.sourceUrl.equals(import.sourceUrl, ignoreCase = true)) {
                                     previewImport = null
-                                }
-                                if (renameImport?.sourceUrl.equals(import.sourceUrl, ignoreCase = true)) {
-                                    renameImport = null
                                 }
                             },
                         )
@@ -289,16 +290,6 @@ private fun BadgeUrlManagerDialog(
             onDismiss = { previewImport = null },
         )
     }
-    renameImport?.let { import ->
-        BadgeSourceNameDialog(
-            import = import,
-            onDismiss = { renameImport = null },
-            onSave = { name ->
-                StreamBadgeSettingsRepository.renameStreamBadgeRulesSource(import.sourceUrl, name)
-                renameImport = null
-            },
-        )
-    }
 }
 
 @Composable
@@ -309,7 +300,7 @@ private fun BadgeUrlRow(
     enabled: Boolean,
     onActivate: () -> Unit,
     onPreview: () -> Unit,
-    onRename: () -> Unit,
+    onCopy: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val containerColor = if (import.isActive) {
@@ -341,21 +332,12 @@ private fun BadgeUrlRow(
                     )
                 }
                 Text(
-                    text = import.displayName.ifBlank { import.sourceUrl },
+                    text = import.sourceUrl,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
-                )
-            }
-            if (import.displayName.isNotBlank()) {
-                Text(
-                    text = import.sourceUrl,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Row(
@@ -398,15 +380,15 @@ private fun BadgeUrlRow(
                 }
                 TextButton(
                     enabled = enabled,
-                    onClick = onRename,
+                    onClick = onCopy,
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Edit,
+                        imageVector = Icons.Rounded.ContentCopy,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Rename", maxLines = 1)
+                    Text(text = "Copy", maxLines = 1)
                 }
                 IconButton(
                     enabled = enabled,
@@ -416,52 +398,6 @@ private fun BadgeUrlRow(
                         imageVector = Icons.Rounded.Delete,
                         contentDescription = stringResource(Res.string.action_delete),
                     )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun BadgeSourceNameDialog(
-    import: StreamBadgeImport,
-    onDismiss: () -> Unit,
-    onSave: (String) -> Unit,
-) {
-    var draftName by rememberSaveable(import.sourceUrl) { mutableStateOf(import.displayName) }
-
-    BasicAlertDialog(onDismissRequest = onDismiss) {
-        SettingsDialogSurface(title = "Badge source name") {
-            Text(
-                text = import.sourceUrl,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            OutlinedTextField(
-                value = draftName,
-                onValueChange = { draftName = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Display name") },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                ),
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-            ) {
-                TextButton(onClick = onDismiss) {
-                    Text(text = stringResource(Res.string.action_cancel), maxLines = 1)
-                }
-                Button(onClick = { onSave(draftName) }) {
-                    Text(text = "Save", maxLines = 1)
                 }
             }
         }
