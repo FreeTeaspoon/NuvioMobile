@@ -112,6 +112,7 @@ private const val P2pInitialPreloadTargetBytes = 5_242_880L
 /** Hard ceiling for next-episode stream search to prevent hanging forever. */
 private const val NEXT_EPISODE_HARD_TIMEOUT_MS = 120_000L
 private val PlayerTopSideGestureExclusionHeight = 72.dp
+private val PlayerHorizontalSeekEdgeExclusionWidth = 56.dp
 private val PlayerSliderOverlayGap = 12.dp
 private val PlayerTimeRowHeight = 36.dp
 private val PlayerActionRowHeight = 50.dp
@@ -241,6 +242,9 @@ fun PlayerScreen(
         val safeTopPadding = WindowInsets.safeContent.asPaddingValues().calculateTopPadding()
         val topSideGestureExclusionPx = with(density) {
             (safeTopPadding + PlayerTopSideGestureExclusionHeight).toPx()
+        }
+        val horizontalSeekEdgeExclusionPx = with(density) {
+            PlayerHorizontalSeekEdgeExclusionWidth.toPx()
         }
         val scope = rememberCoroutineScope()
         val hapticFeedback = LocalHapticFeedback.current
@@ -2582,7 +2586,12 @@ fun PlayerScreen(
                         },
                     )
                 }
-                .pointerInput(gestureController, layoutSize, topSideGestureExclusionPx) {
+                .pointerInput(
+                    gestureController,
+                    layoutSize,
+                    topSideGestureExclusionPx,
+                    horizontalSeekEdgeExclusionPx,
+                ) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         if (playerControlsLockedState.value) {
@@ -2597,6 +2606,9 @@ fun PlayerScreen(
                         val controller = gestureController
                         val width = size.width.toFloat().takeIf { it > 0f } ?: return@awaitEachGesture
                         val height = size.height.toFloat().takeIf { it > 0f } ?: return@awaitEachGesture
+                        val horizontalSeekAllowed =
+                            down.position.x > horizontalSeekEdgeExclusionPx &&
+                                down.position.x < width - horizontalSeekEdgeExclusionPx
                         val sideGesturesAllowed = down.position.y >= topSideGestureExclusionPx
                         val region = when {
                             sideGesturesAllowed && down.position.x < width * PlayerLeftGestureBoundary -> PlayerSideGesture.Brightness
@@ -2634,6 +2646,7 @@ fun PlayerScreen(
                                 val holdToSpeedActive = isHoldToSpeedGestureActiveState.value
                                 val horizontalDominant =
                                     !holdToSpeedActive &&
+                                        horizontalSeekAllowed &&
                                         abs(totalDx) > viewConfiguration.touchSlop &&
                                         abs(totalDx) > abs(totalDy)
                                 val verticalDominant =
