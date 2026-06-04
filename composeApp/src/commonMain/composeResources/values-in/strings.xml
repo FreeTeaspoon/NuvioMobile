@@ -686,6 +686,8 @@
     <string name="settings_meta_comments_description">Ulasan dari Trakt</string>
     <string name="settings_meta_details">Detail</string>
     <string name="settings_meta_details_description">Durasi, status, rilis, bahasa, dan info terkait.</string>
+    <string name="settings_meta_hero_trailer_playback">Pemutaran Trailer Hero</string>
+    <string name="settings_meta_hero_trailer_playback_description">Putar pratinjau trailer di hero metadata saat trailer tersedia.</string>
     <string name="settings_meta_episode_cards">Kartu Episode</string>
     <string name="settings_meta_episode_cards_description">Pilih cara episode ditampilkan di layar metadata.</string>
     <string name="settings_meta_episode_style_horizontal">Horizontal</string>

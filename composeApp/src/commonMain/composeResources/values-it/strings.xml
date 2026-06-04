@@ -399,6 +399,8 @@
   <string name="settings_meta_comments_description">Sezione commenti di Trakt.</string>
   <string name="settings_meta_details">Dettagli</string>
   <string name="settings_meta_details_description">Durata, stato, uscita, lingua e info correlate.</string>
+  <string name="settings_meta_hero_trailer_playback">Riproduzione trailer hero</string>
+  <string name="settings_meta_hero_trailer_playback_description">Riproduci le anteprime dei trailer nell’hero dei metadati quando è disponibile un trailer.</string>
   <string name="settings_meta_episode_cards">Schede episodi</string>
   <string name="settings_meta_episode_cards_description">Scegli come vengono visualizzati gli episodi nella schermata dei metadati.</string>
   <string name="settings_meta_episode_style_horizontal">Orizzontale</string>

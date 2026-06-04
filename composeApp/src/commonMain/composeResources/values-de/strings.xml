@@ -550,6 +550,8 @@
   <string name="settings_meta_comments_description">Trakt-Kommentar-Bereich.</string>
   <string name="settings_meta_details">Details</string>
   <string name="settings_meta_details_description">Laufzeit, Status, Veröffentlichung, Sprache und verwandte Infos.</string>
+  <string name="settings_meta_hero_trailer_playback">Hero-Trailer-Wiedergabe</string>
+  <string name="settings_meta_hero_trailer_playback_description">Trailer-Vorschauen im Metadaten-Hero abspielen, wenn ein Trailer verfügbar ist.</string>
   <string name="settings_meta_episode_cards">Episoden-Karten</string>
   <string name="settings_meta_episode_cards_description">Wähle, wie Episoden auf dem Metadaten-Bildschirm dargestellt werden.</string>
   <string name="settings_meta_episode_style_horizontal">Horizontal</string>

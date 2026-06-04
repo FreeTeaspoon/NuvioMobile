@@ -686,6 +686,8 @@
     <string name="settings_meta_comments_description">Sekcja komentarzy Trakt.</string>
     <string name="settings_meta_details">Szczegóły</string>
     <string name="settings_meta_details_description">Czas trwania, status, premiera, język i powiązane informacje.</string>
+    <string name="settings_meta_hero_trailer_playback">Odtwarzanie zwiastuna w sekcji głównej</string>
+    <string name="settings_meta_hero_trailer_playback_description">Odtwarzaj podglądy zwiastunów w głównej sekcji metadanych, gdy zwiastun jest dostępny.</string>
     <string name="settings_meta_episode_cards">Karty odcinków</string>
     <string name="settings_meta_episode_cards_description">Wybierz sposób wyświetlania odcinków na ekranie metadanych.</string>
     <string name="settings_meta_episode_style_horizontal">Poziomy</string>

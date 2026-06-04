@@ -565,6 +565,8 @@
   <string name="settings_meta_comments_description">Recenze z Trakt</string>
   <string name="settings_meta_details">Podrobnosti</string>
   <string name="settings_meta_details_description">Délka, stav, vydání, jazyk a související informace.</string>
+  <string name="settings_meta_hero_trailer_playback">Přehrávání upoutávky v hrdinském panelu</string>
+  <string name="settings_meta_hero_trailer_playback_description">Přehrávat náhledy upoutávek v hrdinském panelu metadat, když je upoutávka k dispozici.</string>
   <string name="settings_meta_episode_cards">Karty epizod</string>
   <string name="settings_meta_episode_cards_description">Vyberte, jak se budou epizody vykreslovat na obrazovce s metadaty.</string>
   <string name="settings_meta_episode_style_horizontal">Horizontální</string>
