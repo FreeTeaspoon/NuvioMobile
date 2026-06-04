@@ -679,6 +679,8 @@
   <string name="settings_meta_comments_description">Críticas do Trakt</string>
   <string name="settings_meta_details">Detalhes</string>
   <string name="settings_meta_details_description">Duração, estado, lançamento, idioma e informações relacionadas.</string>
+  <string name="settings_meta_hero_trailer_playback">Reprodução do trailer principal</string>
+  <string name="settings_meta_hero_trailer_playback_description">Reproduz pré-visualizações de trailers no destaque de metadados quando houver um trailer disponível.</string>
   <string name="settings_meta_episode_cards">Cartões de episódios</string>
   <string name="settings_meta_episode_cards_description">Escolhe como os episódios são apresentados no ecrã de metadados.</string>
   <string name="settings_meta_episode_style_horizontal">Horizontal</string>

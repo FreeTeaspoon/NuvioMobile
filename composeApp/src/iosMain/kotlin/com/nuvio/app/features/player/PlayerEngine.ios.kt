@@ -94,6 +94,10 @@ actual fun PlatformPlayerSurface(
                 bridge.setVideoZoom(normalized.zoom, false)
             }
 
+            override fun setMuted(muted: Boolean) {
+                bridge.setMuted(muted)
+            }
+
             override fun getAudioTracks(): List<AudioTrack> {
                 val count = bridge.getAudioTrackCount()
                 return (0 until count).map { i ->
