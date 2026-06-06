@@ -184,6 +184,9 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || vars.SUPABASE_ANON_KEY }}
+          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID || vars.TRAKT_CLIENT_ID }}
+          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+          TRAKT_REDIRECT_URI: ${{ secrets.TRAKT_REDIRECT_URI || vars.TRAKT_REDIRECT_URI || 'nuvio://auth/trakt' }}
           ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
           ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
           ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
@@ -208,6 +211,9 @@ jobs:
             printf 'sdk.dir=%s\n' "${ANDROID_HOME}"
             printf 'SUPABASE_URL=%s\n' "${SUPABASE_URL}"
             printf 'SUPABASE_ANON_KEY=%s\n' "${SUPABASE_ANON_KEY}"
+            printf 'TRAKT_CLIENT_ID=%s\n' "${TRAKT_CLIENT_ID}"
+            printf 'TRAKT_CLIENT_SECRET=%s\n' "${TRAKT_CLIENT_SECRET}"
+            printf 'TRAKT_REDIRECT_URI=%s\n' "${TRAKT_REDIRECT_URI}"
             printf 'NUVIO_RELEASE_STORE_FILE=release-key.jks\n'
             printf 'NUVIO_RELEASE_STORE_PASSWORD=%s\n' "${ANDROID_RELEASE_STORE_PASSWORD}"
             printf 'NUVIO_RELEASE_KEY_ALIAS=%s\n' "${ANDROID_RELEASE_KEY_ALIAS}"
