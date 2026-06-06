@@ -8,8 +8,6 @@ import com.nuvio.app.core.sync.ProfileSettingsSync
 import com.nuvio.app.features.home.HomeCatalogSettingsSyncService
 import com.nuvio.app.features.home.PosterShape
 import com.nuvio.app.features.library.LibraryItem
-import com.nuvio.app.features.profiles.ProfilePushPayload
-import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.watched.WatchedItem
 import com.nuvio.app.features.watchprogress.WatchProgressCodec
 import com.nuvio.app.features.watching.sync.SupabaseProgressSyncAdapter
@@ -36,59 +34,41 @@ internal object BackupSupabaseRestore {
         val authState = AuthRepository.state.value
         if (authState !is AuthState.Authenticated || authState.isAnonymous) return
 
-        runCatching {
-            if (mode == BackupImportMode.Replace) {
-                clearRemoteProfileData(payload)
-            }
-            pushProfiles(payload)
-            payload.profiles.forEach { profile ->
-                pushProfilePayload(profile)
-            }
+        payload.profiles.forEach { profile ->
+            pushProfilePayload(profile)
+        }
+        runRestoreStep("collections") {
             pushCollections(payload)
+        }
+    }
+
+    private suspend fun runRestoreStep(
+        label: String,
+        block: suspend () -> Unit,
+    ) {
+        runCatching {
+            block()
         }.onFailure { error ->
-            log.e(error) { "Failed to push imported backup to Supabase" }
-        }
-    }
-
-    private suspend fun clearRemoteProfileData(payload: NuvioBackupPayload) {
-        val profileIds = (1..4)
-            .plus(payload.profiles.map { it.profileIndex })
-            .distinct()
-            .sorted()
-
-        profileIds.forEach { profileId ->
-            val params = buildJsonObject {
-                put("p_profile_id", profileId)
-            }
-            SupabaseProvider.client.postgrest.rpc("sync_delete_profile_data", params)
-        }
-    }
-
-    private suspend fun pushProfiles(payload: NuvioBackupPayload) {
-        val profiles = payload.profiles.mapNotNull { backupProfile ->
-            backupProfile.profile?.let { profile ->
-                ProfilePushPayload(
-                    profileIndex = backupProfile.profileIndex,
-                    name = profile.name,
-                    avatarColorHex = profile.avatarColorHex,
-                    usesPrimaryAddons = profile.usesPrimaryAddons,
-                    usesPrimaryPlugins = profile.usesPrimaryPlugins,
-                    avatarId = profile.avatarId,
-                    avatarUrl = profile.avatarUrl,
-                )
-            }
-        }
-        if (profiles.isNotEmpty()) {
-            ProfileRepository.pushProfiles(profiles)
+            log.e(error) { "Failed to push imported backup $label to Supabase" }
         }
     }
 
     private suspend fun pushProfilePayload(profile: BackupProfilePayload) {
-        pushAddons(profile)
-        pushLibrary(profile)
-        pushWatchProgress(profile)
-        pushWatched(profile)
-        pushSettings(profile)
+        runRestoreStep("profile ${profile.profileIndex} addons") {
+            pushAddons(profile)
+        }
+        runRestoreStep("profile ${profile.profileIndex} library") {
+            pushLibrary(profile)
+        }
+        runRestoreStep("profile ${profile.profileIndex} watch progress") {
+            pushWatchProgress(profile)
+        }
+        runRestoreStep("profile ${profile.profileIndex} watched history") {
+            pushWatched(profile)
+        }
+        runRestoreStep("profile ${profile.profileIndex} settings") {
+            pushSettings(profile)
+        }
     }
 
     private suspend fun pushAddons(profile: BackupProfilePayload) {

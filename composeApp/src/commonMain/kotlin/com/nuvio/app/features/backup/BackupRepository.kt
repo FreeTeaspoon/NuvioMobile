@@ -3,7 +3,6 @@ package com.nuvio.app.features.backup
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.build.AppVersionConfig
-import com.nuvio.app.core.storage.LocalAccountDataCleaner
 import com.nuvio.app.core.storage.ProfileScopedKey
 import com.nuvio.app.core.ui.PosterCardStyleRepository
 import com.nuvio.app.core.ui.PosterCardStyleStorage
@@ -134,21 +133,14 @@ object BackupRepository {
         }
 
     private fun buildPayload(): NuvioBackupPayload {
-        val authState = AuthRepository.state.value as? AuthState.Authenticated
-        val profiles = ProfileRepository.state.value.profiles
-            .ifEmpty { listOfNotNull(ProfileRepository.state.value.activeProfile) }
-        val profileIds = profiles.map(NuvioProfile::profileIndex)
-            .ifEmpty { listOf(ProfileRepository.activeProfileId) }
-            .distinct()
-            .sorted()
+        val profileId = ProfileRepository.activeProfileId
+        val profile = ProfileRepository.state.value.activeProfile
+            ?.takeIf { it.profileIndex == profileId }
 
         return NuvioBackupPayload(
             exportedAtEpochMs = currentTimeMillis(),
-            activeProfileIndex = ProfileRepository.activeProfileId,
-            profiles = profileIds.map { profileId ->
-                val profile = profiles.find { it.profileIndex == profileId }
-                profilePayload(profileId, profile)
-            },
+            activeProfileIndex = profileId,
+            profiles = listOf(profilePayload(profileId, profile)),
             global = BackupGlobalPayload(
                 collectionsPayload = CollectionStorage.loadPayload().orEmpty(),
             ),
@@ -194,32 +186,38 @@ object BackupRepository {
                     ),
                 ),
             )
-        }
+    }
 
     private suspend fun applyPayload(payload: NuvioBackupPayload, mode: BackupImportMode) {
-        if (mode == BackupImportMode.Replace) {
-            LocalAccountDataCleaner.wipe()
-        }
+        val activeProfileIndex = ProfileRepository.activeProfileId
+        val profile = payload.profileForCurrentImport(activeProfileIndex)
         payload.global.collectionsPayload.takeIf(String::isNotBlank)?.let(CollectionStorage::savePayload)
 
-        payload.profiles.forEach { profile ->
-            ProfileScopedKey.scopedTo(profile.profileIndex) {
-                AddonStorage.saveInstalledAddonUrls(profile.profileIndex, profile.addons.urls)
-                AddonStorage.saveAddonEnabledStates(profile.profileIndex, profile.addons.enabledByUrl)
-                LibraryStorage.savePayload(profile.profileIndex, profile.libraryPayload)
-                WatchProgressStorage.savePayload(profile.profileIndex, profile.watchProgressPayload)
-                WatchedStorage.savePayload(profile.profileIndex, profile.watchedPayload)
-                applySettings(profile.settings)
-            }
+        ProfileScopedKey.scopedTo(activeProfileIndex) {
+            AddonStorage.saveInstalledAddonUrls(activeProfileIndex, profile.addons.urls)
+            AddonStorage.saveAddonEnabledStates(activeProfileIndex, profile.addons.enabledByUrl)
+            LibraryStorage.savePayload(activeProfileIndex, profile.libraryPayload)
+            WatchProgressStorage.savePayload(activeProfileIndex, profile.watchProgressPayload)
+            WatchedStorage.savePayload(activeProfileIndex, profile.watchedPayload)
+            applySettings(profile.settings)
         }
 
-        ProfileRepository.importLocalProfilesFromBackup(
-            activeProfileIndex = payload.activeProfileIndex,
-            profiles = payload.profiles,
+        val currentProfilePayload = payload.copy(
+            activeProfileIndex = activeProfileIndex,
+            profiles = listOf(profile),
         )
-        BackupSupabaseRestore.pushImportedPayload(payload, mode)
-        reinitializeAfterImport(payload.activeProfileIndex)
+        BackupSupabaseRestore.pushImportedPayload(currentProfilePayload, mode)
+        reinitializeAfterImport(activeProfileIndex)
     }
+
+    private fun NuvioBackupPayload.profileForCurrentImport(activeProfileIndex: Int): BackupProfilePayload =
+        (profiles.firstOrNull { it.profileIndex == activeProfileIndex }
+            ?: profiles.firstOrNull()
+            ?: BackupProfilePayload(profileIndex = activeProfileIndex))
+            .copy(
+                profileIndex = activeProfileIndex,
+                profile = null,
+            )
 
     private fun applySettings(settings: BackupSettingsPayload) {
         ThemeSettingsStorage.replaceFromSyncPayload(settings.themeSettings)
