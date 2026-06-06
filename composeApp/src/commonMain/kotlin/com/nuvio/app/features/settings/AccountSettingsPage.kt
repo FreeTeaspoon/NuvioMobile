@@ -447,7 +447,7 @@ private fun BackupImportSummaryDialog(
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "Profiles: ${summary.profileCount}\nAddons: ${summary.addonCount}\nSaved items: ${summary.libraryItemCount}\nWatch progress entries: ${summary.watchProgressItemCount}",
+                    text = "Current profile backup\nAddons: ${summary.addonCount}\nSaved items: ${summary.libraryItemCount}\nWatch progress entries: ${summary.watchProgressItemCount}",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
