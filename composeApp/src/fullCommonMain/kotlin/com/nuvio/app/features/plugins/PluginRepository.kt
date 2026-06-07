@@ -94,6 +94,21 @@ actual object PluginRepository {
         _uiState.value = PluginsUiState()
     }
 
+    actual fun exportPayload(profileId: Int): String {
+        val effectiveProfileId = resolveEffectiveProfileId(profileId)
+        return PluginStorage.loadState(effectiveProfileId).orEmpty()
+    }
+
+    actual fun importPayload(profileId: Int, payload: String) {
+        val effectiveProfileId = resolveEffectiveProfileId(profileId)
+        PluginStorage.saveState(effectiveProfileId, payload)
+        if (currentProfileId == effectiveProfileId) {
+            initialized = false
+            pulledFromServer = false
+            _uiState.value = PluginsUiState()
+        }
+    }
+
     actual suspend fun pullFromServer(profileId: Int) {
         val effectiveProfileId = resolveEffectiveProfileId(profileId)
         ensureStateLoadedForProfile(effectiveProfileId)

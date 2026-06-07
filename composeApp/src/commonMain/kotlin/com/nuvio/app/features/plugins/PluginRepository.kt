@@ -11,6 +11,10 @@ expect object PluginRepository {
 
     fun clearLocalState()
 
+    fun exportPayload(profileId: Int): String
+
+    fun importPayload(profileId: Int, payload: String)
+
     suspend fun pullFromServer(profileId: Int)
 
     suspend fun addRepository(rawUrl: String): AddPluginRepositoryResult

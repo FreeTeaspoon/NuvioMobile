@@ -8,6 +8,7 @@ import com.nuvio.app.core.sync.ProfileSettingsSync
 import com.nuvio.app.features.home.HomeCatalogSettingsSyncService
 import com.nuvio.app.features.home.PosterShape
 import com.nuvio.app.features.library.LibraryItem
+import com.nuvio.app.features.plugins.StoredPluginsState
 import com.nuvio.app.features.watched.WatchedItem
 import com.nuvio.app.features.watchprogress.WatchProgressCodec
 import com.nuvio.app.features.watching.sync.SupabaseProgressSyncAdapter
@@ -60,6 +61,9 @@ internal object BackupSupabaseRestore {
         runRestoreStep("profile ${profile.profileIndex} library") {
             pushLibrary(profile)
         }
+        runRestoreStep("profile ${profile.profileIndex} plugins") {
+            pushPlugins(profile)
+        }
         runRestoreStep("profile ${profile.profileIndex} watch progress") {
             pushWatchProgress(profile)
         }
@@ -94,6 +98,23 @@ internal object BackupSupabaseRestore {
             put("p_items", json.encodeToJsonElement(items))
         }
         SupabaseProvider.client.postgrest.rpc("sync_push_library", params)
+    }
+
+    private suspend fun pushPlugins(profile: BackupProfilePayload) {
+        val storedPayload = decodeOrDefault<StoredPluginsState>(profile.pluginsPayload)
+        val items = storedPayload.repositories.mapIndexed { index, repository ->
+            BackupPluginPushItem(
+                url = repository.manifestUrl,
+                name = repository.name,
+                enabled = true,
+                sortOrder = index,
+            )
+        }
+        val params = buildJsonObject {
+            put("p_profile_id", profile.profileIndex)
+            put("p_plugins", json.encodeToJsonElement(items))
+        }
+        SupabaseProvider.client.postgrest.rpc("sync_push_plugins", params)
     }
 
     private suspend fun pushWatchProgress(profile: BackupProfilePayload) {
@@ -136,6 +157,14 @@ internal object BackupSupabaseRestore {
 
     @Serializable
     private data class BackupAddonPushItem(
+        val url: String,
+        val name: String = "",
+        val enabled: Boolean = true,
+        @SerialName("sort_order") val sortOrder: Int = 0,
+    )
+
+    @Serializable
+    private data class BackupPluginPushItem(
         val url: String,
         val name: String = "",
         val enabled: Boolean = true,

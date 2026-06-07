@@ -14,10 +14,10 @@ import com.nuvio.app.features.collection.CollectionRepository
 import com.nuvio.app.features.collection.CollectionStorage
 import com.nuvio.app.features.debrid.DebridSettingsRepository
 import com.nuvio.app.features.debrid.DebridSettingsStorage
+import com.nuvio.app.features.details.SeasonViewMode
+import com.nuvio.app.features.details.SeasonViewModeStorage
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.details.MetaScreenSettingsStorage
-import com.nuvio.app.features.downloads.DownloadsRepository
-import com.nuvio.app.features.downloads.DownloadsStorage
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeCatalogSettingsStorage
 import com.nuvio.app.features.library.LibraryStorage
@@ -28,10 +28,14 @@ import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepositor
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsStorage
 import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.p2p.P2pSettingsStorage
+import com.nuvio.app.features.player.PlayerTrackPreferenceStorage
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.PlayerSettingsStorage
+import com.nuvio.app.features.plugins.PluginRepository
 import com.nuvio.app.features.profiles.NuvioProfile
 import com.nuvio.app.features.profiles.ProfileRepository
+import com.nuvio.app.features.search.SearchHistoryRepository
+import com.nuvio.app.features.search.SearchHistoryStorage
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.settings.ThemeSettingsStorage
 import com.nuvio.app.features.streams.StreamBadgeSettingsRepository
@@ -156,9 +160,11 @@ object BackupRepository {
                     urls = AddonStorage.loadInstalledAddonUrls(profileId),
                     enabledByUrl = AddonStorage.loadAddonEnabledStates(profileId),
                 ),
+                pluginsPayload = PluginRepository.exportPayload(profileId),
                 libraryPayload = LibraryStorage.loadPayload(profileId).orEmpty(),
                 watchProgressPayload = WatchProgressStorage.loadPayload(profileId).orEmpty(),
                 watchedPayload = WatchedStorage.loadPayload(profileId).orEmpty(),
+                searchHistoryPayload = SearchHistoryStorage.loadPayload().orEmpty(),
                 settings = BackupSettingsPayload(
                     themeSettings = ThemeSettingsStorage.exportToSyncPayload(),
                     posterCardStylePayload = PosterCardStyleStorage.loadPayload().orEmpty(),
@@ -168,9 +174,11 @@ object BackupRepository {
                     tmdbSettings = TmdbSettingsStorage.exportToSyncPayload(),
                     mdbListSettings = MdbListSettingsStorage.exportToSyncPayload(),
                     metaScreenSettingsPayload = MetaScreenSettingsStorage.loadPayload().orEmpty(),
+                    seasonViewMode = SeasonViewModeStorage.load()?.let(SeasonViewMode::persist),
                     homeCatalogSettingsPayload = HomeCatalogSettingsStorage.loadPayload().orEmpty(),
                     collectionMobileSettingsPayload = CollectionMobileSettingsStorage.loadPayload().orEmpty(),
                     continueWatchingPreferencesPayload = ContinueWatchingPreferencesStorage.loadPayload().orEmpty(),
+                    playerTrackPreferencesPayload = PlayerTrackPreferenceStorage.loadPayload().orEmpty(),
                     resumeWasInPlayer = ResumePromptStorage.loadWasInPlayer(),
                     resumeLastPlayerVideoId = ResumePromptStorage.loadLastPlayerVideoId(),
                     traktAuthPayload = TraktAuthStorage.loadPayload().orEmpty(),
@@ -178,7 +186,6 @@ object BackupRepository {
                     traktSettingsPayload = TraktSettingsStorage.loadPayload().orEmpty(),
                     traktCommentsSettings = TraktCommentsStorage.exportToSyncPayload(),
                     episodeReleaseNotificationsPayload = EpisodeReleaseNotificationsStorage.loadPayload().orEmpty(),
-                    downloadsAutoOpenOnOffline = DownloadsStorage.loadAutoOpenOnOffline(),
                     p2pSettings = BackupP2pSettingsPayload(
                         p2pEnabled = P2pSettingsStorage.loadP2pEnabled(),
                         enableUpload = P2pSettingsStorage.loadEnableUpload(),
@@ -196,9 +203,11 @@ object BackupRepository {
         ProfileScopedKey.scopedTo(activeProfileIndex) {
             AddonStorage.saveInstalledAddonUrls(activeProfileIndex, profile.addons.urls)
             AddonStorage.saveAddonEnabledStates(activeProfileIndex, profile.addons.enabledByUrl)
+            PluginRepository.importPayload(activeProfileIndex, profile.pluginsPayload)
             LibraryStorage.savePayload(activeProfileIndex, profile.libraryPayload)
             WatchProgressStorage.savePayload(activeProfileIndex, profile.watchProgressPayload)
             WatchedStorage.savePayload(activeProfileIndex, profile.watchedPayload)
+            SearchHistoryStorage.savePayload(profile.searchHistoryPayload)
             applySettings(profile.settings)
         }
 
@@ -228,9 +237,11 @@ object BackupRepository {
         TmdbSettingsStorage.replaceFromSyncPayload(settings.tmdbSettings)
         MdbListSettingsStorage.replaceFromSyncPayload(settings.mdbListSettings)
         MetaScreenSettingsStorage.savePayload(settings.metaScreenSettingsPayload)
+        settings.seasonViewMode?.let(SeasonViewMode::parse)?.let(SeasonViewModeStorage::save)
         HomeCatalogSettingsStorage.savePayload(settings.homeCatalogSettingsPayload)
         CollectionMobileSettingsStorage.savePayload(settings.collectionMobileSettingsPayload)
         ContinueWatchingPreferencesStorage.savePayload(settings.continueWatchingPreferencesPayload)
+        PlayerTrackPreferenceStorage.savePayload(settings.playerTrackPreferencesPayload)
         settings.resumeWasInPlayer?.let(ResumePromptStorage::saveWasInPlayer)
         ResumePromptStorage.saveLastPlayerVideoId(settings.resumeLastPlayerVideoId)
         TraktAuthStorage.savePayload(settings.traktAuthPayload)
@@ -238,7 +249,6 @@ object BackupRepository {
         TraktSettingsStorage.savePayload(settings.traktSettingsPayload)
         TraktCommentsStorage.replaceFromSyncPayload(settings.traktCommentsSettings)
         EpisodeReleaseNotificationsStorage.savePayload(settings.episodeReleaseNotificationsPayload)
-        settings.downloadsAutoOpenOnOffline?.let(DownloadsStorage::saveAutoOpenOnOffline)
         settings.p2pSettings.p2pEnabled?.let(P2pSettingsStorage::saveP2pEnabled)
         settings.p2pSettings.enableUpload?.let(P2pSettingsStorage::saveEnableUpload)
         settings.p2pSettings.hideTorrentStats?.let(P2pSettingsStorage::saveHideTorrentStats)
@@ -250,6 +260,8 @@ object BackupRepository {
         ProfileRepository.selectProfile(activeProfileIndex)
         AddonRepository.initialize()
         AddonRepository.refreshAll()
+        PluginRepository.onProfileChanged(activeProfileIndex)
+        PluginRepository.initialize()
         CollectionRepository.initialize()
         ThemeSettingsRepository.onProfileChanged()
         PosterCardStyleRepository.onProfileChanged()
@@ -267,7 +279,7 @@ object BackupRepository {
         TraktSettingsRepository.onProfileChanged()
         TraktCommentsSettings.onProfileChanged()
         EpisodeReleaseNotificationsRepository.onProfileChanged()
-        DownloadsRepository.onProfileChanged()
+        SearchHistoryRepository.onProfileChanged()
         P2pSettingsRepository.onProfileChanged()
         WatchProgressRepository.onProfileChanged(activeProfileIndex)
         WatchedRepository.onProfileChanged(activeProfileIndex)
@@ -290,8 +302,9 @@ object BackupRepository {
         TraktSettingsRepository.ensureLoaded()
         TraktCommentsSettings.ensureLoaded()
         EpisodeReleaseNotificationsRepository.ensureLoaded()
-        DownloadsRepository.ensureLoaded()
         P2pSettingsRepository.ensureLoaded()
+        PluginRepository.initialize()
+        SearchHistoryRepository.ensureLoaded()
     }
 
     private fun decryptPayload(bytes: ByteArray, passphrase: String): NuvioBackupPayload {

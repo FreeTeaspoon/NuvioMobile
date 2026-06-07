@@ -3,6 +3,13 @@ package com.nuvio.app.features.player
 import android.content.Context
 import android.content.SharedPreferences
 import com.nuvio.app.core.storage.ProfileScopedKey
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 
 internal actual object PlayerTrackPreferenceStorage {
     private const val preferencesName = "nuvio_player_track_preferences"
@@ -19,6 +26,7 @@ internal actual object PlayerTrackPreferenceStorage {
     private const val subtitleDelayMsKey = "subtitle_delay_ms"
 
     private var preferences: SharedPreferences? = null
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     fun initialize(context: Context) {
         preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
@@ -84,6 +92,38 @@ internal actual object PlayerTrackPreferenceStorage {
             ?.edit()
             ?.putInt(scopedKey(subtitleDelayMsKey, id), delayMs.coerceIn(SUBTITLE_DELAY_MIN_MS, SUBTITLE_DELAY_MAX_MS))
             ?.apply()
+    }
+
+    actual fun loadPayload(): String? {
+        val prefs = preferences ?: return null
+        val profileSuffix = ProfileScopedKey.of("")
+        val payload = buildJsonObject {
+            prefs.all.forEach { (key, value) ->
+                if (!key.endsWith(profileSuffix)) return@forEach
+                when (value) {
+                    is String -> put(key, JsonPrimitive(value))
+                    is Int -> put(key, JsonPrimitive(value))
+                }
+            }
+        }
+        return payload.takeIf { it.isNotEmpty() }?.let(json::encodeToString)
+    }
+
+    actual fun savePayload(payload: String) {
+        val prefs = preferences ?: return
+        val profileSuffix = ProfileScopedKey.of("")
+        val parsed = runCatching { json.decodeFromString<JsonObject>(payload) }.getOrNull()
+        prefs.edit().apply {
+            prefs.all.keys
+                .filter { it.endsWith(profileSuffix) }
+                .forEach(::remove)
+            parsed?.forEach { (key, value) ->
+                if (!key.endsWith(profileSuffix)) return@forEach
+                val primitive = value.jsonPrimitive
+                primitive.intOrNull?.let { putInt(key, it) }
+                    ?: primitive.contentOrNull?.let { putString(key, it) }
+            }
+        }.apply()
     }
 
     private fun loadString(field: String, contentId: String): String? =
