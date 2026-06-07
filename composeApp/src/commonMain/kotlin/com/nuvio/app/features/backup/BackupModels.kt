@@ -54,6 +54,7 @@ data class BackupProfilePayload(
     val libraryPayload: String = "",
     val watchProgressPayload: String = "",
     val watchedPayload: String = "",
+    val searchHistoryPayload: String = "",
     val settings: BackupSettingsPayload = BackupSettingsPayload(),
 )
 
@@ -97,9 +98,11 @@ data class BackupSettingsPayload(
     @SerialName("tmdb_settings") val tmdbSettings: JsonObject = JsonObject(emptyMap()),
     @SerialName("mdblist_settings") val mdbListSettings: JsonObject = JsonObject(emptyMap()),
     @SerialName("meta_screen_settings_payload") val metaScreenSettingsPayload: String = "",
+    @SerialName("season_view_mode") val seasonViewMode: String? = null,
     @SerialName("home_catalog_settings_payload") val homeCatalogSettingsPayload: String = "",
     @SerialName("collection_mobile_settings_payload") val collectionMobileSettingsPayload: String = "",
     @SerialName("continue_watching_preferences_payload") val continueWatchingPreferencesPayload: String = "",
+    @SerialName("player_track_preferences_payload") val playerTrackPreferencesPayload: String = "",
     @SerialName("resume_was_in_player") val resumeWasInPlayer: Boolean? = null,
     @SerialName("resume_last_player_video_id") val resumeLastPlayerVideoId: String? = null,
     @SerialName("trakt_auth_payload") val traktAuthPayload: String = "",
@@ -107,7 +110,6 @@ data class BackupSettingsPayload(
     @SerialName("trakt_settings_payload") val traktSettingsPayload: String = "",
     @SerialName("trakt_comments_settings") val traktCommentsSettings: JsonObject = JsonObject(emptyMap()),
     @SerialName("episode_release_notifications_payload") val episodeReleaseNotificationsPayload: String = "",
-    @SerialName("downloads_auto_open_on_offline") val downloadsAutoOpenOnOffline: Boolean? = null,
     @SerialName("p2p_settings") val p2pSettings: BackupP2pSettingsPayload = BackupP2pSettingsPayload(),
 )
 

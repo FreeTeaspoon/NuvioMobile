@@ -18,6 +18,10 @@ actual object PluginRepository {
 
     actual fun clearLocalState() = Unit
 
+    actual fun exportPayload(profileId: Int): String = ""
+
+    actual fun importPayload(profileId: Int, payload: String) = Unit
+
     actual suspend fun pullFromServer(profileId: Int) = Unit
 
     actual suspend fun addRepository(rawUrl: String): AddPluginRepositoryResult =
