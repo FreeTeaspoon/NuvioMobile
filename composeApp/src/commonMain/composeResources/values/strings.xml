@@ -1152,6 +1152,8 @@
     <string name="episode_mark_previous_seasons_watched">Mark previous seasons as watched</string>
     <string name="episode_mark_unwatched">Mark as unwatched</string>
     <string name="episode_mark_watched">Mark as watched</string>
+    <string name="watched_confirm_message">This will update watched status for multiple episodes.</string>
+    <string name="watched_confirm_title">Confirm watched status?</string>
     <string name="home_continue_watching_up_next">Up next</string>
     <string name="home_continue_watching_watched">%1$s watched</string>
     <string name="home_continue_watching_hours_minutes_left">%1$dh %2$dm left</string>
