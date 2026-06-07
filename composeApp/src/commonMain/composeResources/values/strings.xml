@@ -3,6 +3,7 @@
     <string name="about_supporters_contributors_subtitle">Open recognition and project credits</string>
     <string name="action_back">Back</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_confirm">Confirm</string>
     <string name="action_close">Close</string>
     <string name="action_delete">Delete</string>
     <string name="action_done">Done</string>
@@ -1152,8 +1153,9 @@
     <string name="episode_mark_previous_seasons_watched">Mark previous seasons as watched</string>
     <string name="episode_mark_unwatched">Mark as unwatched</string>
     <string name="episode_mark_watched">Mark as watched</string>
-    <string name="watched_confirm_message">This will update watched status for multiple episodes.</string>
-    <string name="watched_confirm_title">Confirm watched status?</string>
+    <string name="watched_confirm_mark_title_unwatched">Mark %1$s as unwatched</string>
+    <string name="watched_confirm_mark_title_watched">Mark %1$s as watched</string>
+    <string name="watched_confirm_message">This will update watched status.</string>
     <string name="home_continue_watching_up_next">Up next</string>
     <string name="home_continue_watching_watched">%1$s watched</string>
     <string name="home_continue_watching_hours_minutes_left">%1$dh %2$dm left</string>
