@@ -38,6 +38,7 @@ import com.nuvio.app.core.ui.NuvioSurfaceCard
 import com.nuvio.app.features.backup.BackupFilePlatform
 import com.nuvio.app.features.backup.BackupFileReadResult
 import com.nuvio.app.features.backup.BackupFileResult
+import com.nuvio.app.features.backup.AppRestartPlatform
 import com.nuvio.app.features.backup.BackupImportMode
 import com.nuvio.app.features.backup.BackupImportResult
 import com.nuvio.app.features.backup.BackupImportSummary
@@ -184,6 +185,7 @@ private fun BackupSettingsCard() {
     var statusTitle by remember { mutableStateOf<String?>(null) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var pendingImport by remember { mutableStateOf<PendingImport?>(null) }
+    var showRestartPrompt by remember { mutableStateOf(false) }
 
     fun showStatus(title: String, message: String) {
         statusTitle = title
@@ -290,7 +292,7 @@ private fun BackupSettingsCard() {
                     ) {
                         is BackupImportResult.Error -> showStatus(importFailed, result.message)
                         is BackupImportResult.NeedsConfirmation -> Unit
-                        is BackupImportResult.Success -> showStatus(importTitle, importSuccess)
+                        is BackupImportResult.Success -> showRestartPrompt = true
                     }
                 }
             },
@@ -309,6 +311,21 @@ private fun BackupSettingsCard() {
         onDismiss = {
             statusTitle = null
             statusMessage = null
+        },
+    )
+
+    NuvioStatusModal(
+        title = "Restart required",
+        message = "Backup import completed. Restart the app now to reload the restored profile data.",
+        isVisible = showRestartPrompt,
+        confirmText = "Restart app",
+        onConfirm = {
+            showRestartPrompt = false
+            AppRestartPlatform.restartApp()
+        },
+        onDismiss = {
+            showRestartPrompt = false
+            AppRestartPlatform.restartApp()
         },
     )
 }

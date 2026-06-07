@@ -13,6 +13,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.nuvio.app.core.auth.AuthStorage
 import com.nuvio.app.core.deeplink.handleAppUrl
 import com.nuvio.app.core.storage.PlatformLocalAccountDataCleaner
+import com.nuvio.app.features.backup.AppRestartPlatform
 import com.nuvio.app.features.backup.BackupFilePlatform
 import com.nuvio.app.features.addons.AddonStorage
 import com.nuvio.app.features.collection.CollectionMobileSettingsStorage
@@ -112,6 +113,7 @@ class MainActivity : AppCompatActivity() {
         DownloadsLiveStatusPlatform.initialize(applicationContext)
         AndroidAppUpdaterPlatform.initialize(applicationContext)
         PlatformLocalAccountDataCleaner.initialize(applicationContext)
+        AppRestartPlatform.initialize(applicationContext)
         BackupFilePlatform.bindActivity(this)
         EpisodeReleaseNotificationPlatform.initialize(applicationContext)
         EpisodeReleaseNotificationPlatform.bindActivity(this)
