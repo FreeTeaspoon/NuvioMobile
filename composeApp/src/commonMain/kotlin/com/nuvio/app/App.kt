@@ -35,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.rememberModalBottomSheetState
 
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -56,7 +57,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -68,7 +68,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import coil3.ImageLoader
@@ -104,12 +103,11 @@ import com.nuvio.app.core.ui.NuvioTheme
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.NativeNavigationTab
 import com.nuvio.app.core.ui.NuvioNavigationBarScrollClearance
-import com.nuvio.app.core.ui.NativeTabBridge
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
-import com.nuvio.app.core.ui.isLiquidGlassNativeTabBarSupported
+import com.nuvio.app.core.ui.NativeTabBridge
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
+import com.nuvio.app.core.ui.isLiquidGlassNativeTabBarSupported
 import com.nuvio.app.core.ui.localizedContinueWatchingSubtitle
-import com.nuvio.app.core.ui.rememberNuvioBottomSheetState
 import com.nuvio.app.features.auth.AuthScreen
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.catalog.CatalogRepository
@@ -425,6 +423,20 @@ fun App() {
         var isNewProfile by remember { mutableStateOf(false) }
         var autoSkipProfileSelection by rememberSaveable { mutableStateOf(false) }
 
+        fun rememberedStartupProfile(profiles: List<NuvioProfile>): NuvioProfile? {
+            val currentProfileState = ProfileRepository.state.value
+            if (
+                !currentProfileState.rememberLastProfileEnabled ||
+                !currentProfileState.hasEverSelectedProfile
+            ) {
+                return null
+            }
+
+            return profiles
+                .find { it.profileIndex == ProfileRepository.activeProfileId }
+                ?.takeUnless { it.pinEnabled }
+        }
+
         fun enterProfileGate(profiles: List<NuvioProfile>, syncOnEnter: Boolean) {
             if (profiles.isEmpty()) {
                 autoSkipProfileSelection = true
@@ -432,9 +444,23 @@ fun App() {
                 return
             }
 
+            rememberedStartupProfile(profiles)?.let { profile ->
+                ProfileRepository.selectProfile(profile.profileIndex)
+                if (syncOnEnter) {
+                    SyncManager.pullAllForProfile(profile.profileIndex)
+                }
+                gateScreen = AppGateScreen.Main.name
+                autoSkipProfileSelection = false
+                return
+            }
+
             autoSkipProfileSelection = true
             if (profiles.size == 1) {
                 val onlyProfile = profiles.first()
+                if (onlyProfile.pinEnabled) {
+                    gateScreen = AppGateScreen.ProfileSelection.name
+                    return
+                }
                 ProfileRepository.selectProfile(onlyProfile.profileIndex)
                 if (syncOnEnter) {
                     SyncManager.pullAllForProfile(onlyProfile.profileIndex)
@@ -485,13 +511,32 @@ fun App() {
             ProfileRepository.pullProfiles()
         }
 
-        LaunchedEffect(gateScreen, autoSkipProfileSelection, profileState.profiles) {
+        LaunchedEffect(
+            gateScreen,
+            autoSkipProfileSelection,
+            profileState.profiles,
+            profileState.hasEverSelectedProfile,
+            profileState.rememberLastProfileEnabled,
+            profileState.activeProfile?.profileIndex,
+            profileState.activeProfile?.pinEnabled,
+        ) {
             if (
                 autoSkipProfileSelection &&
-                gateScreen == AppGateScreen.ProfileSelection.name &&
-                profileState.profiles.size == 1
+                gateScreen == AppGateScreen.ProfileSelection.name
             ) {
+                rememberedStartupProfile(profileState.profiles)?.let { profile ->
+                    ProfileRepository.selectProfile(profile.profileIndex)
+                    SyncManager.pullAllForProfile(profile.profileIndex)
+                    gateScreen = AppGateScreen.Main.name
+                    autoSkipProfileSelection = false
+                    return@LaunchedEffect
+                }
+
+                if (profileState.profiles.size != 1) return@LaunchedEffect
+
                 val onlyProfile = profileState.profiles.first()
+                if (onlyProfile.pinEnabled) return@LaunchedEffect
+
                 ProfileRepository.selectProfile(onlyProfile.profileIndex)
                 SyncManager.pullAllForProfile(onlyProfile.profileIndex)
                 gateScreen = AppGateScreen.Main.name
@@ -814,7 +859,6 @@ private fun MainAppContent(
     var profileSwitchLoading by remember { mutableStateOf(false) }
     var resumePromptItem by remember { mutableStateOf<ContinueWatchingItem?>(null) }
     var lastExternalPlayerLaunch by remember { mutableStateOf<PlayerLaunch?>(null) }
-    val streamLaunchIdsPreservedForPlayerReturn = remember { mutableSetOf<Long>() }
     val launchExternalPlayer = rememberExternalPlayerLauncher { result ->
         if (result != null && result.positionMs > 0L) {
             coroutineScope.launch {
@@ -1619,8 +1663,7 @@ private fun MainAppContent(
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
-                val streamRouteDestination: @Composable (NavBackStackEntry) -> Unit =
-                    streamRouteDestination@{ backStackEntry ->
+                composable<StreamRoute> { backStackEntry ->
                     val route = backStackEntry.toRoute<StreamRoute>()
                     val launch = remember(route.launchId) {
                         StreamLaunchStore.get(route.launchId)
@@ -1630,7 +1673,7 @@ private fun MainAppContent(
                             StreamsRepository.clear()
                             navController.popBackStack()
                         }
-                        return@streamRouteDestination
+                        return@composable
                     }
                     val pauseDescription = launch.pauseDescription
                     val streamRouteScope = rememberCoroutineScope()
@@ -1640,9 +1683,7 @@ private fun MainAppContent(
                     DisposableEffect(lifecycleOwner, route.launchId) {
                         val observer = LifecycleEventObserver { _, event ->
                             if (event == Lifecycle.Event.ON_DESTROY) {
-                                if (route.launchId !in streamLaunchIdsPreservedForPlayerReturn) {
-                                    StreamLaunchStore.remove(route.launchId)
-                                }
+                                StreamLaunchStore.remove(route.launchId)
                             }
                         }
                         lifecycleOwner.lifecycle.addObserver(observer)
@@ -1748,21 +1789,6 @@ private fun MainAppContent(
                     fun p2pSentinelUrl(infoHash: String, fileIdx: Int?): String =
                         "torrent://$infoHash${fileIdx?.let { "?index=$it" }.orEmpty()}"
 
-                    fun navigateToPlayer(
-                        playerLaunch: PlayerLaunch,
-                        replaceStreamRoute: Boolean = false,
-                    ) {
-                        playerLaunch.returnStreamLaunchId?.let { streamLaunchId ->
-                            streamLaunchIdsPreservedForPlayerReturn.add(streamLaunchId)
-                        }
-                        val playerLaunchId = PlayerLaunchStore.put(playerLaunch)
-                        navController.navigate(PlayerRoute(launchId = playerLaunchId)) {
-                            if (replaceStreamRoute) {
-                                popUpTo<StreamRoute> { inclusive = true }
-                            }
-                        }
-                    }
-
                     fun openP2pStream(
                         stream: StreamItem,
                         resolvedResumePositionMs: Long?,
@@ -1825,14 +1851,15 @@ private fun MainAppContent(
                             torrentTrackers = stream.p2pTrackers,
                             initialPositionMs = resolvedResumePositionMs ?: 0L,
                             initialProgressFraction = resolvedResumeProgressFraction,
-                            returnStreamLaunchId = if (isIos && !replaceStreamRoute) route.launchId else null,
                         )
 
+                        val launchId = PlayerLaunchStore.put(playerLaunch)
                         StreamsRepository.cancelLoading()
-                        navigateToPlayer(
-                            playerLaunch = playerLaunch,
-                            replaceStreamRoute = replaceStreamRoute,
-                        )
+                        navController.navigate(PlayerRoute(launchId = launchId)) {
+                            if (replaceStreamRoute) {
+                                popUpTo<StreamRoute> { inclusive = true }
+                            }
+                        }
                     }
 
                     fun requestOrOpenP2pStream(
@@ -1948,10 +1975,10 @@ private fun MainAppContent(
                             }
                             StreamsRepository.clear()
                             reuseNavigated = true
-                            navigateToPlayer(
-                                playerLaunch = playerLaunch,
-                                replaceStreamRoute = true,
-                            )
+                            val launchId = PlayerLaunchStore.put(playerLaunch)
+                            navController.navigate(PlayerRoute(launchId = launchId)) {
+                                popUpTo<StreamRoute> { inclusive = true }
+                            }
                         }
                     }
 
@@ -2082,10 +2109,10 @@ private fun MainAppContent(
                         }
                         StreamsRepository.consumeAutoPlay()
                         StreamsRepository.cancelLoading()
-                        navigateToPlayer(
-                            playerLaunch = playerLaunch,
-                            replaceStreamRoute = true,
-                        )
+                        val launchId = PlayerLaunchStore.put(playerLaunch)
+                        navController.navigate(PlayerRoute(launchId = launchId)) {
+                            popUpTo<StreamRoute> { inclusive = true }
+                        }
                     }
 
                     if (!hasResolvedVideoId) {
@@ -2095,7 +2122,7 @@ private fun MainAppContent(
                         ) {
                             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                         }
-                        return@streamRouteDestination
+                        return@composable
                     }
 
                     fun openSelectedStream(
@@ -2199,7 +2226,6 @@ private fun MainAppContent(
                             parentMetaType = launch.parentMetaType ?: launch.type,
                             initialPositionMs = resolvedResumePositionMs ?: 0L,
                             initialProgressFraction = resolvedResumeProgressFraction,
-                            returnStreamLaunchId = if (isIos) route.launchId else null,
                         )
 
                         if (!forceInternal && (forceExternal || playerSettings.externalPlayerEnabled)) {
@@ -2208,8 +2234,11 @@ private fun MainAppContent(
                             return
                         }
 
+                        val launchId = PlayerLaunchStore.put(playerLaunch)
                         StreamsRepository.cancelLoading()
-                        navigateToPlayer(playerLaunch)
+                        navController.navigate(
+                            PlayerRoute(launchId = launchId)
+                        )
                     }
 
                     // Hide overlay when reuse navigated to external player (prevents reload from showing it again)
@@ -2219,10 +2248,9 @@ private fun MainAppContent(
                         }
                     }
 
-                    val streamSheetState = rememberNuvioBottomSheetState(skipPartiallyExpanded = true)
+                    val streamSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
                     fun closeStreamRoute() {
-                        streamLaunchIdsPreservedForPlayerReturn.remove(route.launchId)
                         StreamsRepository.clear()
                         navController.popBackStack()
                     }
@@ -2286,7 +2314,6 @@ private fun MainAppContent(
                                 },
                                 onBack = { dismissStreamRoute() },
                                 modifier = Modifier.fillMaxSize(),
-                                showBackButton = !isIos,
                             )
                             pendingP2pStreamOpen?.let { pending ->
                                 P2pConsentDialog(
@@ -2338,7 +2365,6 @@ private fun MainAppContent(
                             sheetState = streamSheetState,
                             containerColor = MaterialTheme.colorScheme.background,
                             contentColor = MaterialTheme.colorScheme.onBackground,
-                            iosContentTopPadding = 0.dp,
                         ) {
                             streamRouteContent(
                                 Modifier
@@ -2348,19 +2374,6 @@ private fun MainAppContent(
                         }
                     } else {
                         streamRouteContent(Modifier.fillMaxSize())
-                    }
-                    }
-                if (isIos) {
-                    dialog<StreamRoute>(
-                        dialogProperties = DialogProperties(
-                            usePlatformDefaultWidth = false,
-                        ),
-                    ) { backStackEntry ->
-                        streamRouteDestination(backStackEntry)
-                    }
-                } else {
-                    composable<StreamRoute> { backStackEntry ->
-                        streamRouteDestination(backStackEntry)
                     }
                 }
                 composable<PlayerRoute>(
@@ -2423,14 +2436,6 @@ private fun MainAppContent(
                             ResumePromptRepository.markPlayerExitedNormally()
                             PlayerLaunchStore.remove(route.launchId)
                             navController.popBackStack()
-                            launch.returnStreamLaunchId?.let { streamLaunchId ->
-                                if (isIos && StreamLaunchStore.get(streamLaunchId) != null) {
-                                    navController.navigate(StreamRoute(launchId = streamLaunchId)) {
-                                        launchSingleTop = true
-                                    }
-                                }
-                                streamLaunchIdsPreservedForPlayerReturn.remove(streamLaunchId)
-                            }
                         },
                         onOpenInExternalPlayer = { request ->
                             val playerLaunch = PlayerLaunch(

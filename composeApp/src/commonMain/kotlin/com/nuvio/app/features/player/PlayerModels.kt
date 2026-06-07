@@ -53,7 +53,6 @@ data class PlayerLaunch(
     val torrentTrackers: List<String> = emptyList(),
     val initialPositionMs: Long = 0L,
     val initialProgressFraction: Float? = null,
-    val returnStreamLaunchId: Long? = null,
 )
 
 internal expect object PlayerLaunchStorage {
@@ -255,6 +254,15 @@ internal const val PlayerVideoZoomStep = 0.05f
 enum class PlayerEngineType {
     MEDIA3,
     MPV,
+}
+
+enum class IosAudioOutputMode(
+    val mpvValue: String,
+    val label: String,
+) {
+    Auto("avfoundation,audiounit,", "Auto"),
+    AvFoundation("avfoundation", "AVFoundation"),
+    AudioUnit("audiounit", "AudioUnit"),
 }
 
 @Composable
