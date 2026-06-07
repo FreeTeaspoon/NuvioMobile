@@ -13,6 +13,11 @@ import com.nuvio.app.features.mdblist.MdbListSettingsRepository
 import com.nuvio.app.features.tmdb.TmdbMetadataService
 import com.nuvio.app.features.tmdb.TmdbService
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
+import com.nuvio.app.features.trakt.TraktAuthRepository
+import com.nuvio.app.features.trakt.TraktConnectionMode
+import com.nuvio.app.features.trakt.TraktRelatedRepository
+import com.nuvio.app.features.trakt.TraktSettingsRepository
+import com.nuvio.app.features.trakt.shouldUseTraktMoreLikeThis
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -64,10 +69,10 @@ object MetaDetailsRepository {
                     )
                     activeRequestKey = requestKey
                     return
-                }
+            }
 
             val cachedBaseMeta = cachedEntry.baseMeta
-            if (!shouldFetchMdbListOnMetaScreen(cachedBaseMeta, id, mdbListSettings)) {
+            if (!shouldEnrichForMetaScreen(cachedBaseMeta, id, mdbListSettings)) {
                 _uiState.value = MetaDetailsUiState(
                     meta = cachedBaseMeta.withUnreleasedFilter(),
                     requestType = type,
@@ -95,6 +100,7 @@ object MetaDetailsRepository {
                     enrichForMetaScreen(
                         meta = cachedBaseMeta,
                         fallbackItemId = id,
+                        fallbackItemType = type,
                         settings = mdbListSettings,
                     )
                 }
@@ -143,6 +149,7 @@ object MetaDetailsRepository {
                         requestKey = requestKey,
                         meta = tmdbMeta,
                         fallbackItemId = id,
+                        fallbackItemType = type,
                         mdbListSettings = mdbListSettings,
                         metaScreenSettingsFingerprint = metaScreenSettingsFingerprint,
                     )
@@ -168,6 +175,7 @@ object MetaDetailsRepository {
                         requestKey = requestKey,
                         meta = result,
                         fallbackItemId = metaLookupId,
+                        fallbackItemType = type,
                         mdbListSettings = mdbListSettings,
                         metaScreenSettingsFingerprint = metaScreenSettingsFingerprint,
                     )
@@ -181,6 +189,7 @@ object MetaDetailsRepository {
                     requestKey = requestKey,
                     meta = tmdbMeta,
                     fallbackItemId = id,
+                    fallbackItemType = type,
                     mdbListSettings = mdbListSettings,
                     metaScreenSettingsFingerprint = metaScreenSettingsFingerprint,
                 )
@@ -331,6 +340,7 @@ object MetaDetailsRepository {
         requestKey: String,
         meta: MetaDetails,
         fallbackItemId: String,
+        fallbackItemType: String,
         mdbListSettings: com.nuvio.app.features.mdblist.MdbListSettings,
         metaScreenSettingsFingerprint: String,
     ) {
@@ -338,7 +348,7 @@ object MetaDetailsRepository {
         val cachedEntry = CachedMetaEntry(baseMeta = meta)
         cachedMetaByRequestKey[requestKey] = cachedEntry
 
-        if (!shouldFetchMdbListOnMetaScreen(meta, fallbackItemId, mdbListSettings)) {
+        if (!shouldEnrichForMetaScreen(meta, fallbackItemId, mdbListSettings)) {
             _uiState.value = MetaDetailsUiState(
                 meta = meta.withUnreleasedFilter(),
                 requestType = requestType,
@@ -358,6 +368,7 @@ object MetaDetailsRepository {
             enrichForMetaScreen(
                 meta = meta,
                 fallbackItemId = fallbackItemId,
+                fallbackItemType = fallbackItemType,
                 settings = mdbListSettings,
             )
         }
@@ -384,17 +395,75 @@ object MetaDetailsRepository {
     private suspend fun enrichForMetaScreen(
         meta: MetaDetails,
         fallbackItemId: String,
+        fallbackItemType: String,
         settings: com.nuvio.app.features.mdblist.MdbListSettings,
     ): MetaScreenEnrichmentResult {
-        val enrichedMeta = withTimeoutOrNull(MDBLIST_ENRICH_TIMEOUT_MS) {
+        val shouldFetchMdbList = shouldFetchMdbListOnMetaScreen(
+            meta = meta,
+            fallbackItemId = fallbackItemId,
+            settings = settings,
+        )
+        val mdbListResult = withTimeoutOrNull(MDBLIST_ENRICH_TIMEOUT_MS) {
             MdbListMetadataService.enrichMeta(
                 meta = meta,
                 fallbackItemId = fallbackItemId,
                 settings = settings,
             )
-        } ?: return MetaScreenEnrichmentResult(meta = meta, completed = false)
+        }
+        val mdbListEnrichedMeta = mdbListResult ?: meta
+        val enrichedMeta = applyMoreLikeThisSource(
+            meta = mdbListEnrichedMeta,
+            fallbackItemId = fallbackItemId,
+            fallbackItemType = fallbackItemType,
+        )
 
-        return MetaScreenEnrichmentResult(meta = enrichedMeta, completed = true)
+        return MetaScreenEnrichmentResult(
+            meta = enrichedMeta,
+            completed = !shouldFetchMdbList || mdbListResult != null,
+        )
+    }
+
+    private suspend fun applyMoreLikeThisSource(
+        meta: MetaDetails,
+        fallbackItemId: String,
+        fallbackItemType: String,
+    ): MetaDetails {
+        TraktSettingsRepository.ensureLoaded()
+        TraktAuthRepository.ensureLoaded()
+        TmdbSettingsRepository.ensureLoaded()
+
+        val traktSettings = TraktSettingsRepository.uiState.value
+        val isTraktAuthenticated = TraktAuthRepository.uiState.value.mode == TraktConnectionMode.CONNECTED
+        val shouldUseTrakt = shouldUseTraktMoreLikeThis(
+            isAuthenticated = isTraktAuthenticated,
+            source = traktSettings.moreLikeThisSource,
+        ) && supportsMoreLikeThis(meta, fallbackItemType)
+
+        if (shouldUseTrakt) {
+            val items = runCatching {
+                TraktRelatedRepository.getRelated(
+                    meta = meta,
+                    fallbackItemId = fallbackItemId,
+                    fallbackItemType = fallbackItemType,
+                )
+            }.onFailure { error ->
+                log.w { "Failed to load Trakt related titles for ${meta.id}: ${error.message}" }
+            }.getOrDefault(emptyList())
+
+            return meta.copy(
+                moreLikeThis = items,
+                moreLikeThisSource = MoreLikeThisSource.TRAKT.takeIf { items.isNotEmpty() },
+            )
+        }
+
+        val tmdbSettings = TmdbSettingsRepository.snapshot()
+        if (!tmdbSettings.enabled || !tmdbSettings.useMoreLikeThis) {
+            return meta.copy(moreLikeThis = emptyList(), moreLikeThisSource = null)
+        }
+
+        return meta.copy(
+            moreLikeThisSource = MoreLikeThisSource.TMDB.takeIf { meta.moreLikeThis.isNotEmpty() },
+        )
     }
 
     private fun shouldFetchMdbListOnMetaScreen(
@@ -407,23 +476,66 @@ object MetaDetailsRepository {
         settings = settings,
     )
 
+    private fun shouldEnrichForMetaScreen(
+        meta: MetaDetails,
+        fallbackItemId: String,
+        settings: com.nuvio.app.features.mdblist.MdbListSettings,
+    ): Boolean {
+        if (shouldFetchMdbListOnMetaScreen(meta, fallbackItemId, settings)) return true
+        return shouldApplyMoreLikeThisSource(meta)
+    }
+
+    private fun shouldApplyMoreLikeThisSource(meta: MetaDetails): Boolean {
+        TraktSettingsRepository.ensureLoaded()
+        TraktAuthRepository.ensureLoaded()
+        TmdbSettingsRepository.ensureLoaded()
+
+        val traktSettings = TraktSettingsRepository.uiState.value
+        val isTraktAuthenticated = TraktAuthRepository.uiState.value.mode == TraktConnectionMode.CONNECTED
+        val tmdbSettings = TmdbSettingsRepository.snapshot()
+        return shouldUseTraktMoreLikeThis(
+            isAuthenticated = isTraktAuthenticated,
+            source = traktSettings.moreLikeThisSource,
+        ) || !tmdbSettings.enabled || !tmdbSettings.useMoreLikeThis || meta.moreLikeThisSource == null && meta.moreLikeThis.isNotEmpty()
+    }
+
     private fun buildMetaScreenSettingsFingerprint(
         settings: com.nuvio.app.features.mdblist.MdbListSettings,
     ): String {
+        TraktSettingsRepository.ensureLoaded()
+        TraktAuthRepository.ensureLoaded()
+        TmdbSettingsRepository.ensureLoaded()
         val providers = settings.enabledProvidersInPriorityOrder().joinToString(",")
-        return "${settings.enabled}:${settings.apiKey.trim()}:$providers"
+        val traktSettings = TraktSettingsRepository.uiState.value
+        val traktAuthMode = TraktAuthRepository.uiState.value.mode
+        val tmdbSettings = TmdbSettingsRepository.snapshot()
+        return buildString {
+            append("${settings.enabled}:${settings.apiKey.trim()}:$providers")
+            append("|more_like=${traktSettings.moreLikeThisSource}:$traktAuthMode")
+            append("|tmdb=${tmdbSettings.enabled}:${tmdbSettings.useMoreLikeThis}:${tmdbSettings.hasApiKey}:${tmdbSettings.language}")
+        }
     }
+
+    private fun supportsMoreLikeThis(meta: MetaDetails, fallbackItemType: String): Boolean =
+        normalizeMoreLikeThisType(meta.type) != null || normalizeMoreLikeThisType(fallbackItemType) != null
+
+    private fun normalizeMoreLikeThisType(value: String?): String? =
+        when (value?.trim()?.lowercase()) {
+            "movie", "film" -> "movie"
+            "series", "show", "tv", "tvshow" -> "series"
+            else -> null
+        }
 
     private fun MetaDetails.withUnreleasedFilter(): MetaDetails {
         if (!HomeCatalogSettingsRepository.snapshot().hideUnreleasedContent) return this
         val todayIsoDate = CurrentDateProvider.todayIsoDate()
+        val releasedMoreLikeThis = moreLikeThis.filterReleasedItems(todayIsoDate)
         return copy(
-            moreLikeThis = moreLikeThis.filterReleasedItems(todayIsoDate),
+            moreLikeThis = releasedMoreLikeThis,
+            moreLikeThisSource = moreLikeThisSource.takeIf { releasedMoreLikeThis.isNotEmpty() },
             collectionItems = collectionItems.filterReleasedItems(todayIsoDate),
         )
     }
-
-   
     fun findEmbeddedStreams(videoId: String): List<com.nuvio.app.features.streams.StreamItem> {
         val meta = _uiState.value.meta ?: return emptyList()
         val videosWithStreams = meta.videos.filter { it.streams.isNotEmpty() }
