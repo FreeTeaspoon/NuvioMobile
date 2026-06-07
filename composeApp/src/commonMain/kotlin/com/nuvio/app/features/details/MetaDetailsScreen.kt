@@ -116,7 +116,7 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 private data class WatchedConfirmationAction(
-    val confirmText: String,
+    val title: String,
     val onConfirm: () -> Unit,
 )
 
@@ -363,11 +363,21 @@ fun MetaDetailsScreen(
                         LibraryRepository.toggleSaved(meta.toLibraryItem(savedAtEpochMs = 0L))
                     }
                 }
-                val toggleWatched = remember(metaPreview) {
+                val wholeWatchedActionText = if (isWatched) {
+                    stringResource(Res.string.watched_confirm_mark_title_unwatched, meta.name)
+                } else {
+                    stringResource(Res.string.watched_confirm_mark_title_watched, meta.name)
+                }
+                val toggleWatched = remember(metaPreview, wholeWatchedActionText) {
                     {
-                        detailsScope.launch {
-                            WatchingActions.togglePosterWatched(metaPreview)
-                        }
+                        pendingWatchedConfirmation = WatchedConfirmationAction(
+                            title = wholeWatchedActionText,
+                            onConfirm = {
+                                detailsScope.launch {
+                                    WatchingActions.togglePosterWatched(metaPreview)
+                                }
+                            },
+                        )
                         Unit
                     }
                 }
@@ -996,7 +1006,7 @@ fun MetaDetailsScreen(
                                 },
                                 onTogglePreviousWatched = {
                                     pendingWatchedConfirmation = WatchedConfirmationAction(
-                                        confirmText = previousWatchedActionText,
+                                        title = previousWatchedActionText,
                                         onConfirm = {
                                             WatchingActions.togglePreviousEpisodesWatched(
                                                 meta = meta,
@@ -1008,7 +1018,7 @@ fun MetaDetailsScreen(
                                 },
                                 onToggleSeasonWatched = {
                                     pendingWatchedConfirmation = WatchedConfirmationAction(
-                                        confirmText = seasonWatchedActionText,
+                                        title = seasonWatchedActionText,
                                         onConfirm = {
                                             WatchingActions.toggleSeasonWatched(
                                                 meta = meta,
@@ -1072,7 +1082,7 @@ fun MetaDetailsScreen(
                                 onDismiss = { selectedSeasonForActions = null },
                                 onToggleSeasonWatched = {
                                     pendingWatchedConfirmation = WatchedConfirmationAction(
-                                        confirmText = seasonWatchedActionText,
+                                        title = seasonWatchedActionText,
                                         onConfirm = {
                                             WatchingActions.toggleSeasonWatched(
                                                 meta = meta,
@@ -1084,7 +1094,7 @@ fun MetaDetailsScreen(
                                 },
                                 onMarkPreviousSeasonsWatched = {
                                     pendingWatchedConfirmation = WatchedConfirmationAction(
-                                        confirmText = previousSeasonsWatchedActionText,
+                                        title = previousSeasonsWatchedActionText,
                                         onConfirm = {
                                             WatchingActions.togglePreviousEpisodesWatched(
                                                 meta = meta,
@@ -1099,10 +1109,10 @@ fun MetaDetailsScreen(
 
                         pendingWatchedConfirmation?.let { action ->
                             NuvioStatusModal(
-                                title = stringResource(Res.string.watched_confirm_title),
+                                title = action.title,
                                 message = stringResource(Res.string.watched_confirm_message),
                                 isVisible = true,
-                                confirmText = action.confirmText,
+                                confirmText = stringResource(Res.string.action_confirm),
                                 dismissText = stringResource(Res.string.action_cancel),
                                 onConfirm = {
                                     pendingWatchedConfirmation = null
