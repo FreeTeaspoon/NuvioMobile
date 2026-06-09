@@ -51,6 +51,7 @@ private const val REFRESH_BASE_INTERVAL_MS = 60L * 1000L
 private const val REFRESH_MAX_INTERVAL_MS = 15L * 60L * 1000L
 private const val EPISODE_PROGRESS_CACHE_TTL_MS = 30L * 60L * 1000L
 private const val EPISODE_PROGRESS_FETCH_THROTTLE_MS = 60L * 1000L
+private const val OPTIMISTIC_REMOVAL_TTL_MS = 10L * 60L * 1000L
 private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
 private const val AMBIGUOUS_ID_MARKER = "__ambiguous__"
 
@@ -59,6 +60,12 @@ data class TraktProgressUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val hasLoadedRemoteProgress: Boolean = false,
+)
+
+private data class SuppressedProgressKey(
+    val contentId: String,
+    val seasonNumber: Int?,
+    val episodeNumber: Int?,
 )
 
 object TraktProgressRepository {
@@ -88,6 +95,7 @@ object TraktProgressRepository {
     private var watchedShowEpisodesById: Map<String, Set<Pair<Int, Int>>> = emptyMap()
     private var showIdToTraktPathId: Map<String, String> = emptyMap()
     private var showIdSiblingsMap: Map<String, Set<String>> = emptyMap()
+    private val suppressedProgressKeysUntilMs = mutableMapOf<SuppressedProgressKey, Long>()
 
     init {
         scope.launch {
@@ -150,6 +158,7 @@ object TraktProgressRepository {
         hiddenProgressShowIds.value = emptySet()
         resetActivitySnapshot()
         resetShowProgressCaches()
+        suppressedProgressKeysUntilMs.clear()
         _uiState.value = TraktProgressUiState()
     }
 
@@ -206,7 +215,9 @@ object TraktProgressRepository {
         if (!shouldFetch) return
 
         try {
-            val entries = fetchEpisodeProgressEntries(headers = headers, contentId = normalizedContentId)
+            val entries = filterSuppressedEntries(
+                fetchEpisodeProgressEntries(headers = headers, contentId = normalizedContentId),
+            )
             val existingEntries = _uiState.value.entries
             val merged = mergeNewestByVideoId(existingEntries + entries)
             _uiState.value = _uiState.value.copy(entries = merged.sortedByDescending { it.lastUpdatedEpochMs })
@@ -298,6 +309,68 @@ object TraktProgressRepository {
         inFlightEpisodeProgressContentIds.clear()
     }
 
+    private fun suppressProgressKey(
+        contentId: String,
+        seasonNumber: Int?,
+        episodeNumber: Int?,
+    ) {
+        pruneExpiredSuppressedProgressKeys()
+        suppressedProgressKeysUntilMs[SuppressedProgressKey(contentId.trim(), seasonNumber, episodeNumber)] =
+            TraktPlatformClock.nowEpochMs() + OPTIMISTIC_REMOVAL_TTL_MS
+    }
+
+    private fun unsuppressProgressEntry(entry: WatchProgressEntry) {
+        pruneExpiredSuppressedProgressKeys()
+        val contentId = entry.parentMetaId.trim()
+        if (contentId.isBlank()) return
+        suppressedProgressKeysUntilMs.remove(
+            SuppressedProgressKey(
+                contentId = contentId,
+                seasonNumber = entry.seasonNumber,
+                episodeNumber = entry.episodeNumber,
+            ),
+        )
+        if (entry.seasonNumber == null || entry.episodeNumber == null) {
+            suppressedProgressKeysUntilMs.remove(
+                SuppressedProgressKey(
+                    contentId = contentId,
+                    seasonNumber = null,
+                    episodeNumber = null,
+                ),
+            )
+        }
+    }
+
+    private fun filterSuppressedEntries(entries: List<WatchProgressEntry>): List<WatchProgressEntry> {
+        pruneExpiredSuppressedProgressKeys()
+        if (suppressedProgressKeysUntilMs.isEmpty()) return entries
+        return entries.filterNot(::isSuppressedProgressEntry)
+    }
+
+    private fun isSuppressedProgressEntry(entry: WatchProgressEntry): Boolean {
+        val contentId = entry.parentMetaId.trim()
+        if (contentId.isBlank()) return false
+        return suppressedProgressKeysUntilMs.containsKey(
+            SuppressedProgressKey(
+                contentId = contentId,
+                seasonNumber = entry.seasonNumber,
+                episodeNumber = entry.episodeNumber,
+            ),
+        ) || suppressedProgressKeysUntilMs.containsKey(
+            SuppressedProgressKey(
+                contentId = contentId,
+                seasonNumber = null,
+                episodeNumber = null,
+            ),
+        )
+    }
+
+    private fun pruneExpiredSuppressedProgressKeys() {
+        if (suppressedProgressKeysUntilMs.isEmpty()) return
+        val now = TraktPlatformClock.nowEpochMs()
+        suppressedProgressKeysUntilMs.entries.removeAll { (_, expiresAtMs) -> expiresAtMs <= now }
+    }
+
     private suspend fun refreshNowInternal() {
         ensureLoaded()
         val requestId = nextRefreshRequestId()
@@ -310,7 +383,7 @@ object TraktProgressRepository {
         _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
         val playbackEntries = runCatching {
-            fetchPlaybackEntries(headers)
+            filterSuppressedEntries(fetchPlaybackEntries(headers))
         }.onFailure { error ->
             if (error is CancellationException) throw error
             log.w { "Failed to refresh Trakt progress: ${error.message}" }
@@ -346,7 +419,7 @@ object TraktProgressRepository {
                 val watchedShowSeeds = async { fetchWatchedShowSeedEntries(headers) }
                 val hiddenShows = async { fetchHiddenShowIds(headers) }
 
-                val list = history.await() + watchedShowSeeds.await()
+                val list = filterSuppressedEntries(history.await() + watchedShowSeeds.await())
                 hiddenProgressShowIds.value = hiddenShows.await()
                 list
             }
@@ -412,6 +485,7 @@ object TraktProgressRepository {
         if (!TraktAuthRepository.isAuthenticated.value) return
         val current = _uiState.value.entries.associateBy { it.videoId }.toMutableMap()
         val normalizedEntry = entry.normalizedCompletion()
+        unsuppressProgressEntry(normalizedEntry)
         val existing = current[normalizedEntry.videoId]
         if (existing == null || normalizedEntry.lastUpdatedEpochMs >= existing.lastUpdatedEpochMs) {
             current[normalizedEntry.videoId] = normalizedEntry
@@ -441,6 +515,11 @@ object TraktProgressRepository {
         if (!TraktAuthRepository.isAuthenticated.value) return
         val normalizedContentId = contentId.trim()
         if (normalizedContentId.isBlank()) return
+        suppressProgressKey(
+            contentId = normalizedContentId,
+            seasonNumber = seasonNumber,
+            episodeNumber = episodeNumber,
+        )
         val filtered = _uiState.value.entries.filterNot { entry ->
             if (entry.parentMetaId != normalizedContentId) {
                 false
