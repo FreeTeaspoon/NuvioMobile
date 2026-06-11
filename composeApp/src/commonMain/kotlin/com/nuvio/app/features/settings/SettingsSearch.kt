@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Close
@@ -43,6 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.nuvio.app.core.ui.NuvioTokens
+import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.isIos
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -78,6 +79,8 @@ internal data class SettingsSearchEntry(
 @Composable
 internal fun settingsSearchEntries(
     pluginsEnabled: Boolean,
+    downloadsEnabled: Boolean,
+    notificationsEnabled: Boolean,
     liquidGlassNativeTabBarSupported: Boolean,
     switchProfileAvailable: Boolean,
     checkForUpdatesAvailable: Boolean,
@@ -224,14 +227,16 @@ internal fun settingsSearchEntries(
         description = stringResource(Res.string.compose_settings_root_content_discovery_description),
         icon = Icons.Rounded.Extension,
     )
-    add(
-        key = "downloads",
-        title = downloadsPage,
-        description = stringResource(Res.string.compose_settings_root_downloads_description),
-        category = generalCategory,
-        icon = Icons.Rounded.CloudDownload,
-        target = SettingsSearchTarget.Downloads,
-    )
+    if (downloadsEnabled) {
+        add(
+            key = "downloads",
+            title = downloadsPage,
+            description = stringResource(Res.string.compose_settings_root_downloads_description),
+            category = generalCategory,
+            icon = Icons.Rounded.CloudDownload,
+            target = SettingsSearchTarget.Downloads,
+        )
+    }
     addPage(
         page = SettingsPage.Playback,
         key = "playback",
@@ -253,13 +258,15 @@ internal fun settingsSearchEntries(
         description = stringResource(Res.string.compose_settings_root_integrations_description),
         icon = Icons.Rounded.Link,
     )
-    addPage(
-        page = SettingsPage.Notifications,
-        key = "notifications",
-        title = notificationsPage,
-        description = stringResource(Res.string.compose_settings_root_notifications_description),
-        icon = Icons.Rounded.Notifications,
-    )
+    if (notificationsEnabled) {
+        addPage(
+            page = SettingsPage.Notifications,
+            key = "notifications",
+            title = notificationsPage,
+            description = stringResource(Res.string.compose_settings_root_notifications_description),
+            icon = Icons.Rounded.Notifications,
+        )
+    }
     addPage(
         page = SettingsPage.SupportersContributors,
         key = "supporters",
@@ -462,6 +469,15 @@ internal fun settingsSearchEntries(
     val playbackSubtitleRendering = stringResource(Res.string.settings_playback_section_subtitle_rendering)
     val playbackSkipSegments = stringResource(Res.string.settings_playback_section_skip_segments)
     val playbackNextEpisode = stringResource(Res.string.settings_playback_section_next_episode)
+    addRow(
+        page = SettingsPage.Streams,
+        key = "stream-addon-logo",
+        title = stringResource(Res.string.settings_stream_addon_logo_title),
+        description = stringResource(Res.string.settings_stream_addon_logo_description),
+        pageLabel = streamsPage,
+        section = stringResource(Res.string.settings_stream_display_section),
+        icon = Icons.Rounded.Style,
+    )
     addRow(
         page = SettingsPage.Streams,
         key = "stream-size-badges",
@@ -784,24 +800,26 @@ internal fun settingsSearchEntries(
         )
     }
 
-    val notificationsAlerts = stringResource(Res.string.settings_notifications_section_alerts)
-    addRow(
-        page = SettingsPage.Notifications,
-        key = "episode-release-alerts",
-        title = stringResource(Res.string.settings_notifications_episode_release_alerts),
-        description = stringResource(Res.string.settings_notifications_episode_release_alerts_description),
-        pageLabel = notificationsPage,
-        section = notificationsAlerts,
-        icon = Icons.Rounded.Notifications,
-    )
-    addRow(
-        page = SettingsPage.Notifications,
-        key = "notification-test",
-        title = stringResource(Res.string.settings_notifications_test_title),
-        pageLabel = notificationsPage,
-        section = stringResource(Res.string.settings_notifications_section_test),
-        icon = Icons.Rounded.Notifications,
-    )
+    if (notificationsEnabled) {
+        val notificationsAlerts = stringResource(Res.string.settings_notifications_section_alerts)
+        addRow(
+            page = SettingsPage.Notifications,
+            key = "episode-release-alerts",
+            title = stringResource(Res.string.settings_notifications_episode_release_alerts),
+            description = stringResource(Res.string.settings_notifications_episode_release_alerts_description),
+            pageLabel = notificationsPage,
+            section = notificationsAlerts,
+            icon = Icons.Rounded.Notifications,
+        )
+        addRow(
+            page = SettingsPage.Notifications,
+            key = "notification-test",
+            title = stringResource(Res.string.settings_notifications_test_title),
+            pageLabel = notificationsPage,
+            section = stringResource(Res.string.settings_notifications_section_test),
+            icon = Icons.Rounded.Notifications,
+        )
+    }
 
     addRow(
         page = SettingsPage.TraktAuthentication,
@@ -974,12 +992,12 @@ private fun SettingsSearchRevealItem(
     AnimatedVisibility(
         visibleState = visibleState,
         enter = expandVertically(
-            animationSpec = tween(durationMillis = 220),
+            animationSpec = tween(durationMillis = NuvioTokens.Motion.normalMillis),
             expandFrom = Alignment.Top,
         ) + fadeIn(
-            animationSpec = tween(durationMillis = 180),
+            animationSpec = tween(durationMillis = NuvioTokens.Motion.fastMillis),
         ) + slideInVertically(
-            animationSpec = tween(durationMillis = 220),
+            animationSpec = tween(durationMillis = NuvioTokens.Motion.normalMillis),
             initialOffsetY = { -it / 4 },
         ),
     ) {
@@ -992,17 +1010,18 @@ private fun SettingsSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
 ) {
+    val tokens = MaterialTheme.nuvio
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
-        shape = RoundedCornerShape(14.dp),
+        shape = tokens.shapes.compactCard,
         leadingIcon = {
             Icon(
                 imageVector = Icons.Rounded.Search,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = tokens.colors.textMuted,
             )
         },
         trailingIcon = if (query.isNotBlank()) {
@@ -1011,7 +1030,7 @@ private fun SettingsSearchField(
                     Icon(
                         imageVector = Icons.Rounded.Close,
                         contentDescription = stringResource(Res.string.compose_search_clear),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = tokens.colors.textMuted,
                     )
                 }
             }
@@ -1021,23 +1040,24 @@ private fun SettingsSearchField(
         placeholder = {
             Text(
                 text = stringResource(Res.string.settings_search_placeholder),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tokens.colors.textMuted,
                 style = MaterialTheme.typography.bodyLarge,
             )
         },
-        textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+        textStyle = MaterialTheme.typography.bodyLarge.copy(color = tokens.colors.textPrimary),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.outline,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-            cursorColor = MaterialTheme.colorScheme.primary,
+            focusedBorderColor = tokens.colors.borderFocus,
+            unfocusedBorderColor = tokens.colors.borderDefault,
+            focusedContainerColor = tokens.colors.surfaceCard,
+            unfocusedContainerColor = tokens.colors.surfaceCard,
+            cursorColor = tokens.colors.accent,
         ),
     )
 }
 
 @Composable
 private fun SettingsSearchEmptyState(isTablet: Boolean) {
+    val tokens = MaterialTheme.nuvio
     SettingsSection(
         title = stringResource(Res.string.settings_search_results_section),
         isTablet = isTablet,
@@ -1051,7 +1071,7 @@ private fun SettingsSearchEmptyState(isTablet: Boolean) {
                 Text(
                     text = stringResource(Res.string.settings_search_empty),
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = tokens.colors.textPrimary,
                     fontWeight = FontWeight.Medium,
                 )
             }

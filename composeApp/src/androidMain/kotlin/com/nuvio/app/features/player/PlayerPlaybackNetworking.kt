@@ -84,10 +84,29 @@ internal object PlayerPlaybackNetworking {
     }
 
     fun createHttpDataSourceFactory(defaultHeaders: Map<String, String> = emptyMap()): DataSource.Factory {
-        val mergedHeaders = DEFAULT_STREAM_HEADERS + defaultHeaders
-        return OkHttpDataSource.Factory(playbackHttpClient).apply {
-            setDefaultRequestProperties(mergedHeaders)
-            setUserAgent(DEFAULT_USER_AGENT)
+        val requestHeaders = sanitizeHeaders(defaultHeaders)
+        val client = requestHeaders.headerValue("Authorization")?.let { authorization ->
+            playbackHttpClient.newBuilder()
+                .addNetworkInterceptor { chain ->
+                    val request = chain.request()
+                    if (request.header("Authorization") == null) {
+                        chain.proceed(
+                            request.newBuilder()
+                                .header("Authorization", authorization)
+                                .build()
+                        )
+                    } else {
+                        chain.proceed(request)
+                    }
+                }
+                .build()
+        } ?: playbackHttpClient
+
+        return OkHttpDataSource.Factory(client).apply {
+            setDefaultRequestProperties(requestHeaders)
+            if (requestHeaders.headerValue("User-Agent") == null) {
+                setUserAgent(DEFAULT_USER_AGENT)
+            }
         }
     }
 
@@ -106,7 +125,7 @@ internal object PlayerPlaybackNetworking {
         readTimeoutMs: Int,
         range: String? = null,
     ): HttpURLConnection {
-        val mergedHeaders = DEFAULT_STREAM_HEADERS + headers
+        val mergedHeaders = withDefaultUserAgent(headers)
         val parsedUrl = URL(url)
         return (parsedUrl.openConnection() as HttpURLConnection).apply {
             if (this is HttpsURLConnection) {
@@ -117,7 +136,7 @@ internal object PlayerPlaybackNetworking {
             connectTimeout = connectTimeoutMs
             readTimeout = readTimeoutMs
             requestMethod = method
-            setRequestProperty("User-Agent", mergedHeaders["User-Agent"] ?: DEFAULT_USER_AGENT)
+            setRequestProperty("User-Agent", mergedHeaders.headerValue("User-Agent") ?: DEFAULT_USER_AGENT)
             mergedHeaders.forEach { (key, value) ->
                 if (key.equals("Range", ignoreCase = true)) return@forEach
                 if (key.equals("User-Agent", ignoreCase = true)) return@forEach
@@ -135,6 +154,26 @@ internal object PlayerPlaybackNetworking {
             range?.let { setRequestProperty("Range", it) }
         }
     }
+
+    private fun sanitizeHeaders(headers: Map<String, String>): Map<String, String> =
+        headers.mapNotNull { (rawKey, rawValue) ->
+            val key = rawKey.trim()
+            val value = rawValue.trim()
+            if (key.isBlank() || value.isBlank() || key.equals("Range", ignoreCase = true)) {
+                null
+            } else {
+                key to value
+            }
+        }.toMap()
+
+    private fun withDefaultUserAgent(headers: Map<String, String>): Map<String, String> {
+        val sanitized = sanitizeHeaders(headers)
+        if (sanitized.headerValue("User-Agent") != null) return sanitized
+        return DEFAULT_STREAM_HEADERS + sanitized
+    }
+
+    private fun Map<String, String>.headerValue(name: String): String? =
+        entries.firstOrNull { (key, _) -> key.equals(name, ignoreCase = true) }?.value
 }
 
 private object WebDavAuthenticator : Authenticator {

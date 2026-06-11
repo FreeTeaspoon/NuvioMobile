@@ -10,6 +10,7 @@ package com.nuvio.app.core.ui.installerx
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -52,18 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
-import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
-import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.shadow.InnerShadow
-import com.kyant.backdrop.shadow.Shadow
-import com.kyant.capsule.ContinuousCapsule
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
@@ -72,6 +62,8 @@ import kotlin.math.sign
 
 val LocalFloatingBottomBarTabScale = staticCompositionLocalOf { { 1f } }
 val LocalFloatingBottomBarPressProgress = staticCompositionLocalOf { { 0f } }
+
+private val FloatingBottomBarShape = RoundedCornerShape(percent = 50)
 
 @Composable
 fun RowScope.FloatingBottomBarItem(
@@ -82,7 +74,7 @@ fun RowScope.FloatingBottomBarItem(
     val scale = LocalFloatingBottomBarTabScale.current
     Column(
         modifier
-            .clip(ContinuousCapsule)
+            .clip(FloatingBottomBarShape)
             .clickable(
                 interactionSource = null,
                 indication = null,
@@ -107,7 +99,7 @@ fun FloatingBottomBar(
     modifier: Modifier = Modifier,
     selectedIndex: () -> Int,
     onSelected: (index: Int) -> Unit,
-    backdrop: Backdrop,
+    backdrop: Any? = null,
     tabsCount: Int,
     isBlurEnabled: Boolean = true,
     isInLightTheme: Boolean,
@@ -119,12 +111,9 @@ fun FloatingBottomBar(
     highlightColor: Color,
     content: @Composable RowScope.() -> Unit
 ) {
-    val tabsBackdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
     val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
     val animationScope = rememberCoroutineScope()
-    val blurRadius = with(density) { 18.dp.toPx() }
-    val lensRadius = with(density) { 24.dp.toPx() }
 
     var tabWidthPx by remember { mutableFloatStateOf(0f) }
     var totalWidthPx by remember { mutableFloatStateOf(0f) }
@@ -246,34 +235,8 @@ fun FloatingBottomBar(
                         indication = null,
                         onClick = {}
                     )
-                    .drawBackdrop(
-                        backdrop = backdrop,
-                        shape = { ContinuousCapsule },
-                        effects = {
-                            if (isBlurEnabled) {
-                                vibrancy()
-                                blur(blurRadius)
-                                lens(lensRadius, lensRadius)
-                            }
-                        },
-                        highlight = {
-                            Highlight.Default.copy(alpha = if (isBlurEnabled) 1f else 0f)
-                        },
-                        shadow = {
-                            Shadow.Default.copy(
-                                color = Color.Black.copy(if (isInLightTheme) 0.1f else 0.2f),
-                            )
-                        },
-                        layerBlock = {
-                            if (isBlurEnabled) {
-                                val progress = dampedDragAnimation.pressProgress
-                                val scale = lerp(1f, 1f + 16f.dp.toPx() / size.width, progress)
-                                scaleX = scale
-                                scaleY = scale
-                            }
-                        },
-                        onDrawSurface = { drawRect(containerColor) }
-                    )
+                    .clip(FloatingBottomBarShape)
+                    .background(containerColor)
                     .then(if (isBlurEnabled && interactiveHighlight != null) interactiveHighlight.modifier else Modifier)
                     .height(64.dp)
                     .padding(4.dp),
@@ -293,24 +256,9 @@ fun FloatingBottomBar(
                 Modifier
                     .clearAndSetSemantics {}
                     .alpha(0.001f)
-                    .layerBackdrop(tabsBackdrop)
                     .graphicsLayer { translationX = panelOffset }
-                    .drawBackdrop(
-                        backdrop = backdrop,
-                        shape = { ContinuousCapsule },
-                        effects = {
-                            if (isBlurEnabled) {
-                                val progress = dampedDragAnimation.pressProgress
-                                vibrancy()
-                                blur(blurRadius)
-                                lens(lensRadius * progress, lensRadius * progress)
-                            }
-                        },
-                        highlight = {
-                            Highlight.Default.copy(alpha = if (isBlurEnabled) dampedDragAnimation.pressProgress else 0f)
-                        },
-                        onDrawSurface = { drawRect(containerColor) }
-                    )
+                    .clip(FloatingBottomBarShape)
+                    .background(containerColor)
                     .then(if (isBlurEnabled && interactiveHighlight != null) interactiveHighlight.modifier else Modifier)
                     .height(56.dp)
                     .padding(horizontal = 4.dp),
@@ -337,55 +285,22 @@ fun FloatingBottomBar(
                     }
                     .then(if (isBlurEnabled && interactiveHighlight != null) interactiveHighlight.gestureModifier else Modifier)
                     .then(dampedDragAnimation.modifier)
-                    .drawBackdrop(
-                        backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
-                        shape = { ContinuousCapsule },
-                        effects = {
-                            if (isBlurEnabled) {
-                                val progress = dampedDragAnimation.pressProgress
-                                lens(10f.dp.toPx() * progress, 14f.dp.toPx() * progress, true)
-                            }
-                        },
-                        highlight = {
-                            Highlight.Default.copy(alpha = if (isBlurEnabled) dampedDragAnimation.pressProgress else 0f)
-                        },
-                        shadow = { Shadow(alpha = if (isBlurEnabled) dampedDragAnimation.pressProgress else 0f) },
-                        innerShadow = {
-                            InnerShadow(
-                                radius = 8f.dp * dampedDragAnimation.pressProgress,
-                                alpha = if (isBlurEnabled) dampedDragAnimation.pressProgress else 0f
-                            )
-                        },
-                        layerBlock = {
-                            if (isBlurEnabled) {
-                                scaleX = dampedDragAnimation.scaleX
-                                scaleY = dampedDragAnimation.scaleY
-                                val velocity = dampedDragAnimation.velocity / 10f
-                                scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
-                                scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
-                            }
-                        },
-                        onDrawSurface = {
-                            val progress = if (isBlurEnabled) dampedDragAnimation.pressProgress else 0f
-                            drawRect(
-                                color = if (isInLightTheme) {
-                                    Color.Black.copy(0.1f)
-                                } else {
-                                    indicatorRestColor
-                                },
-                                alpha = 1f - progress
-                            )
-                            drawRect(
-                                color = indicatorPressedOverlayColor,
-                                alpha = progress
-                            )
-                            if (progress > 0f) {
-                                drawRect(
-                                    color = pressedIndicatorScrimColor,
-                                    alpha = progress
-                                )
-                            }
+                    .graphicsLayer {
+                        if (isBlurEnabled) {
+                            scaleX = dampedDragAnimation.scaleX
+                            scaleY = dampedDragAnimation.scaleY
+                            val velocity = dampedDragAnimation.velocity / 10f
+                            scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
+                            scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
                         }
+                    }
+                    .clip(FloatingBottomBarShape)
+                    .background(
+                        if (isInLightTheme) {
+                            Color.Black.copy(0.1f)
+                        } else {
+                            indicatorRestColor
+                        },
                     )
                     .height(56.dp)
                     .width(with(density) { ((totalWidthPx - 8.dp.toPx()) / tabsCount).toDp() })

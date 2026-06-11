@@ -1875,4 +1875,13 @@
     <string name="settings_playback_ios_audio_output_avfoundation_desc">Experimental support for Spatial Audio and multichannel output.</string>
     <string name="settings_playback_ios_audio_output_audiounit_desc">Use the legacy AudioUnit output.</string>
     <string name="settings_playback_ios_audio_output_dialog">Audio output</string>
+    <!-- English fallback strings added for untranslated upstream desktop/display keys. -->
+    <string name="compose_about_based_on_version_format">Based on Nuvio %1$s</string>
+    <string name="settings_appearance_desktop_navigation">Desktop Navigation</string>
+    <string name="settings_appearance_desktop_navigation_sheet_title">Choose Desktop Navigation</string>
+    <string name="settings_appearance_desktop_navigation_sidebar">Sidebar</string>
+    <string name="settings_appearance_desktop_navigation_top_bar">Top Bar</string>
+    <string name="settings_stream_addon_logo_title">Addon logo</string>
+    <string name="settings_stream_addon_logo_description">Show addon logos on stream cards when available.</string>
+    <string name="settings_stream_display_section">Display</string>
 </resources>

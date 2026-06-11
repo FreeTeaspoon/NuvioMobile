@@ -15,8 +15,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -28,15 +32,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import com.nuvio.app.isDesktop
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.home_view_all
 import nuvio.composeapp.generated.resources.poster_logo_content_description
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.abs
 
 enum class NuvioPosterShape {
     Poster,
@@ -63,9 +70,11 @@ fun <T> NuvioShelfSection(
     key: ((T) -> Any)? = null,
     itemContent: @Composable (T) -> Unit,
 ) {
+    val tokens = MaterialTheme.nuvio
+    val rowState = rememberLazyListState()
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap + NuvioTokens.Space.s2),
     ) {
         if (title.isNotBlank()) {
             NuvioShelfSectionHeader(
@@ -77,6 +86,8 @@ fun <T> NuvioShelfSection(
             )
         }
         LazyRow(
+            state = rowState,
+            modifier = Modifier.desktopShelfDragScroll(rowState),
             contentPadding = rowContentPadding,
             horizontalArrangement = Arrangement.spacedBy(itemSpacing),
         ) {
@@ -91,6 +102,47 @@ fun <T> NuvioShelfSection(
                 items(entries) { entry ->
                     itemContent(entry)
                 }
+            }
+        }
+    }
+}
+
+private fun Modifier.desktopShelfDragScroll(
+    state: LazyListState,
+): Modifier {
+    if (!isDesktop) return this
+
+    return pointerInput(state) {
+        awaitEachGesture {
+            val down = awaitFirstDown(pass = PointerEventPass.Initial)
+            var totalDx = 0f
+            var totalDy = 0f
+            var dragging = false
+
+            while (true) {
+                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                if (!change.pressed) break
+
+                val delta = change.position - change.previousPosition
+                totalDx += delta.x
+                totalDy += delta.y
+
+                if (!dragging) {
+                    val horizontalDrag =
+                        abs(totalDx) > viewConfiguration.touchSlop && abs(totalDx) > abs(totalDy)
+                    val verticalDrag =
+                        abs(totalDy) > viewConfiguration.touchSlop && abs(totalDy) > abs(totalDx)
+
+                    when {
+                        verticalDrag -> break
+                        horizontalDrag -> dragging = true
+                        else -> continue
+                    }
+                }
+
+                state.dispatchRawDelta(-delta.x)
+                change.consume()
             }
         }
     }
@@ -111,6 +163,7 @@ fun NuvioPosterCard(
     onLongClick: (() -> Unit)? = null,
 ) {
     val posterCardStyle = rememberPosterCardStyleUiState()
+    val tokens = MaterialTheme.nuvio
     val cardWidth = shape.cardWidth(basePosterWidthDp = posterCardStyle.widthDp)
     val cardShape = RoundedCornerShape(posterCardStyle.cornerRadiusDp.dp)
     val catalogLogoOverlaySize = catalogLogoOverlaySize(
@@ -121,19 +174,19 @@ fun NuvioPosterCard(
 
     Column(
         modifier = modifier.width(cardWidth),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s6),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(shape.aspectRatio)
                 .clip(cardShape)
-                .background(MaterialTheme.colorScheme.surface)
+                .background(tokens.colors.surface)
                 .posterCardClickable(onClick = onClick, onLongClick = onLongClick),
             contentAlignment = Alignment.Center,
         ) {
             if (imageUrl != null) {
-                AsyncImage(
+                NuvioAsyncImage(
                     model = imageUrl,
                     contentDescription = title,
                     modifier = Modifier.matchParentSize(),
@@ -142,9 +195,9 @@ fun NuvioPosterCard(
             } else {
                 Text(
                     text = title,
-                    modifier = Modifier.padding(horizontal = 14.dp),
+                    modifier = Modifier.padding(horizontal = NuvioTokens.Space.s14),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tokens.colors.textMuted,
                     textAlign = TextAlign.Center,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
@@ -155,10 +208,10 @@ fun NuvioPosterCard(
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                        .padding(horizontal = NuvioTokens.Space.s10, vertical = NuvioTokens.Space.s10),
                 ) {
                     if (!bottomLeftLogoUrl.isNullOrBlank()) {
-                        AsyncImage(
+                        NuvioAsyncImage(
                             model = bottomLeftLogoUrl,
                             contentDescription = stringResource(Res.string.poster_logo_content_description, title),
                             modifier = Modifier
@@ -170,7 +223,7 @@ fun NuvioPosterCard(
                         Text(
                             text = bottomLeftText.orEmpty(),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            color = tokens.colors.textPrimary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.widthIn(max = catalogLogoOverlaySize.textMaxWidth),
@@ -185,7 +238,7 @@ fun NuvioPosterCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = tokens.colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -193,15 +246,15 @@ fun NuvioPosterCard(
                 Text(
                     text = detailLine,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tokens.colors.textMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             } else {
-                Box(modifier = Modifier.height(0.dp))
+                Box(modifier = Modifier.height(NuvioTokens.Space.none))
             }
         } else {
-            Box(modifier = Modifier.height(0.dp))
+            Box(modifier = Modifier.height(NuvioTokens.Space.none))
         }
     }
 }
@@ -214,6 +267,7 @@ private fun NuvioShelfSectionHeader(
     onViewAllClick: (() -> Unit)? = null,
     viewAllPillSize: NuvioViewAllPillSize = NuvioViewAllPillSize.Default,
 ) {
+    val tokens = MaterialTheme.nuvio
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -225,19 +279,19 @@ private fun NuvioShelfSectionHeader(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
+                color = tokens.colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (showAccent) {
                 Box(
                     modifier = Modifier
-                        .padding(top = 6.dp)
-                        .width(60.dp)
-                        .height(4.dp)
+                        .padding(top = NuvioTokens.Space.s6)
+                        .width(NuvioTokens.Space.s64 - NuvioTokens.Space.s4)
+                        .height(NuvioTokens.Space.s4)
                         .background(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = RoundedCornerShape(999.dp),
+                            color = tokens.colors.accent,
+                            shape = tokens.shapes.chip,
                     ),
                 )
             }
@@ -256,22 +310,21 @@ private fun NuvioViewAllPill(
     onClick: (() -> Unit)?,
     size: NuvioViewAllPillSize,
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-    val isAmoled = colorScheme.background == androidx.compose.ui.graphics.Color.Black && colorScheme.surface == androidx.compose.ui.graphics.Color(0xFF050505)
-    val horizontalPadding = if (size == NuvioViewAllPillSize.Compact) 12.dp else 18.dp
-    val verticalPadding = if (size == NuvioViewAllPillSize.Compact) 9.dp else 14.dp
+    val tokens = MaterialTheme.nuvio
+    val horizontalPadding = if (size == NuvioViewAllPillSize.Compact) NuvioTokens.Space.s12 else NuvioTokens.Space.s18
+    val verticalPadding = if (size == NuvioViewAllPillSize.Compact) NuvioTokens.Space.s8 + NuvioTokens.Space.s1 else NuvioTokens.Space.s14
     val textStyle = if (size == NuvioViewAllPillSize.Compact) {
         MaterialTheme.typography.labelLarge
     } else {
         MaterialTheme.typography.titleMedium
     }
-    val iconSpacing = if (size == NuvioViewAllPillSize.Compact) 2.dp else 4.dp
+    val iconSpacing = if (size == NuvioViewAllPillSize.Compact) NuvioTokens.Space.s2 else NuvioTokens.Space.s4
 
     Row(
         modifier = Modifier
             .background(
-                color = if (isAmoled) androidx.compose.ui.graphics.Color(0xFF0D0D0D) else colorScheme.surface,
-                shape = RoundedCornerShape(20.dp),
+                color = tokens.colors.surface,
+                shape = RoundedCornerShape(NuvioTokens.Radius.xl),
             )
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = horizontalPadding, vertical = verticalPadding),
@@ -281,13 +334,13 @@ private fun NuvioViewAllPill(
         Text(
             text = stringResource(Res.string.home_view_all),
             style = textStyle,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = tokens.colors.textPrimary,
         )
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.height(if (size == NuvioViewAllPillSize.Compact) 16.dp else 20.dp),
+            tint = tokens.colors.textMuted,
+            modifier = Modifier.height(if (size == NuvioViewAllPillSize.Compact) NuvioTokens.Icon.sm else tokens.icons.md),
         )
     }
 }
@@ -342,6 +395,7 @@ internal fun Modifier.posterCardClickable(
             onClick = { onClick?.invoke() },
             onLongClick = onLongClick,
         )
+            .secondaryClick(onLongClick)
     } else {
         this
     }
