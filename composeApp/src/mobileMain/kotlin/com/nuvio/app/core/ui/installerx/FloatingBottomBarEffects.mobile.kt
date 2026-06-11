@@ -5,6 +5,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.lerp
 import com.kyant.backdrop.Backdrop
@@ -102,8 +103,11 @@ internal actual fun Modifier.floatingBottomBarTabsEffect(
     containerColor: Color,
     blurRadius: Float,
     lensRadius: Float,
+    translationX: Float,
     pressProgress: () -> Float,
-): Modifier = layerBackdrop(state.tabsBackdrop).drawBackdrop(
+): Modifier = layerBackdrop(state.tabsBackdrop).graphicsLayer {
+    this.translationX = translationX
+}.drawBackdrop(
     backdrop = state.backdrop,
     shape = { FloatingBottomBarShape },
     effects = {

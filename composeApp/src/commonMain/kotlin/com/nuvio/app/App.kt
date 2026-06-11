@@ -1484,7 +1484,7 @@ private fun MainAppContent(
                                     }
                                 }
                             },
-                        ) { innerPadding ->
+                        ) { _ ->
                             Box(modifier = Modifier.fillMaxSize()) {
                                 CompositionLocalProvider(
                                     LocalNuvioBottomNavigationOverlayPadding provides if (useNativeBottomTabs) 49.dp else 0.dp,
@@ -1497,7 +1497,6 @@ private fun MainAppContent(
                                     AppTabHost(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .padding(innerPadding)
                                             .padding(start = if (useDesktopSidebar) DesktopSidebarCollapsedWidth else 0.dp)
                                             .then(
                                                 if (useFloatingBottomTabs) {

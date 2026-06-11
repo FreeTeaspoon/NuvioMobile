@@ -46,8 +46,11 @@ internal actual fun Modifier.floatingBottomBarTabsEffect(
     containerColor: Color,
     blurRadius: Float,
     lensRadius: Float,
+    translationX: Float,
     pressProgress: () -> Float,
-): Modifier = clip(FloatingBottomBarShape).background(containerColor)
+): Modifier = graphicsLayer {
+    this.translationX = translationX
+}.clip(FloatingBottomBarShape).background(containerColor)
 
 internal actual fun Modifier.floatingBottomBarIndicatorEffect(
     state: FloatingBottomBarVisualState,
