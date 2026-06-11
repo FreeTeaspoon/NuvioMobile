@@ -10,7 +10,6 @@ package com.nuvio.app.core.ui.installerx
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -42,8 +41,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -63,7 +62,55 @@ import kotlin.math.sign
 val LocalFloatingBottomBarTabScale = staticCompositionLocalOf { { 1f } }
 val LocalFloatingBottomBarPressProgress = staticCompositionLocalOf { { 0f } }
 
-private val FloatingBottomBarShape = RoundedCornerShape(percent = 50)
+expect class FloatingBottomBarBackdrop
+
+internal expect class FloatingBottomBarVisualState
+
+internal expect val FloatingBottomBarShape: Shape
+
+@Composable
+expect fun rememberFloatingBottomBarBackdrop(): FloatingBottomBarBackdrop
+
+expect fun Modifier.floatingBottomBarBackdropLayer(
+    backdrop: FloatingBottomBarBackdrop,
+): Modifier
+
+@Composable
+internal expect fun rememberFloatingBottomBarVisualState(
+    backdrop: FloatingBottomBarBackdrop,
+): FloatingBottomBarVisualState
+
+internal expect fun Modifier.floatingBottomBarContainerEffect(
+    state: FloatingBottomBarVisualState,
+    isBlurEnabled: Boolean,
+    isInLightTheme: Boolean,
+    containerColor: Color,
+    blurRadius: Float,
+    lensRadius: Float,
+    pressProgress: () -> Float,
+): Modifier
+
+internal expect fun Modifier.floatingBottomBarTabsEffect(
+    state: FloatingBottomBarVisualState,
+    isBlurEnabled: Boolean,
+    containerColor: Color,
+    blurRadius: Float,
+    lensRadius: Float,
+    pressProgress: () -> Float,
+): Modifier
+
+internal expect fun Modifier.floatingBottomBarIndicatorEffect(
+    state: FloatingBottomBarVisualState,
+    isBlurEnabled: Boolean,
+    isInLightTheme: Boolean,
+    indicatorRestColor: Color,
+    indicatorPressedOverlayColor: Color,
+    pressedIndicatorScrimColor: Color,
+    pressProgress: () -> Float,
+    scaleX: () -> Float,
+    scaleY: () -> Float,
+    velocity: () -> Float,
+): Modifier
 
 @Composable
 fun RowScope.FloatingBottomBarItem(
@@ -99,7 +146,7 @@ fun FloatingBottomBar(
     modifier: Modifier = Modifier,
     selectedIndex: () -> Int,
     onSelected: (index: Int) -> Unit,
-    backdrop: Any? = null,
+    backdrop: FloatingBottomBarBackdrop,
     tabsCount: Int,
     isBlurEnabled: Boolean = true,
     isInLightTheme: Boolean,
@@ -111,9 +158,12 @@ fun FloatingBottomBar(
     highlightColor: Color,
     content: @Composable RowScope.() -> Unit
 ) {
+    val visualState = rememberFloatingBottomBarVisualState(backdrop)
     val density = LocalDensity.current
     val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
     val animationScope = rememberCoroutineScope()
+    val blurRadius = with(density) { 18.dp.toPx() }
+    val lensRadius = with(density) { 24.dp.toPx() }
 
     var tabWidthPx by remember { mutableFloatStateOf(0f) }
     var totalWidthPx by remember { mutableFloatStateOf(0f) }
@@ -235,8 +285,15 @@ fun FloatingBottomBar(
                         indication = null,
                         onClick = {}
                     )
-                    .clip(FloatingBottomBarShape)
-                    .background(containerColor)
+                    .floatingBottomBarContainerEffect(
+                        state = visualState,
+                        isBlurEnabled = isBlurEnabled,
+                        isInLightTheme = isInLightTheme,
+                        containerColor = containerColor,
+                        blurRadius = blurRadius,
+                        lensRadius = lensRadius,
+                        pressProgress = { dampedDragAnimation.pressProgress },
+                    )
                     .then(if (isBlurEnabled && interactiveHighlight != null) interactiveHighlight.modifier else Modifier)
                     .height(64.dp)
                     .padding(4.dp),
@@ -257,8 +314,14 @@ fun FloatingBottomBar(
                     .clearAndSetSemantics {}
                     .alpha(0.001f)
                     .graphicsLayer { translationX = panelOffset }
-                    .clip(FloatingBottomBarShape)
-                    .background(containerColor)
+                    .floatingBottomBarTabsEffect(
+                        state = visualState,
+                        isBlurEnabled = isBlurEnabled,
+                        containerColor = containerColor,
+                        blurRadius = blurRadius,
+                        lensRadius = lensRadius,
+                        pressProgress = { dampedDragAnimation.pressProgress },
+                    )
                     .then(if (isBlurEnabled && interactiveHighlight != null) interactiveHighlight.modifier else Modifier)
                     .height(56.dp)
                     .padding(horizontal = 4.dp),
@@ -285,22 +348,17 @@ fun FloatingBottomBar(
                     }
                     .then(if (isBlurEnabled && interactiveHighlight != null) interactiveHighlight.gestureModifier else Modifier)
                     .then(dampedDragAnimation.modifier)
-                    .graphicsLayer {
-                        if (isBlurEnabled) {
-                            scaleX = dampedDragAnimation.scaleX
-                            scaleY = dampedDragAnimation.scaleY
-                            val velocity = dampedDragAnimation.velocity / 10f
-                            scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
-                            scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
-                        }
-                    }
-                    .clip(FloatingBottomBarShape)
-                    .background(
-                        if (isInLightTheme) {
-                            Color.Black.copy(0.1f)
-                        } else {
-                            indicatorRestColor
-                        },
+                    .floatingBottomBarIndicatorEffect(
+                        state = visualState,
+                        isBlurEnabled = isBlurEnabled,
+                        isInLightTheme = isInLightTheme,
+                        indicatorRestColor = indicatorRestColor,
+                        indicatorPressedOverlayColor = indicatorPressedOverlayColor,
+                        pressedIndicatorScrimColor = pressedIndicatorScrimColor,
+                        pressProgress = { dampedDragAnimation.pressProgress },
+                        scaleX = { dampedDragAnimation.scaleX },
+                        scaleY = { dampedDragAnimation.scaleY },
+                        velocity = { dampedDragAnimation.velocity },
                     )
                     .height(56.dp)
                     .width(with(density) { ((totalWidthPx - 8.dp.toPx()) / tabsCount).toDp() })

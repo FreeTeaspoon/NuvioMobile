@@ -109,6 +109,8 @@ import com.nuvio.app.core.ui.LocalNuvioBottomOverlayScrollPadding
 import com.nuvio.app.core.ui.TraktListPickerDialog
 import com.nuvio.app.core.ui.NuvioTheme
 import com.nuvio.app.core.ui.NuvioTokens
+import com.nuvio.app.core.ui.installerx.floatingBottomBarBackdropLayer
+import com.nuvio.app.core.ui.installerx.rememberFloatingBottomBarBackdrop
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.NativeNavigationTab
 import com.nuvio.app.core.ui.NuvioNavigationBarScrollClearance
@@ -1400,6 +1402,7 @@ private fun MainAppContent(
                         val useNativeBottomTabs =
                             liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
                         val useFloatingBottomTabs = !isTabletLayout && !useNativeBottomTabs
+                        val floatingBottomTabsBackdrop = rememberFloatingBottomBarBackdrop()
                         val useDesktopSidebar = isDesktop &&
                             isTabletLayout &&
                             !useNativeBottomTabs &&
@@ -1444,6 +1447,7 @@ private fun MainAppContent(
                                     NuvioNavigationBar(
                                         selectedIndex = rootTabs.indexOf(selectedTab).coerceAtLeast(0),
                                         itemCount = rootTabs.size,
+                                        backdrop = floatingBottomTabsBackdrop,
                                         onSelectedIndexChange = { index ->
                                             rootTabs.getOrNull(index)?.let(::handleRootTabClick)
                                         },
@@ -1494,7 +1498,14 @@ private fun MainAppContent(
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .padding(innerPadding)
-                                            .padding(start = if (useDesktopSidebar) DesktopSidebarCollapsedWidth else 0.dp),
+                                            .padding(start = if (useDesktopSidebar) DesktopSidebarCollapsedWidth else 0.dp)
+                                            .then(
+                                                if (useFloatingBottomTabs) {
+                                                    Modifier.floatingBottomBarBackdropLayer(floatingBottomTabsBackdrop)
+                                                } else {
+                                                    Modifier
+                                                },
+                                            ),
                                         selectedTab = selectedTab,
                                         topChromePadding = topChromePadding,
                                         searchFocusRequestCount = searchFocusRequestCount,

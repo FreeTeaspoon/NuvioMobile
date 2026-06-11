@@ -19,7 +19,9 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.installerx.FloatingBottomBar
+import com.nuvio.app.core.ui.installerx.FloatingBottomBarBackdrop
 import com.nuvio.app.core.ui.installerx.FloatingBottomBarItem
+import com.nuvio.app.core.ui.installerx.rememberFloatingBottomBarBackdrop
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -30,7 +32,7 @@ fun NuvioNavigationBar(
     modifier: Modifier = Modifier,
     selectedIndex: Int? = null,
     itemCount: Int? = null,
-    backdrop: Any? = null,
+    backdrop: FloatingBottomBarBackdrop = rememberFloatingBottomBarBackdrop(),
     onSelectedIndexChange: ((Int) -> Unit)? = null,
     content: @Composable NuvioNavigationBarScope.() -> Unit,
 ) {
