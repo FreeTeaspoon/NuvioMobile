@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Info
@@ -27,7 +26,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.nuvio.app.features.cloud.CloudLibraryContentType
 import com.nuvio.app.features.cloud.cloudLibraryDisplayArtworkUrl
 import com.nuvio.app.features.watchprogress.ContinueWatchingItem
@@ -52,6 +50,7 @@ fun NuvioContinueWatchingActionSheet(
     onRemove: () -> Unit,
 ) {
     if (item == null) return
+    val tokens = MaterialTheme.nuvio
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
 
@@ -73,7 +72,7 @@ fun NuvioContinueWatchingActionSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = nuvioSafeBottomPadding(16.dp)),
+                .padding(bottom = nuvioSafeBottomPadding(tokens.spacing.screenHorizontal)),
         ) {
             ContinueWatchingSheetHeader(item = item)
             if (showDetailsOption) {
@@ -115,24 +114,25 @@ private fun ContinueWatchingSheetHeader(
     item: ContinueWatchingItem,
 ) {
     val posterCardStyle = rememberPosterCardStyleUiState()
+    val tokens = MaterialTheme.nuvio
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(horizontal = tokens.spacing.screenHorizontal, vertical = NuvioTokens.Space.s14),
+        horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s14),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(width = 64.dp, height = 92.dp)
-                .clip(RoundedCornerShape(posterCardStyle.cornerRadiusDp.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .size(width = NuvioTokens.Space.s64, height = NuvioTokens.Space.s80 + NuvioTokens.Space.s12)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(posterCardStyle.cornerRadiusDp.dp))
+                .background(tokens.colors.surfaceCard),
             contentAlignment = Alignment.Center,
         ) {
             val artwork = item.poster ?: item.imageUrl
             if (artwork != null) {
-                AsyncImage(
+                NuvioAsyncImage(
                     model = cloudLibraryDisplayArtworkUrl(artwork),
                     contentDescription = item.title,
                     modifier = Modifier.matchParentSize(),
@@ -141,9 +141,9 @@ private fun ContinueWatchingSheetHeader(
             } else {
                 Text(
                     text = item.title,
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(tokens.spacing.listGap),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tokens.colors.textMuted,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -152,12 +152,12 @@ private fun ContinueWatchingSheetHeader(
 
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s4),
         ) {
             Text(
                 text = item.title,
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = tokens.colors.textPrimary,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -165,7 +165,7 @@ private fun ContinueWatchingSheetHeader(
             Text(
                 text = localizedContinueWatchingSubtitle(item),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tokens.colors.textMuted,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

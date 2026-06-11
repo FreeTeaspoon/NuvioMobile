@@ -45,9 +45,6 @@ object P2pSettingsRepository {
         if (p2pEnabled == enabled) return
         p2pEnabled = enabled
         P2pSettingsStorage.saveP2pEnabled(enabled)
-        if (!enabled) {
-            P2pStreamingEngine.shutdown()
-        }
         publish()
     }
 

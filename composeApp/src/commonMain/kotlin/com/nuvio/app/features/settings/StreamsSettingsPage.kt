@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
@@ -51,6 +50,9 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nuvio.app.core.ui.NuvioTokens
+import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.features.streams.STREAM_BADGE_IMPORT_LIMIT
 import com.nuvio.app.features.streams.StreamBadgeChip
 import com.nuvio.app.features.streams.StreamBadgeChipSize
 import com.nuvio.app.features.streams.StreamBadgeFilter
@@ -89,6 +91,9 @@ import nuvio.composeapp.generated.resources.settings_stream_badge_urls_title
 import nuvio.composeapp.generated.resources.settings_stream_badges_section
 import nuvio.composeapp.generated.resources.settings_stream_size_badges_description
 import nuvio.composeapp.generated.resources.settings_stream_size_badges_title
+import nuvio.composeapp.generated.resources.settings_stream_addon_logo_title
+import nuvio.composeapp.generated.resources.settings_stream_addon_logo_description
+import nuvio.composeapp.generated.resources.settings_stream_display_section
 import org.jetbrains.compose.resources.stringResource
 
 internal fun LazyListScope.streamsSettingsContent(isTablet: Boolean) {
@@ -127,6 +132,21 @@ internal fun LazyListScope.streamsSettingsContent(isTablet: Boolean) {
                     icon = Icons.Rounded.Style,
                     isTablet = isTablet,
                     onClick = { showBadgeImportDialog = true },
+                )
+            }
+        }
+
+        SettingsSection(
+            title = stringResource(Res.string.settings_stream_display_section),
+            isTablet = isTablet,
+        ) {
+            SettingsGroup(isTablet = isTablet) {
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_stream_addon_logo_title),
+                    description = stringResource(Res.string.settings_stream_addon_logo_description),
+                    checked = currentSettings.showAddonLogo,
+                    isTablet = isTablet,
+                    onCheckedChange = StreamBadgeSettingsRepository::setShowAddonLogo,
                 )
             }
         }
@@ -179,18 +199,19 @@ private fun StreamBadgePositionDialog(
     onPlacementSelected: (StreamBadgePlacement) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val tokens = MaterialTheme.nuvio
     BasicAlertDialog(onDismissRequest = onDismiss) {
         SettingsDialogSurface(title = stringResource(Res.string.settings_stream_badge_position_dialog_title)) {
             Text(
                 text = stringResource(Res.string.settings_stream_badge_position_dialog_description),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tokens.colors.textSecondary,
             )
             StreamBadgePlacement.entries.forEach { placement ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap),
                 ) {
                     RadioButton(
                         selected = placement == selectedPlacement,
@@ -199,7 +220,7 @@ private fun StreamBadgePositionDialog(
                     Text(
                         text = streamBadgePlacementLabel(placement),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = tokens.colors.textPrimary,
                     )
                 }
             }
@@ -221,6 +242,7 @@ private fun BadgeUrlManagerDialog(
     currentRules: StreamBadgeRules,
     onDismiss: () -> Unit,
 ) {
+    val tokens = MaterialTheme.nuvio
     val scope = rememberCoroutineScope()
     val imports = currentRules.normalized().imports
     var draftUrl by rememberSaveable { mutableStateOf("") }
@@ -232,9 +254,9 @@ private fun BadgeUrlManagerDialog(
     BasicAlertDialog(onDismissRequest = onDismiss) {
         SettingsDialogSurface(title = stringResource(Res.string.settings_stream_badge_urls_title)) {
             Text(
-                text = stringResource(Res.string.settings_stream_badge_urls_description),
+                text = stringResource(Res.string.settings_stream_badge_urls_description, STREAM_BADGE_IMPORT_LIMIT),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tokens.colors.textSecondary,
             )
             OutlinedTextField(
                 value = draftUrl,
@@ -249,25 +271,26 @@ private fun BadgeUrlManagerDialog(
                 maxLines = 4,
                 enabled = !isImporting,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surface,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedBorderColor = tokens.colors.borderFocus.copy(alpha = tokens.opacity.strong),
+                    unfocusedBorderColor = tokens.colors.borderDefault.copy(alpha = tokens.opacity.medium),
+                    focusedContainerColor = tokens.colors.surface,
+                    unfocusedContainerColor = tokens.colors.surface,
+                    disabledContainerColor = tokens.colors.surface,
                 ),
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = stringResource(
                         Res.string.settings_fusion_badge_urls_imported,
                         imports.size,
+                        STREAM_BADGE_IMPORT_LIMIT,
                     ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tokens.colors.textMuted,
                     modifier = Modifier.weight(1f),
                 )
                 Button(
@@ -291,9 +314,9 @@ private fun BadgeUrlManagerDialog(
                 ) {
                     if (isImporting) {
                         CircularProgressIndicator(
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(16.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = tokens.borders.medium,
+                            modifier = Modifier.size(tokens.icons.sm),
+                            color = tokens.colors.onAccent,
                         )
                     } else {
                         Text(text = stringResource(Res.string.action_import), maxLines = 1)
@@ -304,7 +327,7 @@ private fun BadgeUrlManagerDialog(
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                    color = tokens.colors.danger,
                 )
             }
 
@@ -312,14 +335,14 @@ private fun BadgeUrlManagerDialog(
                 Text(
                     text = stringResource(Res.string.settings_fusion_badges_empty),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tokens.colors.textMuted,
                 )
             } else {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 300.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap),
                 ) {
                     items(
                         items = imports,
@@ -348,7 +371,7 @@ private fun BadgeUrlManagerDialog(
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(
@@ -380,26 +403,27 @@ private fun BadgeUrlRow(
     onCopy: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val tokens = MaterialTheme.nuvio
     val containerColor = if (import.isActive) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        tokens.colors.overlaySelected
     } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        tokens.colors.surfaceCard
     }
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = tokens.shapes.compactCard,
         color = containerColor,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = NuvioTokens.Space.s12, vertical = NuvioTokens.Space.s10),
+            verticalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap),
             ) {
                 if (showActiveChoice) {
                     RadioButton(
@@ -411,8 +435,8 @@ private fun BadgeUrlRow(
                 Text(
                     text = import.sourceUrl,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
+                    color = tokens.colors.textPrimary,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
@@ -420,7 +444,7 @@ private fun BadgeUrlRow(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap, Alignment.End),
             ) {
                 val status = if (import.isActive) {
                     stringResource(Res.string.settings_fusion_badge_url_active)
@@ -435,13 +459,14 @@ private fun BadgeUrlRow(
                         import.groups.size,
                     ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tokens.colors.textMuted,
+                    modifier = Modifier.weight(1f),
                 )
             }
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap, Alignment.End),
+                verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s4),
             ) {
                 TextButton(
                     enabled = enabled,
@@ -450,9 +475,9 @@ private fun BadgeUrlRow(
                     Icon(
                         imageVector = Icons.Rounded.Visibility,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(tokens.icons.sm),
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(NuvioTokens.Space.s4))
                     Text(text = stringResource(Res.string.settings_fusion_badge_preview_action), maxLines = 1)
                 }
                 TextButton(
@@ -462,9 +487,9 @@ private fun BadgeUrlRow(
                     Icon(
                         imageVector = Icons.Rounded.ContentCopy,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(tokens.icons.sm),
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(NuvioTokens.Space.s4))
                     Text(text = "Copy", maxLines = 1)
                 }
                 IconButton(
@@ -487,6 +512,7 @@ private fun BadgePreviewDialog(
     import: StreamBadgeImport,
     onDismiss: () -> Unit,
 ) {
+    val tokens = MaterialTheme.nuvio
     val sections = badgePreviewSections(import)
     val badgeCount = sections.sumOf { it.filters.size }
 
@@ -495,27 +521,27 @@ private fun BadgePreviewDialog(
             Text(
                 text = import.sourceUrl,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tokens.colors.textSecondary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = stringResource(Res.string.settings_fusion_badge_preview_count, badgeCount),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tokens.colors.textMuted,
             )
             if (sections.isEmpty()) {
                 Text(
                     text = stringResource(Res.string.settings_fusion_badge_preview_empty),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tokens.colors.textMuted,
                 )
             } else {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 460.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(tokens.spacing.railGap),
                 ) {
                     items(
                         items = sections,
@@ -523,18 +549,18 @@ private fun BadgePreviewDialog(
                     ) { section ->
                         Column(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap),
                         ) {
                             Text(
                                 text = section.title,
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = tokens.colors.textPrimary,
                                 fontWeight = FontWeight.SemiBold,
                             )
                             FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                verticalArrangement = Arrangement.spacedBy(5.dp),
+                                horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s5),
+                                verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s5),
                             ) {
                                 section.filters.forEach { filter ->
                                     StreamBadgeChip(
@@ -568,25 +594,26 @@ private fun SettingsDialogSurface(
     title: String,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val tokens = MaterialTheme.nuvio
     Surface(
         modifier = Modifier
             .widthIn(max = 560.dp)
             .fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
+        shape = tokens.shapes.dialog,
+        color = tokens.colors.surfaceDialog,
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(tokens.spacing.dialogPadding),
+            verticalArrangement = Arrangement.spacedBy(tokens.spacing.listGap),
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = tokens.colors.textPrimary,
                 fontWeight = FontWeight.SemiBold,
             )
             content()
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(NuvioTokens.Space.s2))
         }
     }
 }

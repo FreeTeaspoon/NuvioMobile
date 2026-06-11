@@ -653,7 +653,7 @@
     <string name="settings_fusion_badges_summary">%1$d URLs, %2$d active Fusion badges</string>
     <string name="settings_fusion_badges_empty">No Fusion badge URLs imported.</string>
     <string name="settings_fusion_badge_url_label">Fusion badge JSON URL</string>
-    <string name="settings_fusion_badge_urls_imported">%1$d Fusion URLs imported</string>
+    <string name="settings_fusion_badge_urls_imported">%1$d/%2$d Fusion URLs imported</string>
     <string name="settings_fusion_badge_url_active">Active</string>
     <string name="settings_fusion_badge_url_inactive">Inactive</string>
     <string name="settings_fusion_badge_url_status_summary">%1$s, %2$d enabled badges, %3$d groups</string>
@@ -1808,7 +1808,7 @@
   <string name="compose_settings_root_streams_description">Stream result display and Fusion badge rules.</string>
   <string name="settings_stream_badges_section">Fusion Style</string>
   <string name="settings_stream_badge_urls_title">Fusion badge URLs</string>
-  <string name="settings_stream_badge_urls_description">Import Fusion-style stream badge JSON URLs. Each URL can be updated or deleted separately.</string>
+  <string name="settings_stream_badge_urls_description">Import up to %1$d Fusion-style stream badge JSON URLs. Each URL can be updated or deleted separately.</string>
   <string name="settings_stream_badge_urls_search_description">Manage imported Fusion-style stream badge JSON URLs.</string>
   <string name="settings_debrid_template_original_format">Original format</string>
   <string name="settings_debrid_sort_original">Original order</string>
@@ -1881,4 +1881,13 @@
     <string name="settings_playback_ios_audio_output_avfoundation_desc">Experimental support for Spatial Audio and multichannel output.</string>
     <string name="settings_playback_ios_audio_output_audiounit_desc">Use the legacy AudioUnit output.</string>
     <string name="settings_playback_ios_audio_output_dialog">Audio output</string>
+    <string name="settings_stream_addon_logo_title">Logo dodatku</string>
+    <string name="settings_stream_addon_logo_description">Pokazuj logo i nazwę dodatku obok źródeł.</string>
+    <string name="settings_stream_display_section">Wyświetlanie</string>
+    <!-- English fallback strings added for untranslated upstream desktop/display keys. -->
+    <string name="compose_about_based_on_version_format">Based on Nuvio %1$s</string>
+    <string name="settings_appearance_desktop_navigation">Desktop Navigation</string>
+    <string name="settings_appearance_desktop_navigation_sheet_title">Choose Desktop Navigation</string>
+    <string name="settings_appearance_desktop_navigation_sidebar">Sidebar</string>
+    <string name="settings_appearance_desktop_navigation_top_bar">Top Bar</string>
 </resources>

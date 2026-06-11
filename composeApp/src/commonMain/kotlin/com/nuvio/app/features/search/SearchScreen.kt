@@ -48,7 +48,7 @@ import com.nuvio.app.core.ui.NuvioInputField
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioNetworkOfflineCard
 import com.nuvio.app.core.ui.NuvioScreenHeader
-import com.nuvio.app.core.ui.nuvioBlockPointerPassthrough
+import com.nuvio.app.core.ui.nuvioConsumePointerEvents
 import com.nuvio.app.core.ui.withDuplicateSafeLazyKeys
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.addons.enabledAddons
@@ -85,6 +85,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun SearchScreen(
     modifier: Modifier = Modifier,
+    topChromePadding: Dp? = null,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onPosterLongClick: ((MetaPreview) -> Unit)? = null,
     searchFocusRequestCount: Int = 0,
@@ -249,45 +250,52 @@ fun SearchScreen(
 
         NuvioScreen(
             horizontalPadding = 0.dp,
+            topPadding = if (topChromePadding != null) 0.dp else null,
             listState = listState,
             modifier = Modifier.fillMaxSize(),
         ) {
         stickyHeader {
-            androidx.compose.foundation.layout.Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .nuvioBlockPointerPassthrough()
-                    .background(MaterialTheme.colorScheme.background),
-            ) {
-                NuvioScreenHeader(
-                    title = headerTitle,
-                    modifier = Modifier.padding(horizontal = 16.dp),
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .nuvioConsumePointerEvents(),
                 )
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
-                androidx.compose.foundation.layout.Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    NuvioInputField(
-                        value = query,
-                        onValueChange = { query = it },
-                        placeholder = stringResource(Res.string.compose_search_placeholder),
-                        modifier = Modifier
-                            .focusProperties { canFocus = searchFieldCanFocus }
-                            .focusRequester(focusRequester),
-                        trailingContent = if (query.isNotBlank()) {
-                            {
-                                IconButton(onClick = { query = "" }) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Close,
-                                        contentDescription = stringResource(Res.string.compose_search_clear),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        } else {
-                            null
-                        },
+                androidx.compose.foundation.layout.Column(
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    NuvioScreenHeader(
+                        title = headerTitle,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        topPadding = topChromePadding,
                     )
-                }
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
+                    androidx.compose.foundation.layout.Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        NuvioInputField(
+                            value = query,
+                            onValueChange = { query = it },
+                            placeholder = stringResource(Res.string.compose_search_placeholder),
+                            modifier = Modifier
+                                .focusProperties { canFocus = searchFieldCanFocus }
+                                .focusRequester(focusRequester),
+                            trailingContent = if (query.isNotBlank()) {
+                                {
+                                    IconButton(onClick = { query = "" }) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Close,
+                                            contentDescription = stringResource(Res.string.compose_search_clear),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            } else {
+                                null
+                            },
+                        )
+                    }
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(14.dp))
+                }
             }
         }
 

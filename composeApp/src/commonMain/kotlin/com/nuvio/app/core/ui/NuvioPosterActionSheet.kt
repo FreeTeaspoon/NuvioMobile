@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -34,7 +33,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.nuvio.app.core.format.formatReleaseDateForDisplay
 import com.nuvio.app.features.home.MetaPreview
 import kotlinx.coroutines.launch
@@ -57,6 +55,7 @@ fun NuvioPosterActionSheet(
     onToggleWatched: () -> Unit,
 ) {
     if (item == null) return
+    val tokens = MaterialTheme.nuvio
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
 
@@ -74,7 +73,7 @@ fun NuvioPosterActionSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = nuvioSafeBottomPadding(16.dp)),
+                .padding(bottom = nuvioSafeBottomPadding(tokens.spacing.screenHorizontal)),
         ) {
             PosterSheetHeader(item = item)
             NuvioBottomSheetDivider()
@@ -121,18 +120,19 @@ fun NuvioPosterActionSheet(
 fun NuvioWatchedBadge(
     modifier: Modifier = Modifier,
 ) {
+    val tokens = MaterialTheme.nuvio
     Box(
         modifier = modifier
-            .size(22.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primary),
+            .size(NuvioTokens.Icon.md)
+            .clip(tokens.shapes.avatar)
+            .background(tokens.colors.accent),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = Icons.Default.Check,
             contentDescription = stringResource(Res.string.episodes_cd_watched),
-            tint = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.size(12.dp),
+            tint = tokens.colors.onAccent,
+            modifier = Modifier.size(NuvioTokens.Icon.xs),
         )
     }
 }
@@ -156,7 +156,7 @@ fun NuvioAnimatedWatchedBadge(
 fun BoxScope.NuvioPosterWatchedOverlay(
     isWatched: Boolean,
     modifier: Modifier = Modifier,
-    padding: Dp = 6.dp,
+    padding: Dp = NuvioTokens.Space.s6,
 ) {
     NuvioAnimatedWatchedBadge(
         isVisible = isWatched,
@@ -171,23 +171,24 @@ private fun PosterSheetHeader(
     item: MetaPreview,
 ) {
     val posterCardStyle = rememberPosterCardStyleUiState()
+    val tokens = MaterialTheme.nuvio
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(horizontal = tokens.spacing.screenHorizontal, vertical = NuvioTokens.Space.s14),
+        horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s14),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(width = 64.dp, height = 92.dp)
+                .size(width = NuvioTokens.Space.s64, height = NuvioTokens.Space.s80 + NuvioTokens.Space.s12)
                 .clip(RoundedCornerShape(posterCardStyle.cornerRadiusDp.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(tokens.colors.surfaceCard),
             contentAlignment = Alignment.Center,
         ) {
             if (item.poster != null) {
-                AsyncImage(
+                NuvioAsyncImage(
                     model = item.poster,
                     contentDescription = item.name,
                     modifier = Modifier.matchParentSize(),
@@ -196,9 +197,9 @@ private fun PosterSheetHeader(
             } else {
                 Text(
                     text = item.name,
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(tokens.spacing.listGap),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = tokens.colors.textMuted,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -207,12 +208,12 @@ private fun PosterSheetHeader(
 
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s4),
         ) {
             Text(
                 text = item.name,
                 style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = tokens.colors.textPrimary,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -221,9 +222,9 @@ private fun PosterSheetHeader(
                 text = item.releaseInfo?.takeIf { it.isNotBlank() }?.let { formatReleaseDateForDisplay(it) }
                     ?: item.type.replaceFirstChar { char ->
                         if (char.isLowerCase()) char.titlecase() else char.toString()
-                    },
+                },
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = tokens.colors.textMuted,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

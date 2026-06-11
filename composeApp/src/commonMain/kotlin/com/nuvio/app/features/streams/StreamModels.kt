@@ -17,6 +17,7 @@ data class StreamItem(
     val sourceName: String? = null,
     val addonName: String,
     val addonId: String,
+    val addonLogo: String? = null,
     val behaviorHints: StreamBehaviorHints = StreamBehaviorHints(),
     val clientResolve: StreamClientResolve? = null,
     val debridCacheStatus: StreamDebridCacheStatus? = null,
@@ -49,7 +50,8 @@ data class StreamItem(
         get() = !isDirectDebridStream && (
             !infoHash.isNullOrBlank() ||
             url.isMagnetLink() ||
-            externalUrl.isMagnetLink()
+            externalUrl.isMagnetLink() ||
+            clientResolve?.magnetUri.isMagnetLink()
         )
 
     val isCachedDebridTorrentStream: Boolean
