@@ -96,6 +96,7 @@ internal expect fun Modifier.floatingBottomBarTabsEffect(
     containerColor: Color,
     blurRadius: Float,
     lensRadius: Float,
+    translationX: Float,
     pressProgress: () -> Float,
 ): Modifier
 
@@ -313,13 +314,13 @@ fun FloatingBottomBar(
                 Modifier
                     .clearAndSetSemantics {}
                     .alpha(0.001f)
-                    .graphicsLayer { translationX = panelOffset }
                     .floatingBottomBarTabsEffect(
                         state = visualState,
                         isBlurEnabled = isBlurEnabled,
                         containerColor = containerColor,
                         blurRadius = blurRadius,
                         lensRadius = lensRadius,
+                        translationX = panelOffset,
                         pressProgress = { dampedDragAnimation.pressProgress },
                     )
                     .then(if (isBlurEnabled && interactiveHighlight != null) interactiveHighlight.modifier else Modifier)
