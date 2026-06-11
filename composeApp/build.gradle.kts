@@ -657,9 +657,12 @@ kotlin {
             if (iosDistribution == "full") {
                 defaultSourceSet.kotlin.srcDir(fullCommonSourceDir)
             }
+            defaultSourceSet.kotlin.srcDir(project.file("src/mobileMain/kotlin"))
             defaultSourceSet.kotlin.srcDir(project.file(iosDistributionSourceDir))
             defaultSourceSet.dependencies {
                 implementation(libs.ktor.client.darwin)
+                implementation(libs.backdrop)
+                implementation(libs.kyant.capsule)
                 if (iosDistribution == "full") {
                     implementation(libs.quickjs.kt)
                     implementation(libs.ksoup)
@@ -678,30 +681,35 @@ kotlin {
         val commonMain by getting {
             kotlin.srcDir(generatedRuntimeConfigDir)
         }
-        androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
-            implementation(libs.androidx.appcompat)
-            implementation(libs.androidx.activity.compose)
-            implementation(libs.androidx.core.splashscreen)
-            implementation(libs.androidx.work.runtime)
-            implementation(libs.coil.gif)
-            implementation("androidx.recyclerview:recyclerview:1.4.0")
-            implementation("com.squareup.okhttp3:okhttp:4.12.0")
-            implementation("com.google.code.gson:gson:2.11.0")
-            implementation("io.github.peerless2012:ass-media:0.4.0-beta01")
-            implementation(libs.ktor.client.android)
-            implementation(libs.androidx.media3.exoplayer.hls)
-            implementation(libs.androidx.media3.exoplayer.dash)
-            implementation(libs.androidx.media3.exoplayer.smoothstreaming)
-            implementation(libs.androidx.media3.exoplayer.rtsp)
-            implementation(libs.androidx.media3.datasource)
-            implementation(libs.androidx.media3.datasource.okhttp)
-            implementation(libs.androidx.media3.decoder)
-            implementation(libs.androidx.media3.session)
-            implementation(libs.androidx.media3.common)
-            implementation(libs.androidx.media3.container)
-            implementation(libs.androidx.media3.extractor)
-            implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("lib-*.aar"))))
+        val androidMain by getting {
+            kotlin.srcDir(project.file("src/mobileMain/kotlin"))
+            dependencies {
+                implementation(libs.compose.uiToolingPreview)
+                implementation(libs.androidx.appcompat)
+                implementation(libs.androidx.activity.compose)
+                implementation(libs.androidx.core.splashscreen)
+                implementation(libs.androidx.work.runtime)
+                implementation(libs.coil.gif)
+                implementation("androidx.recyclerview:recyclerview:1.4.0")
+                implementation("com.squareup.okhttp3:okhttp:4.12.0")
+                implementation("com.google.code.gson:gson:2.11.0")
+                implementation("io.github.peerless2012:ass-media:0.4.0-beta01")
+                implementation(libs.ktor.client.android)
+                implementation(libs.androidx.media3.exoplayer.hls)
+                implementation(libs.androidx.media3.exoplayer.dash)
+                implementation(libs.androidx.media3.exoplayer.smoothstreaming)
+                implementation(libs.androidx.media3.exoplayer.rtsp)
+                implementation(libs.androidx.media3.datasource)
+                implementation(libs.androidx.media3.datasource.okhttp)
+                implementation(libs.androidx.media3.decoder)
+                implementation(libs.androidx.media3.session)
+                implementation(libs.androidx.media3.common)
+                implementation(libs.androidx.media3.container)
+                implementation(libs.androidx.media3.extractor)
+                implementation(libs.backdrop)
+                implementation(libs.kyant.capsule)
+                implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("lib-*.aar"))))
+            }
         }
         val desktopMain by getting {
             kotlin.srcDir(fullPluginSourceDir)
@@ -734,8 +742,6 @@ kotlin {
             implementation(libs.supabase.auth)
             implementation(libs.supabase.functions)
             implementation(libs.reorderable)
-            implementation(libs.backdrop)
-            implementation(libs.kyant.capsule)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
