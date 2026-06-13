@@ -1888,4 +1888,6 @@
     <string name="settings_stream_addon_logo_title">Addon logo</string>
     <string name="settings_stream_addon_logo_description">Show addon logos on stream cards when available.</string>
     <string name="settings_stream_display_section">Display</string>
+    <string name="settings_playback_touch_gestures">Touch Gestures</string>
+    <string name="settings_playback_touch_gestures_description">Allow swipes and double-taps on the player surface to seek, adjust brightness, or adjust volume.</string>
 </resources>

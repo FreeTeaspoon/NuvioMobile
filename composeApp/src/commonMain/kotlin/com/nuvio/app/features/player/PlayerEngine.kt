@@ -288,8 +288,11 @@ internal fun sanitizePlaybackResponseHeaders(headers: Map<String, String>?): Map
 internal fun inferPlaybackMimeType(
     sourceUrl: String,
     responseHeaders: Map<String, String>? = emptyMap(),
+    streamType: String? = null,
     sourceFilename: String? = null,
 ): String? {
+    inferPlaybackMimeTypeFromStreamType(streamType)?.let { return it }
+
     val headers = responseHeaders.orEmpty()
     val contentType = headers.valueForHeader("Content-Type")
         ?.substringBefore(';')
@@ -305,6 +308,14 @@ internal fun inferPlaybackMimeType(
         sourceUrl.substringBefore('?').substringBefore('#'),
     ).firstNotNullOfOrNull(::inferPlaybackMimeTypeFromName)
 }
+
+private fun inferPlaybackMimeTypeFromStreamType(streamType: String?): String? =
+    when (streamType?.trim()?.lowercase()?.takeIf { it.isNotBlank() }) {
+        "hls", "m3u8" -> "application/x-mpegURL"
+        "dash", "mpd" -> "application/dash+xml"
+        "smoothstreaming", "ss" -> "application/vnd.ms-sstr+xml"
+        else -> null
+    }
 
 internal fun shouldPreferMpvForPlaybackSource(
     sourceUrl: String,
@@ -497,6 +508,7 @@ expect fun PlatformPlayerSurface(
     sourceAudioUrl: String? = null,
     sourceHeaders: Map<String, String> = emptyMap(),
     sourceResponseHeaders: Map<String, String> = emptyMap(),
+    streamType: String? = null,
     sourceFilename: String? = null,
     sourceVideoSize: Long? = null,
     useYoutubeChunkedPlayback: Boolean = false,

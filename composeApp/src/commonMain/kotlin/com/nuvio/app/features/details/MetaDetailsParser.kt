@@ -3,6 +3,7 @@ package com.nuvio.app.features.details
 import com.nuvio.app.features.streams.StreamBehaviorHints
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamProxyHeaders
+import com.nuvio.app.features.streams.normalizeStreamType
 import com.nuvio.app.features.streams.sanitizeEpisodeImdbId
 import com.nuvio.app.features.streams.sanitizeEpisodeRating
 import kotlinx.coroutines.runBlocking
@@ -294,6 +295,7 @@ internal object MetaDetailsParser {
                 externalUrl = externalUrl,
                 addonName = addonName,
                 addonId = "embedded",
+                streamType = normalizeStreamType(obj.string("type")),
                 behaviorHints = StreamBehaviorHints(
                     bingeGroup = hintsObj?.string("bingeGroup"),
                     notWebReady = (hintsObj?.boolean("notWebReady") ?: false) || proxyHeaders != null,
