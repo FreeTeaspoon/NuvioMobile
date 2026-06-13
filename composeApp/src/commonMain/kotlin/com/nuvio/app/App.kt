@@ -204,6 +204,7 @@ import com.nuvio.app.features.collection.FolderDetailRepository
 import com.nuvio.app.features.streams.StreamAutoPlayPolicy
 import com.nuvio.app.features.streams.BingeGroupCacheRepository
 import com.nuvio.app.features.streams.StreamBehaviorHints
+import com.nuvio.app.features.streams.StreamClientResolve
 import com.nuvio.app.features.streams.StreamEpisodeMeta
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamLaunch
@@ -1885,7 +1886,7 @@ private fun MainAppContent(
                     }.collectAsStateWithLifecycle()
 
                     fun p2pSentinelUrl(infoHash: String, fileIdx: Int?): String =
-                        "torrent://$infoHash${fileIdx?.let { "?index=$it" }.orEmpty()}"
+                        "torrent://$infoHash${fileIdx?.let { "/$it" }.orEmpty()}"
 
                     fun openP2pStream(
                         stream: StreamItem,
@@ -1894,7 +1895,7 @@ private fun MainAppContent(
                         replaceStreamRoute: Boolean,
                     ) {
                         val infoHash = stream.p2pInfoHash ?: return
-                        val sentinelUrl = p2pSentinelUrl(infoHash, stream.fileIdx)
+                        val sentinelUrl = p2pSentinelUrl(infoHash, stream.p2pFileIdx)
                         if (playerSettings.streamReuseLastLinkEnabled) {
                             val cacheKey = StreamLinkCacheRepository.contentKey(
                                 type = launch.type,
@@ -1911,12 +1912,14 @@ private fun MainAppContent(
                                 addonId = stream.addonId,
                                 requestHeaders = emptyMap(),
                                 responseHeaders = emptyMap(),
-                                filename = stream.behaviorHints.filename,
+                                filename = stream.p2pFilename,
                                 videoSize = stream.behaviorHints.videoSize,
                                 infoHash = infoHash,
-                                fileIdx = stream.fileIdx,
-                                sources = stream.sources,
+                                fileIdx = stream.p2pFileIdx,
+                                magnetUri = stream.torrentMagnetUri,
+                                sources = stream.p2pSourceHints,
                                 bingeGroup = stream.behaviorHints.bingeGroup,
+                                streamType = stream.streamType,
                             )
                         }
                         val playerLaunch = PlayerLaunch(
@@ -1942,8 +1945,9 @@ private fun MainAppContent(
                             parentMetaId = launch.parentMetaId ?: effectiveVideoId,
                             parentMetaType = launch.parentMetaType ?: launch.type,
                             torrentInfoHash = infoHash,
-                            torrentFileIdx = stream.fileIdx,
-                            torrentFilename = stream.behaviorHints.filename,
+                            torrentFileIdx = stream.p2pFileIdx,
+                            torrentFilename = stream.p2pFilename,
+                            torrentMagnetUri = stream.torrentMagnetUri,
                             torrentTrackers = stream.p2pTrackers,
                             initialPositionMs = resolvedResumePositionMs ?: 0L,
                             initialProgressFraction = resolvedResumeProgressFraction,
@@ -2021,6 +2025,18 @@ private fun MainAppContent(
                                     sources = cached.sources,
                                     addonName = cached.addonName,
                                     addonId = cached.addonId,
+                                    streamType = cached.streamType,
+                                    clientResolve = if (!cached.magnetUri.isNullOrBlank()) {
+                                        StreamClientResolve(
+                                            infoHash = cached.infoHash,
+                                            fileIdx = cached.fileIdx,
+                                            magnetUri = cached.magnetUri,
+                                            sources = cached.sources,
+                                            filename = cached.filename,
+                                        )
+                                    } else {
+                                        null
+                                    },
                                     behaviorHints = StreamBehaviorHints(
                                         filename = cached.filename,
                                         videoSize = cached.videoSize,
@@ -2043,6 +2059,9 @@ private fun MainAppContent(
                                     sourceUrl = cached.url,
                                     sourceHeaders = sanitizePlaybackHeaders(cached.requestHeaders),
                                     sourceResponseHeaders = sanitizePlaybackResponseHeaders(cached.responseHeaders),
+                                    streamType = cached.streamType,
+                                    sourceFilename = cached.filename,
+                                    sourceVideoSize = cached.videoSize,
                                     logo = launch.logo,
                                     poster = launch.poster,
                                     background = launch.background,
@@ -2168,6 +2187,7 @@ private fun MainAppContent(
                                 filename = stream.playbackFilenameHint,
                                 videoSize = stream.behaviorHints.videoSize,
                                 bingeGroup = stream.behaviorHints.bingeGroup,
+                                streamType = stream.streamType,
                             )
                         }
                         val playerLaunch = PlayerLaunch(
@@ -2175,6 +2195,7 @@ private fun MainAppContent(
                                 sourceUrl = sourceUrl,
                                 sourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request),
                                 sourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response),
+                                streamType = stream.streamType,
                                 sourceFilename = stream.playbackFilenameHint,
                                 sourceVideoSize = stream.behaviorHints.videoSize,
                                 logo = launch.logo,
@@ -2294,6 +2315,7 @@ private fun MainAppContent(
                                 filename = stream.playbackFilenameHint,
                                 videoSize = stream.behaviorHints.videoSize,
                                 bingeGroup = stream.behaviorHints.bingeGroup,
+                                streamType = stream.streamType,
                             )
                         }
                         val playerLaunch = PlayerLaunch(
@@ -2301,6 +2323,7 @@ private fun MainAppContent(
                             sourceUrl = sourceUrl,
                             sourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request),
                             sourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response),
+                            streamType = stream.streamType,
                             sourceFilename = stream.playbackFilenameHint,
                             sourceVideoSize = stream.behaviorHints.videoSize,
                             logo = launch.logo,
@@ -2505,6 +2528,9 @@ private fun MainAppContent(
                         sourceAudioUrl = launch.sourceAudioUrl,
                         sourceHeaders = launch.sourceHeaders,
                         sourceResponseHeaders = launch.sourceResponseHeaders,
+                        streamType = launch.streamType,
+                        sourceFilename = launch.sourceFilename,
+                        sourceVideoSize = launch.sourceVideoSize,
                         logo = launch.logo,
                         poster = launch.poster,
                         background = launch.background,
@@ -2525,6 +2551,7 @@ private fun MainAppContent(
                         torrentInfoHash = launch.torrentInfoHash,
                         torrentFileIdx = launch.torrentFileIdx,
                         torrentFilename = launch.torrentFilename,
+                        torrentMagnetUri = launch.torrentMagnetUri,
                         torrentTrackers = launch.torrentTrackers,
                         initialPositionMs = launch.initialPositionMs,
                         initialProgressFraction = launch.initialProgressFraction,

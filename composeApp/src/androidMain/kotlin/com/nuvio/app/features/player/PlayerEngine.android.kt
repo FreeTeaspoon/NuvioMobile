@@ -57,6 +57,7 @@ import androidx.media3.ui.PlayerView
 import androidx.media3.ui.SubtitleView
 import androidx.media3.ui.CaptionStyleCompat
 import com.nuvio.app.R
+import com.nuvio.app.features.streams.normalizeStreamType
 import io.github.peerless2012.ass.media.widget.AssSubtitleView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
@@ -82,6 +83,7 @@ internal fun AndroidMedia3PlayerSurface(
     sourceAudioUrl: String?,
     sourceHeaders: Map<String, String>,
     sourceResponseHeaders: Map<String, String>,
+    streamType: String?,
     sourceFilename: String?,
     sourceVideoSize: Long?,
     useYoutubeChunkedPlayback: Boolean,
@@ -118,10 +120,14 @@ internal fun AndroidMedia3PlayerSurface(
     val sanitizedSourceResponseHeaders = remember(sourceResponseHeaders) {
         sanitizePlaybackResponseHeaders(sourceResponseHeaders)
     }
-    val sourceMimeType = remember(sourceUrl, sanitizedSourceResponseHeaders, sourceFilename) {
+    val normalizedStreamType = remember(streamType) {
+        normalizeStreamType(streamType)
+    }
+    val sourceMimeType = remember(sourceUrl, sanitizedSourceResponseHeaders, normalizedStreamType, sourceFilename) {
         inferPlaybackMimeType(
             sourceUrl = sourceUrl,
             responseHeaders = sanitizedSourceResponseHeaders,
+            streamType = normalizedStreamType,
             sourceFilename = sourceFilename,
         )
     }
@@ -138,6 +144,7 @@ internal fun AndroidMedia3PlayerSurface(
         sourceAudioUrl.orEmpty(),
         sanitizedSourceHeaders,
         sanitizedSourceResponseHeaders,
+        normalizedStreamType.orEmpty(),
         sourceFilename.orEmpty(),
         sourceVideoSize ?: 0L,
         useYoutubeChunkedPlayback,

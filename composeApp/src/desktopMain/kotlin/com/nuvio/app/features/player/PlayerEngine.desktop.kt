@@ -29,6 +29,7 @@ actual fun PlatformPlayerSurface(
     sourceAudioUrl: String?,
     sourceHeaders: Map<String, String>,
     sourceResponseHeaders: Map<String, String>,
+    streamType: String?,
     sourceFilename: String?,
     sourceVideoSize: Long?,
     useYoutubeChunkedPlayback: Boolean,

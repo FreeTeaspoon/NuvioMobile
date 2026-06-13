@@ -19,6 +19,7 @@ data class CachedStreamLink(
     val magnetUri: String? = null,
     val sources: List<String> = emptyList(),
     val bingeGroup: String? = null,
+    val streamType: String? = null,
 )
 
 internal expect fun epochMs(): Long
@@ -56,6 +57,7 @@ object StreamLinkCacheRepository {
         magnetUri: String? = null,
         sources: List<String> = emptyList(),
         bingeGroup: String? = null,
+        streamType: String? = null,
     ) {
         if (url.isNotBlank() && url.hasLikelyExpiringPlaybackCredentials()) {
             remove(contentKey)
@@ -77,6 +79,7 @@ object StreamLinkCacheRepository {
             magnetUri = magnetUri,
             sources = sources,
             bingeGroup = bingeGroup,
+            streamType = streamType,
         )
         val payload = json.encodeToString(CachedStreamLink.serializer(), entry)
         StreamLinkCacheStorage.saveEntry(hashedKey(contentKey), payload)

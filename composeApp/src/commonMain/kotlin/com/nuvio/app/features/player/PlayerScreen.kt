@@ -177,6 +177,7 @@ fun PlayerScreen(
     sourceAudioUrl: String? = null,
     sourceHeaders: Map<String, String> = emptyMap(),
     sourceResponseHeaders: Map<String, String> = emptyMap(),
+    streamType: String? = null,
     sourceFilename: String? = null,
     sourceVideoSize: Long? = null,
     providerName: String,
@@ -275,6 +276,7 @@ fun PlayerScreen(
         var activeSourceResponseHeaders by remember(sourceUrl, sourceResponseHeaders) {
             mutableStateOf(sanitizePlaybackResponseHeaders(sourceResponseHeaders))
         }
+        var activeStreamType by rememberSaveable(sourceUrl, streamType) { mutableStateOf(streamType) }
         var activeSourceFilename by rememberSaveable(sourceUrl, sourceFilename) { mutableStateOf(sourceFilename) }
         var activeSourceVideoSize by rememberSaveable(sourceUrl, sourceVideoSize) { mutableStateOf(sourceVideoSize) }
         var activeTorrentInfoHash by rememberSaveable { mutableStateOf(torrentInfoHash) }
@@ -285,7 +287,7 @@ fun PlayerScreen(
         var p2pResolvedSourceUrl by remember { mutableStateOf<String?>(null) }
         val activePlaybackIdentity = activeTorrentInfoHash
             ?.let { hash -> "torrent:$hash:${activeTorrentFileIdx ?: -1}" }
-            ?: activeSourceUrl
+            ?: "$activeSourceUrl|${activeStreamType.orEmpty()}"
         var activeStreamTitle by rememberSaveable { mutableStateOf(streamTitle) }
         var activeStreamSubtitle by rememberSaveable { mutableStateOf(streamSubtitle) }
         var activeProviderName by rememberSaveable { mutableStateOf(providerName) }
@@ -1297,6 +1299,9 @@ fun PlayerScreen(
                 revealLockedOverlay()
                 return@rememberUpdatedState
             }
+            if (!playerSettingsUiState.touchGesturesEnabled) {
+                return@rememberUpdatedState
+            }
             when {
                 offset.x < layoutSize.width * PlayerLeftGestureBoundary -> {
                     handleDoubleTapSeek(PlayerSeekDirection.Backward)
@@ -1318,6 +1323,7 @@ fun PlayerScreen(
         val revealLockedOverlayState = rememberUpdatedState(::revealLockedOverlay)
         val isHoldToSpeedGestureActiveState = rememberUpdatedState(isHoldToSpeedGestureActive)
         val playerControlsLockedState = rememberUpdatedState(playerControlsLocked)
+        val touchGesturesEnabledState = rememberUpdatedState(playerSettingsUiState.touchGesturesEnabled)
         val currentPositionMsState = rememberUpdatedState(playbackSnapshot.positionMs.coerceAtLeast(0L))
         val currentDurationMsState = rememberUpdatedState(playbackSnapshot.durationMs)
         val commitHorizontalSeekState = rememberUpdatedState { targetPositionMs: Long ->
@@ -1353,7 +1359,7 @@ fun PlayerScreen(
         }
 
         fun p2pSentinelUrl(infoHash: String, fileIdx: Int?): String =
-            "torrent://$infoHash${fileIdx?.let { "?index=$it" }.orEmpty()}"
+            "torrent://$infoHash${fileIdx?.let { "/$it" }.orEmpty()}"
 
         fun isP2pStream(stream: StreamItem): Boolean =
             stream.needsLocalDebridResolve && stream.p2pInfoHash != null
@@ -1400,6 +1406,7 @@ fun PlayerScreen(
                 magnetUri = stream.torrentMagnetUri,
                 sources = stream.p2pSourceHints,
                 bingeGroup = stream.behaviorHints.bingeGroup,
+                streamType = stream.streamType,
             )
         }
 
@@ -1423,6 +1430,7 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = emptyMap()
             activeSourceResponseHeaders = emptyMap()
+            activeStreamType = null
             activeTorrentInfoHash = infoHash
             activeTorrentFileIdx = stream.p2pFileIdx
             activeTorrentFilename = stream.p2pFilename
@@ -1482,6 +1490,7 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = emptyMap()
             activeSourceResponseHeaders = emptyMap()
+            activeStreamType = null
             activeTorrentInfoHash = infoHash
             activeTorrentFileIdx = stream.p2pFileIdx
             activeTorrentFilename = stream.p2pFilename
@@ -1552,12 +1561,14 @@ fun PlayerScreen(
                     filename = stream.playbackFilenameHint,
                     videoSize = stream.behaviorHints.videoSize,
                     bingeGroup = stream.behaviorHints.bingeGroup,
+                    streamType = stream.streamType,
                 )
             }
             activeSourceUrl = url
             activeSourceAudioUrl = null
             activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
             activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
+            activeStreamType = stream.streamType
             activeSourceFilename = stream.playbackFilenameHint
             activeSourceVideoSize = stream.behaviorHints.videoSize
             activeStreamTitle = stream.streamLabel
@@ -1642,12 +1653,14 @@ fun PlayerScreen(
                     filename = stream.playbackFilenameHint,
                     videoSize = stream.behaviorHints.videoSize,
                     bingeGroup = stream.behaviorHints.bingeGroup,
+                    streamType = stream.streamType,
                 )
             }
             activeSourceUrl = url
             activeSourceAudioUrl = null
             activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
             activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
+            activeStreamType = stream.streamType
             activeSourceFilename = stream.playbackFilenameHint
             activeSourceVideoSize = stream.behaviorHints.videoSize
             activeStreamTitle = stream.streamLabel
@@ -1697,6 +1710,7 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = emptyMap()
             activeSourceResponseHeaders = emptyMap()
+            activeStreamType = null
             activeSourceFilename = downloadItem.fileName
             activeSourceVideoSize = downloadItem.totalBytes
             activeStreamTitle = downloadItem.streamTitle.ifBlank {
@@ -2600,6 +2614,7 @@ fun PlayerScreen(
                     layoutSize,
                     topSideGestureExclusionPx,
                     horizontalSeekEdgeExclusionPx,
+                    playerSettingsUiState.touchGesturesEnabled,
                 ) {
                     awaitEachGesture {
                         val down = awaitFirstDown()
@@ -2609,6 +2624,14 @@ fun PlayerScreen(
                                 val change = event.changes.firstOrNull { it.id == down.id } ?: break
                                 if (!change.pressed) break
                                 change.consume()
+                            }
+                            return@awaitEachGesture
+                        }
+                        if (!touchGesturesEnabledState.value) {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!change.pressed) break
                             }
                             return@awaitEachGesture
                         }
@@ -2740,6 +2763,7 @@ fun PlayerScreen(
                     sourceAudioUrl = activeSourceAudioUrl,
                     sourceHeaders = activeSourceHeaders,
                     sourceResponseHeaders = activeSourceResponseHeaders,
+                    streamType = activeStreamType,
                     sourceFilename = activeSourceFilename,
                     sourceVideoSize = activeSourceVideoSize,
                     modifier = Modifier.fillMaxSize(),
