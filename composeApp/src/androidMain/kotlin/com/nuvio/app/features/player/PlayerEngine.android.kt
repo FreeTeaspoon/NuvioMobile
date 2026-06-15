@@ -157,6 +157,13 @@ internal fun AndroidMedia3PlayerSurface(
     var fallbackStartPositionMs by remember(playerSourceKey) { mutableStateOf<Long?>(null) }
     val effectiveDecoderPriority = decoderPriorityOverride ?: playerSettings.decoderPriority
 
+    val initialMediaItem = remember(playerSourceKey) {
+        buildPlaybackMediaItem(sourceUrl, sourceMimeType)
+    }
+
+    var resolvedMediaItem by remember(playerSourceKey) { mutableStateOf(initialMediaItem) }
+    var probeAttempted by remember(playerSourceKey) { mutableStateOf(false) }
+
     val extractorsFactory = remember {
         DefaultExtractorsFactory()
             .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS)
@@ -265,14 +272,13 @@ internal fun AndroidMedia3PlayerSurface(
                 .build()
         }
 
-        player.apply {
-            setPlaybackMediaItem(
-                videoMediaItem = buildPlaybackMediaItem(sourceUrl, sourceMimeType),
-                startPositionMs = fallbackStartPositionMs,
-            )
-            prepare()
-            this.playWhenReady = playWhenReady
-        }
+        player
+    }
+
+    LaunchedEffect(exoPlayer, resolvedMediaItem) {
+        exoPlayer.setPlaybackMediaItem(resolvedMediaItem, fallbackStartPositionMs)
+        exoPlayer.prepare()
+        exoPlayer.playWhenReady = playWhenReady
     }
 
     val pendingSubtitleTrackIndex = remember { mutableListOf<Int>() }
@@ -329,46 +335,74 @@ internal fun AndroidMedia3PlayerSurface(
             exoPlayer.pause()
         }
 
+        fun reportPlayerError(error: PlaybackException) {
+            Log.e(TAG, "Media3 playback error: code=${error.errorCodeName}, message=${error.message}", error)
+            val message = error.toPlayerErrorMessage()
+            val snapshot = exoPlayer.snapshot()
+            if (shouldTreatMedia3VarintFailureAsEnded(
+                    sourceUrl = sourceUrl,
+                    responseHeaders = sanitizedSourceResponseHeaders,
+                    sourceFilename = sourceFilename,
+                    errorMessage = message,
+                    snapshot = snapshot,
+                )
+            ) {
+                val endedSnapshot = snapshot.asEndedPlaybackSnapshot()
+                terminalSnapshotOverride = endedSnapshot
+                latestOnError.value(null)
+                latestOnSnapshot.value(endedSnapshot)
+                return
+            }
+            if (latestOnRecoverableSourceError.value(message, snapshot)) {
+                latestOnError.value(null)
+                return
+            }
+            if (
+                playerSettings.decoderPriority == DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON &&
+                effectiveDecoderPriority != DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER &&
+                error.isDecoderFailure()
+            ) {
+                Log.w(
+                    TAG,
+                    "Decoder failure (${error.errorCodeName}); retrying with app decoders",
+                    error,
+                )
+                fallbackStartPositionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
+                decoderPriorityOverride = DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+                latestOnError.value(null)
+                return
+            }
+            latestOnError.value(message)
+        }
+
         val listener = object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
                 syncPlayerViewKeepScreenOn()
-                Log.e(TAG, "Media3 playback error: code=${error.errorCodeName}, message=${error.message}", error)
-                val message = error.toPlayerErrorMessage()
-                val snapshot = exoPlayer.snapshot()
-                if (shouldTreatMedia3VarintFailureAsEnded(
-                        sourceUrl = sourceUrl,
-                        responseHeaders = sanitizedSourceResponseHeaders,
-                        sourceFilename = sourceFilename,
-                        errorMessage = message,
-                        snapshot = snapshot,
+                if (shouldProbePlaybackMimeType(
+                        errorCode = error.errorCode,
+                        causeText = error.cause?.toString(),
+                        probeAttempted = probeAttempted,
                     )
                 ) {
-                    val endedSnapshot = snapshot.asEndedPlaybackSnapshot()
-                    terminalSnapshotOverride = endedSnapshot
-                    latestOnError.value(null)
-                    latestOnSnapshot.value(endedSnapshot)
+                    probeAttempted = true
+                    val retryPositionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
+                    coroutineScope.launch {
+                        val probedMime = withContext(Dispatchers.IO) {
+                            probeMimeType(sourceUrl, sanitizedSourceHeaders)
+                        }
+                        if (probedMime != null) {
+                            Log.d(TAG, "Playback failed with source error. Probed MIME type: $probedMime. Retrying...")
+                            fallbackStartPositionMs = retryPositionMs
+                            resolvedMediaItem = buildPlaybackMediaItem(sourceUrl, probedMime)
+                            latestOnError.value(null)
+                            return@launch
+                        }
+                        reportPlayerError(error)
+                    }
                     return
                 }
-                if (latestOnRecoverableSourceError.value(message, snapshot)) {
-                    latestOnError.value(null)
-                    return
-                }
-                if (
-                    playerSettings.decoderPriority == DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON &&
-                    effectiveDecoderPriority != DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER &&
-                    error.isDecoderFailure()
-                ) {
-                    Log.w(
-                        TAG,
-                        "Decoder failure (${error.errorCodeName}); retrying with app decoders",
-                        error,
-                    )
-                    fallbackStartPositionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
-                    decoderPriorityOverride = DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
-                    latestOnError.value(null)
-                    return
-                }
-                latestOnError.value(message)
+
+                reportPlayerError(error)
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -801,6 +835,18 @@ private fun ExoPlayer.restoreTrackSelection(selection: TrackSelectionSnapshot): 
 
     return selectTrackByIndex(selection.trackType, selection.index)
 }
+
+internal fun shouldProbePlaybackMimeType(
+    errorCode: Int,
+    causeText: String?,
+    probeAttempted: Boolean,
+): Boolean =
+    !probeAttempted &&
+        (
+            errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW ||
+                errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
+                causeText?.contains("UnrecognizedInputFormatException") == true
+        )
 
 private fun PlaybackException.isDecoderFailure(): Boolean =
     errorCode in setOf(
