@@ -40,6 +40,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nuvio.app.core.i18n.localizedNoSubtitleLinesFound
+import com.nuvio.app.core.i18n.localizedSubtitleLinesLoadError
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.features.debrid.DebridSettingsRepository
 import com.nuvio.app.features.debrid.DirectDebridPlayableResult
@@ -2065,13 +2067,13 @@ fun PlayerScreen(
                         subtitleAutoSyncState = subtitleAutoSyncState.copy(
                             cues = cues,
                             isLoading = false,
-                            errorMessage = if (cues.isEmpty()) "No subtitle lines found" else null,
+                            errorMessage = if (cues.isEmpty()) localizedNoSubtitleLinesFound() else null,
                         )
                     },
                     onFailure = { error ->
                         subtitleAutoSyncState = subtitleAutoSyncState.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: "Unable to load subtitle lines",
+                            errorMessage = error.message ?: localizedSubtitleLinesLoadError(),
                         )
                     },
                 )

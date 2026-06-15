@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+
 <resources>
   <string name="about_supporters_contributors_subtitle">Apri riconoscimenti e crediti progetto</string>
   <string name="action_back">Indietro</string>
@@ -1889,5 +1889,22 @@
     <string name="settings_stream_addon_logo_description">Show addon logos on stream cards when available.</string>
     <string name="settings_stream_display_section">Display</string>
     <string name="settings_playback_touch_gestures">Touch Gestures</string>
-    <string name="settings_playback_touch_gestures_description">Allow swipes and double-taps on the player surface to seek, adjust brightness, or adjust volume.</string>
+    <string name="settings_playback_touch_gestures_description">Allow swipes and double-taps on the player surface to seek, adjust brightness, or adjust volume.</string>    <string name="compose_player_no_subtitle_lines_found">No subtitle lines found</string>
+    <string name="compose_player_subtitle_lines_load_error">Unable to load subtitle lines</string>
+    <string name="settings_stream_badge_import_failed">Badge import failed.</string>
+    <string name="settings_stream_badge_enter_url">Enter a badge JSON URL.</string>
+    <string name="settings_stream_badge_url_scheme_invalid">Badge URL must start with http:// or https://.</string>
+    <string name="settings_stream_badge_import_limit">You can import up to %1$d badge URLs.</string>
+    <string name="details_actions_menu_label">More actions</string>
+    <string name="trakt_error_authorization_expired">Trakt authorization expired</string>
+    <string name="trakt_error_list_not_found">Trakt list not found</string>
+    <string name="trakt_error_list_limit_reached">Trakt list limit reached</string>
+    <string name="trakt_error_rate_limit_reached">Trakt rate limit reached</string>
+    <string name="trakt_error_request_failed">Trakt request failed</string>
+    <string name="trakt_error_add_watchlist_failed">Failed to add to Trakt watchlist</string>
+    <string name="trakt_error_add_list_failed">Failed to add to Trakt list</string>
+    <string name="trakt_error_missing_ids">Missing compatible Trakt IDs</string>
+    <string name="trakt_error_empty_response">Empty response body</string>
+    <string name="p2p_error_unknown">Unknown torrent error</string>
+
 </resources>
