@@ -334,8 +334,8 @@ data class StreamRoute(
 data class CatalogRoute(
     val title: String,
     val subtitle: String,
-    val targetKind: CatalogTargetKind,
-    val contentType: String,
+    val targetKind: CatalogTargetKind? = null,
+    val contentType: String? = null,
     val supportsPagination: Boolean = false,
     val manifestUrl: String? = null,
     val addonCatalogId: String? = null,
@@ -344,6 +344,8 @@ data class CatalogRoute(
     val collectionId: String? = null,
     val folderId: String? = null,
     val sourceKey: String? = null,
+    val type: String? = null,
+    val catalogId: String? = null,
 ) {
     constructor(
         title: String,
@@ -366,32 +368,51 @@ data class CatalogRoute(
         collectionId = (target as? CatalogTarget.CollectionSource)?.collectionId,
         folderId = (target as? CatalogTarget.CollectionSource)?.folderId,
         sourceKey = (target as? CatalogTarget.CollectionSource)?.sourceKey,
+        type = target.contentType,
+        catalogId = when (target) {
+            is CatalogTarget.Addon -> target.catalogId
+            is CatalogTarget.Library -> target.sectionType
+            is CatalogTarget.CollectionSource -> null
+        },
     )
 
     fun toCatalogTarget(): CatalogTarget =
-        when (targetKind) {
+        when (resolveTargetKind()) {
             CatalogTargetKind.ADDON -> CatalogTarget.Addon(
                 manifestUrl = requireNotNull(manifestUrl),
-                contentType = contentType,
-                catalogId = requireNotNull(addonCatalogId),
+                contentType = contentType ?: type ?: "movie",
+                catalogId = requireNotNull(addonCatalogId ?: catalogId),
                 genre = genre,
                 supportsPagination = supportsPagination,
             )
 
             CatalogTargetKind.LIBRARY -> CatalogTarget.Library(
-                contentType = contentType,
-                sectionType = requireNotNull(librarySectionType),
+                contentType = contentType ?: type ?: "movie",
+                sectionType = requireNotNull(librarySectionType ?: catalogId),
             )
 
             CatalogTargetKind.COLLECTION_SOURCE -> CatalogTarget.CollectionSource(
                 collectionId = requireNotNull(collectionId),
                 folderId = requireNotNull(folderId),
                 sourceKey = requireNotNull(sourceKey),
-                contentType = contentType,
+                contentType = contentType ?: type ?: "movie",
                 supportsPagination = supportsPagination,
             )
         }
+
+    private fun resolveTargetKind(): CatalogTargetKind =
+        targetKind
+            ?: when {
+                collectionId != null || folderId != null || sourceKey != null -> CatalogTargetKind.COLLECTION_SOURCE
+                librarySectionType != null -> CatalogTargetKind.LIBRARY
+                addonCatalogId != null -> CatalogTargetKind.ADDON
+                manifestUrl == LegacyInternalLibraryManifestUrl -> CatalogTargetKind.LIBRARY
+                manifestUrl != null && catalogId != null -> CatalogTargetKind.ADDON
+                else -> error("Unsupported catalog route")
+            }
 }
+
+private const val LegacyInternalLibraryManifestUrl = "nuvio://library"
 
 private data class PosterActionTarget(
     val preview: MetaPreview,
