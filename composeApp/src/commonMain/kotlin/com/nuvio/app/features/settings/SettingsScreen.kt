@@ -220,8 +220,14 @@ fun SettingsScreen(
 
         var currentPage by rememberSaveable { mutableStateOf(SettingsPage.Root.name) }
         val scrollToTopRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
-        val page = remember(currentPage) { SettingsPage.valueOf(currentPage) }
+        val page = remember(currentPage) { settingsPageFromSavedName(currentPage) }
         val previousPage = page.previousPage()
+
+        LaunchedEffect(page, currentPage) {
+            if (currentPage != page.name) {
+                currentPage = page.name
+            }
+        }
 
         LaunchedEffect(rootActionRequests, rootActionsEnabled, page) {
             rootActionRequests.collect {
@@ -236,8 +242,7 @@ fun SettingsScreen(
         }
 
         LaunchedEffect(requestedPageName, rootActionsEnabled) {
-            val targetPage = requestedPageName
-                ?.let { runCatching { SettingsPage.valueOf(it) }.getOrNull() }
+            val targetPage = settingsPageFromSavedNameOrNull(requestedPageName)
                 ?: return@LaunchedEffect
             if (!rootActionsEnabled) return@LaunchedEffect
             currentPage = targetPage.name
@@ -654,6 +659,16 @@ private fun MobileSettingsScreen(
         }
 }
 
+internal fun settingsPageFromSavedName(name: String?): SettingsPage =
+    settingsPageFromSavedNameOrNull(name) ?: SettingsPage.Root
+
+internal fun settingsPageFromSavedNameOrNull(name: String?): SettingsPage? =
+    name?.let { raw -> runCatching { SettingsPage.valueOf(raw) }.getOrNull() }
+
+internal fun settingsCategoryFromSavedName(name: String?): SettingsCategory =
+    name?.let { raw -> runCatching { SettingsCategory.valueOf(raw) }.getOrNull() }
+        ?: SettingsCategory.General
+
 @Composable
 private fun rememberSettingsRootSearchRevealConnection(
     page: SettingsPage,
@@ -751,10 +766,16 @@ private fun TabletSettingsScreen(
     onCollectionsClick: () -> Unit = {},
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(SettingsCategory.General.name) }
-    val activeCategory = SettingsCategory.valueOf(selectedCategory)
+    val activeCategory = remember(selectedCategory) { settingsCategoryFromSavedName(selectedCategory) }
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val topOffset = max(statusBarPadding + 24.dp, 48.dp) + 64.dp
     val saveableStateHolder = rememberSaveableStateHolder()
+
+    LaunchedEffect(activeCategory, selectedCategory) {
+        if (selectedCategory != activeCategory.name) {
+            selectedCategory = activeCategory.name
+        }
+    }
 
     LaunchedEffect(page) {
         if (page.opensInlineOnTablet) {
