@@ -334,7 +334,7 @@ data class StreamRoute(
 data class CatalogRoute(
     val title: String,
     val subtitle: String,
-    val targetKind: CatalogTargetKind? = null,
+    val targetKind: String? = null,
     val contentType: String? = null,
     val supportsPagination: Boolean = false,
     val manifestUrl: String? = null,
@@ -355,9 +355,9 @@ data class CatalogRoute(
         title = title,
         subtitle = subtitle,
         targetKind = when (target) {
-            is CatalogTarget.Addon -> CatalogTargetKind.ADDON
-            is CatalogTarget.Library -> CatalogTargetKind.LIBRARY
-            is CatalogTarget.CollectionSource -> CatalogTargetKind.COLLECTION_SOURCE
+            is CatalogTarget.Addon -> CatalogTargetKind.ADDON.name
+            is CatalogTarget.Library -> CatalogTargetKind.LIBRARY.name
+            is CatalogTarget.CollectionSource -> CatalogTargetKind.COLLECTION_SOURCE.name
         },
         contentType = target.contentType,
         supportsPagination = target.supportsPagination,
@@ -404,7 +404,7 @@ data class CatalogRoute(
         }
 
     private fun resolveTargetKindOrNull(): CatalogTargetKind? =
-        targetKind
+        targetKind?.let(CatalogTargetKind::fromRouteValue)
             ?: when {
                 collectionId != null || folderId != null || sourceKey != null -> CatalogTargetKind.COLLECTION_SOURCE
                 librarySectionType != null -> CatalogTargetKind.LIBRARY
