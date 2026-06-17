@@ -4,6 +4,7 @@ import com.nuvio.app.features.catalog.CatalogTarget
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 
 class CatalogRouteCompatibilityTest {
 
@@ -44,5 +45,15 @@ class CatalogRouteCompatibilityTest {
         assertIs<CatalogTarget.Library>(target)
         assertEquals("series", target.contentType)
         assertEquals("watchlist", target.sectionType)
+    }
+
+    @Test
+    fun malformedRestoredCatalogRouteReturnsNullTarget() {
+        val route = CatalogRoute(
+            title = "Broken",
+            subtitle = "Restored",
+        )
+
+        assertNull(route.toCatalogTargetOrNull())
     }
 }
