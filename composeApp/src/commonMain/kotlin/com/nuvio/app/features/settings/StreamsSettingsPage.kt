@@ -185,6 +185,7 @@ private fun badgeRulesPreview(rules: StreamBadgeRules): String {
         stringResource(
             Res.string.settings_fusion_badges_summary,
             normalizedRules.imports.size,
+            STREAM_BADGE_IMPORT_LIMIT,
             normalizedRules.enabledFilterCount,
         )
     } else {
