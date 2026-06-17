@@ -56,4 +56,27 @@ class CatalogRouteCompatibilityTest {
 
         assertNull(route.toCatalogTargetOrNull())
     }
+
+    @Test
+    fun stringTargetKindMapsToCollectionSourceTarget() {
+        val route = CatalogRoute(
+            title = "Collection",
+            subtitle = "Folder",
+            targetKind = "collection_source",
+            contentType = "series",
+            collectionId = "c1",
+            folderId = "f1",
+            sourceKey = "s1",
+            supportsPagination = true,
+        )
+
+        val target = route.toCatalogTarget()
+
+        assertIs<CatalogTarget.CollectionSource>(target)
+        assertEquals("series", target.contentType)
+        assertEquals("c1", target.collectionId)
+        assertEquals("f1", target.folderId)
+        assertEquals("s1", target.sourceKey)
+        assertEquals(true, target.supportsPagination)
+    }
 }
