@@ -377,30 +377,33 @@ data class CatalogRoute(
     )
 
     fun toCatalogTarget(): CatalogTarget =
-        when (resolveTargetKind()) {
+        requireNotNull(toCatalogTargetOrNull()) { "Unsupported catalog route" }
+
+    fun toCatalogTargetOrNull(): CatalogTarget? =
+        when (resolveTargetKindOrNull() ?: return null) {
             CatalogTargetKind.ADDON -> CatalogTarget.Addon(
-                manifestUrl = requireNotNull(manifestUrl),
+                manifestUrl = manifestUrl ?: return null,
                 contentType = contentType ?: type ?: "movie",
-                catalogId = requireNotNull(addonCatalogId ?: catalogId),
+                catalogId = addonCatalogId ?: catalogId ?: return null,
                 genre = genre,
                 supportsPagination = supportsPagination,
             )
 
             CatalogTargetKind.LIBRARY -> CatalogTarget.Library(
                 contentType = contentType ?: type ?: "movie",
-                sectionType = requireNotNull(librarySectionType ?: catalogId),
+                sectionType = librarySectionType ?: catalogId ?: return null,
             )
 
             CatalogTargetKind.COLLECTION_SOURCE -> CatalogTarget.CollectionSource(
-                collectionId = requireNotNull(collectionId),
-                folderId = requireNotNull(folderId),
-                sourceKey = requireNotNull(sourceKey),
+                collectionId = collectionId ?: return null,
+                folderId = folderId ?: return null,
+                sourceKey = sourceKey ?: return null,
                 contentType = contentType ?: type ?: "movie",
                 supportsPagination = supportsPagination,
             )
         }
 
-    private fun resolveTargetKind(): CatalogTargetKind =
+    private fun resolveTargetKindOrNull(): CatalogTargetKind? =
         targetKind
             ?: when {
                 collectionId != null || folderId != null || sourceKey != null -> CatalogTargetKind.COLLECTION_SOURCE
@@ -408,11 +411,35 @@ data class CatalogRoute(
                 addonCatalogId != null -> CatalogTargetKind.ADDON
                 manifestUrl == LegacyInternalLibraryManifestUrl -> CatalogTargetKind.LIBRARY
                 manifestUrl != null && catalogId != null -> CatalogTargetKind.ADDON
-                else -> error("Unsupported catalog route")
+                else -> null
             }
 }
 
 private const val LegacyInternalLibraryManifestUrl = "nuvio://library"
+
+@Composable
+private inline fun <reified T : Any> restoredRouteOrPop(
+    navController: NavHostController,
+    backStackEntry: NavBackStackEntry,
+): T? {
+    val route = remember(backStackEntry) {
+        runCatching { backStackEntry.toRoute<T>() }.getOrNull()
+    }
+    if (route == null) {
+        LaunchedEffect(backStackEntry) {
+            navController.popBackStackOrHome()
+        }
+    }
+    return route
+}
+
+private fun NavController.popBackStackOrHome() {
+    if (!popBackStack()) {
+        navigate(TabsRoute) {
+            launchSingleTop = true
+        }
+    }
+}
 
 private data class PosterActionTarget(
     val preview: MetaPreview,
@@ -1693,7 +1720,11 @@ private fun MainAppContent(
                     }
                 }
                 composable<DetailRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<DetailRoute>()
+                    val route = restoredRouteOrPop<DetailRoute>(navController, backStackEntry)
+                    if (route == null) {
+                        Box(modifier = Modifier.fillMaxSize())
+                        return@composable
+                    }
                     val directorRole = stringResource(Res.string.person_role_director)
                     val writerRole = stringResource(Res.string.person_role_writer)
                     val creatorRole = stringResource(Res.string.person_role_creator)
@@ -1766,7 +1797,11 @@ private fun MainAppContent(
                     )
                 }
                 composable<PersonDetailRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<PersonDetailRoute>()
+                    val route = restoredRouteOrPop<PersonDetailRoute>(navController, backStackEntry)
+                    if (route == null) {
+                        Box(modifier = Modifier.fillMaxSize())
+                        return@composable
+                    }
                     PersonDetailScreen(
                         personId = route.personId,
                         personName = route.personName,
@@ -1801,7 +1836,11 @@ private fun MainAppContent(
                     )
                 }
                 composable<EntityBrowseRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<EntityBrowseRoute>()
+                    val route = restoredRouteOrPop<EntityBrowseRoute>(navController, backStackEntry)
+                    if (route == null) {
+                        Box(modifier = Modifier.fillMaxSize())
+                        return@composable
+                    }
                     TmdbEntityBrowseScreen(
                         entityKind = TmdbEntityKind.fromRouteValue(route.entityKind),
                         entityId = route.entityId,
@@ -1833,7 +1872,11 @@ private fun MainAppContent(
                     )
                 }
                 composable<StreamRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<StreamRoute>()
+                    val route = restoredRouteOrPop<StreamRoute>(navController, backStackEntry)
+                    if (route == null) {
+                        Box(modifier = Modifier.fillMaxSize())
+                        return@composable
+                    }
                     val launch = remember(route.launchId) {
                         StreamLaunchStore.get(route.launchId)
                     }
@@ -2580,7 +2623,11 @@ private fun MainAppContent(
                         if (isIos) fadeOut(animationSpec = tween(220)) else null
                     },
                 ) { backStackEntry ->
-                    val route = backStackEntry.toRoute<PlayerRoute>()
+                    val route = restoredRouteOrPop<PlayerRoute>(navController, backStackEntry)
+                    if (route == null) {
+                        Box(modifier = Modifier.fillMaxSize())
+                        return@composable
+                    }
                     val launch = remember(route.launchId) { PlayerLaunchStore.get(route.launchId) }
                     if (launch == null) {
                         LaunchedEffect(route.launchId) {
@@ -2678,8 +2725,16 @@ private fun MainAppContent(
                     )
                 }
                 composable<CatalogRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<CatalogRoute>()
-                    val target = route.toCatalogTarget()
+                    val route = restoredRouteOrPop<CatalogRoute>(navController, backStackEntry)
+                    val target = route?.toCatalogTargetOrNull()
+                    if (route == null || target == null) {
+                        LaunchedEffect(backStackEntry) {
+                            CatalogRepository.clear()
+                            navController.popBackStackOrHome()
+                        }
+                        Box(modifier = Modifier.fillMaxSize())
+                        return@composable
+                    }
                     CatalogScreen(
                         title = route.title,
                         subtitle = route.subtitle,
@@ -2841,7 +2896,11 @@ private fun MainAppContent(
                     )
                 }
                 composable<CollectionEditorRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<CollectionEditorRoute>()
+                    val route = restoredRouteOrPop<CollectionEditorRoute>(navController, backStackEntry)
+                    if (route == null) {
+                        Box(modifier = Modifier.fillMaxSize())
+                        return@composable
+                    }
                     CollectionEditorScreen(
                         collectionId = route.collectionId,
                         onBack = {
@@ -2851,7 +2910,11 @@ private fun MainAppContent(
                     )
                 }
                 composable<FolderDetailRoute> { backStackEntry ->
-                    val route = backStackEntry.toRoute<FolderDetailRoute>()
+                    val route = restoredRouteOrPop<FolderDetailRoute>(navController, backStackEntry)
+                    if (route == null) {
+                        Box(modifier = Modifier.fillMaxSize())
+                        return@composable
+                    }
                     LaunchedEffect(route.collectionId, route.folderId) {
                         FolderDetailRepository.initialize(route.collectionId, route.folderId)
                     }
