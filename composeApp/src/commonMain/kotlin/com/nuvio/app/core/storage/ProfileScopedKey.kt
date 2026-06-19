@@ -8,6 +8,8 @@ object ProfileScopedKey {
 
     fun of(baseKey: String): String = "${baseKey}_${overrideProfileId ?: ProfileRepository.activeProfileId}"
 
+    fun of(baseKey: String, profileId: Int): String = "${baseKey}_$profileId"
+
     internal fun <T> scopedTo(profileId: Int, block: () -> T): T {
         val previous = overrideProfileId
         overrideProfileId = profileId

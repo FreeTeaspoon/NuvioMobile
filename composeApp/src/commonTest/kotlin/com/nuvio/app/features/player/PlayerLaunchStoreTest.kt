@@ -11,6 +11,7 @@ class PlayerLaunchStoreTest {
         val storage = FakePlayerLaunchPayloadStorage()
         PlayerLaunchStore.useStorageForTesting(storage)
         val launch = PlayerLaunch(
+            profileId = 1,
             title = "Title",
             sourceUrl = "https://example.com/video.m3u8?token=a/b:c",
             streamTitle = "Source",
@@ -35,6 +36,7 @@ class PlayerLaunchStoreTest {
         val storage = FakePlayerLaunchPayloadStorage()
         PlayerLaunchStore.useStorageForTesting(storage)
         val launch = PlayerLaunch(
+            profileId = 2,
             title = "Restored",
             sourceUrl = "https://example.com/restored.m3u8",
             sourceHeaders = mapOf("Referer" to "https://example.com"),
