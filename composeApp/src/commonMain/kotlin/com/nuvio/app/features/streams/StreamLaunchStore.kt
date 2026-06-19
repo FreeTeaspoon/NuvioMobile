@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 
 @Serializable
 data class StreamLaunch(
+    val profileId: Int = 1,
     val type: String,
     val videoId: String,
     val parentMetaId: String? = null,

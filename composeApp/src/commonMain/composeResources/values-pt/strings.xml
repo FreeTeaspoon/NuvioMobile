@@ -404,7 +404,7 @@
     <string name="compose_settings_category_general">Geral</string>
     <string name="compose_settings_page_account">Conta</string>
     <string name="compose_settings_page_addons">Addons</string>
-    <string name="compose_settings_page_advanced">Avançado</string>
+    <string name="compose_settings_page_advanced">Avançadas</string>
     <string name="compose_settings_page_appearance">Esquema</string>
     <string name="compose_settings_page_content_discovery">Conteúdo e descoberta</string>
     <string name="compose_settings_page_continue_watching">Continuar a ver</string>
@@ -1843,7 +1843,8 @@
     <string name="player_torrent_connecting_peers">A ligar aos peers…</string>
     <string name="player_torrent_starting_engine">A iniciar motor P2P…</string>
     <string name="player_error_failed_start_torrent">Falha ao iniciar o torrent: %1$s</string>
-    <string name="player_error_torrent">Erro de torrent: %1$s</string>    <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
+    <string name="player_error_torrent">Erro de torrent: %1$s</string>
+    <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
     <string name="downloads_auto_open_offline_description">When Nuvio starts without a connection, open Downloads if playable files are saved.</string>
     <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>
     <string name="downloads_delete_confirm_title">Delete download?</string>
@@ -1900,5 +1901,9 @@
     <string name="trakt_error_missing_ids">Missing compatible Trakt IDs</string>
     <string name="trakt_error_empty_response">Empty response body</string>
     <string name="p2p_error_unknown">Unknown torrent error</string>
-
+    <string name="community_donation_progress_complete">Covered. Additional support now goes to development.</string>
+    <string name="community_donation_progress_remaining">After 100%%, additional support goes to development.</string>
+    <string name="community_donation_progress_title">This month&apos;s server &amp; maintenance</string>
+    <string name="community_loading_donation_progress">Loading funding progress...</string>
+    <string name="settings_account_sync_backend">Sync backend</string>
 </resources>

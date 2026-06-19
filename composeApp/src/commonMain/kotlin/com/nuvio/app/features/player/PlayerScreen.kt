@@ -174,6 +174,7 @@ private data class PendingPlayerP2pSwitch(
 
 @Composable
 fun PlayerScreen(
+    profileId: Int,
     title: String,
     sourceUrl: String,
     sourceAudioUrl: String? = null,
@@ -529,6 +530,7 @@ fun PlayerScreen(
         )
 
         val playbackSession = remember(
+            profileId,
             contentType,
             parentMetaId,
             parentMetaType,
@@ -550,6 +552,7 @@ fun PlayerScreen(
             activeSourceAudioUrl,
         ) {
             WatchProgressPlaybackSession(
+                profileId = profileId,
                 contentType = contentType ?: parentMetaType,
                 parentMetaId = parentMetaId,
                 parentMetaType = parentMetaType,
@@ -609,6 +612,7 @@ fun PlayerScreen(
                 }
                 currentTraktScrobbleItem = item
                 TraktScrobbleRepository.scrobbleStart(
+                    profileId = profileId,
                     item = item,
                     progressPercent = currentPlaybackProgressPercent(),
                 )
@@ -624,6 +628,7 @@ fun PlayerScreen(
             scope.launch(NonCancellable) {
                 val item = itemSnapshot ?: currentTraktScrobbleItem() ?: return@launch
                 TraktScrobbleRepository.scrobbleStop(
+                    profileId = profileId,
                     item = item,
                     progressPercent = percent,
                 )

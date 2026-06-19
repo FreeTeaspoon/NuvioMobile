@@ -22,6 +22,7 @@ data class PlayerRoute(
 
 @Serializable
 data class PlayerLaunch(
+    val profileId: Int = 1,
     val title: String,
     val sourceUrl: String,
     val sourceAudioUrl: String? = null,

@@ -92,6 +92,9 @@ import com.nuvio.app.core.deeplink.AppDeepLink
 import com.nuvio.app.core.deeplink.AppDeepLinkRepository
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
+import com.nuvio.app.core.network.SupabaseProvider
+import com.nuvio.app.core.network.SyncBackendRefreshResult
+import com.nuvio.app.core.network.SyncBackendRepository
 import com.nuvio.app.core.sync.AppForegroundMonitor
 import com.nuvio.app.core.sync.ProfileSettingsSync
 import com.nuvio.app.core.sync.SyncManager
@@ -520,6 +523,32 @@ private suspend fun warmProfileBoundRepositories() {
     }
 }
 
+private suspend fun refreshSyncBackendSelection() {
+    SyncBackendRepository.ensureLoaded()
+
+    when (val result = SyncBackendRepository.refreshFromManifest()) {
+        SyncBackendRefreshResult.NotConfigured,
+        is SyncBackendRefreshResult.Failed,
+        SyncBackendRefreshResult.Unchanged,
+        -> Unit
+        is SyncBackendRefreshResult.Applied -> {
+            SupabaseProvider.rebuildClient()
+            NetworkStatusRepository.requestRefresh(force = true)
+        }
+        is SyncBackendRefreshResult.RequiresLogout -> {
+            AuthRepository.resetForSyncBackendChange()
+                .onSuccess {
+                    SyncBackendRepository.applyBackendAfterLogout(
+                        backend = result.targetBackend,
+                        revision = result.revision,
+                    )
+                    SupabaseProvider.rebuildClient()
+                    NetworkStatusRepository.requestRefresh(force = true)
+                }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Preview
@@ -542,7 +571,14 @@ fun App() {
     val amoledEnabled by remember { ThemeSettingsRepository.amoledEnabled }.collectAsStateWithLifecycle()
     NuvioTheme(appTheme = selectedTheme, amoled = amoledEnabled) {
         LaunchedEffect(Unit) {
+            refreshSyncBackendSelection()
             AuthRepository.initialize()
+        }
+
+        LaunchedEffect(Unit) {
+            AppForegroundMonitor.events().collect {
+                refreshSyncBackendSelection()
+            }
         }
 
         LaunchedEffect(Unit) {
@@ -1018,6 +1054,7 @@ private fun MainAppContent(
     var profileSwitchLoading by remember { mutableStateOf(false) }
     var resumePromptItem by remember { mutableStateOf<ContinueWatchingItem?>(null) }
     var lastExternalPlayerLaunch by remember { mutableStateOf<PlayerLaunch?>(null) }
+    val activePlaybackProfileId = profileState.activeProfile?.profileIndex ?: ProfileRepository.activeProfileId
     val launchExternalPlayer = rememberExternalPlayerLauncher { result ->
         if (result != null && result.positionMs > 0L) {
             coroutineScope.launch {
@@ -1027,27 +1064,30 @@ private fun MainAppContent(
                 } else {
                     null
                 }
-                if (TraktAuthRepository.isAuthenticated.value && progressPercent != null) {
+                val playerLaunch = lastExternalPlayerLaunch
+                if (TraktAuthRepository.isAuthenticated.value && progressPercent != null && playerLaunch != null) {
                     val scrobbleItem = TraktScrobbleRepository.buildItem(
-                        contentType = lastExternalPlayerLaunch?.parentMetaType ?: "",
-                        parentMetaId = lastExternalPlayerLaunch?.parentMetaId ?: "",
-                        videoId = lastExternalPlayerLaunch?.videoId,
-                        title = lastExternalPlayerLaunch?.title,
-                        seasonNumber = lastExternalPlayerLaunch?.seasonNumber,
-                        episodeNumber = lastExternalPlayerLaunch?.episodeNumber,
-                        episodeTitle = lastExternalPlayerLaunch?.episodeTitle,
+                        contentType = playerLaunch.parentMetaType,
+                        parentMetaId = playerLaunch.parentMetaId,
+                        videoId = playerLaunch.videoId,
+                        title = playerLaunch.title,
+                        seasonNumber = playerLaunch.seasonNumber,
+                        episodeNumber = playerLaunch.episodeNumber,
+                        episodeTitle = playerLaunch.episodeTitle,
                     )
                     if (scrobbleItem != null) {
                         runCatching {
                             TraktScrobbleRepository.scrobbleStop(
+                                profileId = playerLaunch.profileId,
                                 item = scrobbleItem,
                                 progressPercent = progressPercent,
                             )
                         }
                     }
                 }
-                lastExternalPlayerLaunch?.let { playerLaunch ->
+                playerLaunch?.let { playerLaunch ->
                     val session = WatchProgressPlaybackSession(
+                        profileId = playerLaunch.profileId,
                         contentType = playerLaunch.contentType ?: playerLaunch.parentMetaType,
                         parentMetaId = playerLaunch.parentMetaId,
                         parentMetaType = playerLaunch.parentMetaType,
@@ -1196,6 +1236,7 @@ private fun MainAppContent(
                         ?.takeIf { it.isNotBlank() }
                         ?: file.name.ifBlank { item.name }
                     val playerLaunch = PlayerLaunch(
+                        profileId = activePlaybackProfileId,
                         title = playbackTitle,
                         sourceUrl = resolved.url,
                         streamTitle = playbackTitle,
@@ -1256,29 +1297,30 @@ private fun MainAppContent(
                 val localSourceUrl = downloadedItem?.let(DownloadsRepository::playableLocalFileUri)
                 if (!localSourceUrl.isNullOrBlank()) {
                     val playerLaunch = PlayerLaunch(
-                            title = title,
-                            sourceUrl = localSourceUrl,
-                            sourceHeaders = emptyMap(),
-                            sourceResponseHeaders = emptyMap(),
-                            logo = logo,
-                            poster = poster,
-                            background = background,
-                            seasonNumber = seasonNumber,
-                            episodeNumber = episodeNumber,
-                            episodeTitle = episodeTitle,
-                            episodeThumbnail = episodeThumbnail,
-                            streamTitle = downloadedItem.streamTitle.ifBlank { title },
-                            streamSubtitle = downloadedItem.streamSubtitle,
-                            pauseDescription = pauseDescription,
-                            providerName = downloadedItem.providerName.ifBlank { downloadedProviderLabel },
-                            providerAddonId = downloadedItem.providerAddonId,
-                            contentType = type,
-                            videoId = videoId,
-                            parentMetaId = parentMetaId,
-                            parentMetaType = parentMetaType,
-                            initialPositionMs = targetResumePositionMs,
-                            initialProgressFraction = targetResumeProgressFraction,
-                        )
+                        profileId = activePlaybackProfileId,
+                        title = title,
+                        sourceUrl = localSourceUrl,
+                        sourceHeaders = emptyMap(),
+                        sourceResponseHeaders = emptyMap(),
+                        logo = logo,
+                        poster = poster,
+                        background = background,
+                        seasonNumber = seasonNumber,
+                        episodeNumber = episodeNumber,
+                        episodeTitle = episodeTitle,
+                        episodeThumbnail = episodeThumbnail,
+                        streamTitle = downloadedItem.streamTitle.ifBlank { title },
+                        streamSubtitle = downloadedItem.streamSubtitle,
+                        pauseDescription = pauseDescription,
+                        providerName = downloadedItem.providerName.ifBlank { downloadedProviderLabel },
+                        providerAddonId = downloadedItem.providerAddonId,
+                        contentType = type,
+                        videoId = videoId,
+                        parentMetaId = parentMetaId,
+                        parentMetaType = parentMetaType,
+                        initialPositionMs = targetResumePositionMs,
+                        initialProgressFraction = targetResumeProgressFraction,
+                    )
                     if (playerSettingsUiState.externalPlayerEnabled) {
                         coroutineScope.launch { openExternalPlayback(playerLaunch) }
                         return
@@ -1291,6 +1333,7 @@ private fun MainAppContent(
 
             val streamLaunchId = StreamLaunchStore.put(
                 StreamLaunch(
+                    profileId = activePlaybackProfileId,
                     type = type,
                     videoId = videoId,
                     parentMetaId = parentMetaId,
@@ -2036,6 +2079,7 @@ private fun MainAppContent(
                             )
                         }
                         val playerLaunch = PlayerLaunch(
+                            profileId = launch.profileId,
                             title = launch.title,
                             sourceUrl = sentinelUrl,
                             sourceHeaders = emptyMap(),
@@ -2168,33 +2212,34 @@ private fun MainAppContent(
                                 return@LaunchedEffect
                             }
                             val playerLaunch = PlayerLaunch(
-                                    title = launch.title,
-                                    sourceUrl = cached.url,
-                                    sourceHeaders = sanitizePlaybackHeaders(cached.requestHeaders),
-                                    sourceResponseHeaders = sanitizePlaybackResponseHeaders(cached.responseHeaders),
-                                    streamType = cached.streamType,
-                                    sourceFilename = cached.filename,
-                                    sourceVideoSize = cached.videoSize,
-                                    logo = launch.logo,
-                                    poster = launch.poster,
-                                    background = launch.background,
-                                    seasonNumber = launch.seasonNumber,
-                                    episodeNumber = launch.episodeNumber,
-                                    episodeTitle = launch.episodeTitle,
-                                    episodeThumbnail = launch.episodeThumbnail,
-                                    streamTitle = cached.streamName,
-                                    streamSubtitle = null,
-                                    bingeGroup = cached.bingeGroup,
-                                    pauseDescription = pauseDescription,
-                                    providerName = cached.addonName,
-                                    providerAddonId = cached.addonId,
-                                    contentType = launch.type,
-                                    videoId = effectiveVideoId,
-                                    parentMetaId = launch.parentMetaId ?: effectiveVideoId,
-                                    parentMetaType = launch.parentMetaType ?: launch.type,
-                                    initialPositionMs = launch.resumePositionMs ?: 0L,
-                                    initialProgressFraction = launch.resumeProgressFraction,
-                                )
+                                profileId = launch.profileId,
+                                title = launch.title,
+                                sourceUrl = cached.url,
+                                sourceHeaders = sanitizePlaybackHeaders(cached.requestHeaders),
+                                sourceResponseHeaders = sanitizePlaybackResponseHeaders(cached.responseHeaders),
+                                streamType = cached.streamType,
+                                sourceFilename = cached.filename,
+                                sourceVideoSize = cached.videoSize,
+                                logo = launch.logo,
+                                poster = launch.poster,
+                                background = launch.background,
+                                seasonNumber = launch.seasonNumber,
+                                episodeNumber = launch.episodeNumber,
+                                episodeTitle = launch.episodeTitle,
+                                episodeThumbnail = launch.episodeThumbnail,
+                                streamTitle = cached.streamName,
+                                streamSubtitle = null,
+                                bingeGroup = cached.bingeGroup,
+                                pauseDescription = pauseDescription,
+                                providerName = cached.addonName,
+                                providerAddonId = cached.addonId,
+                                contentType = launch.type,
+                                videoId = effectiveVideoId,
+                                parentMetaId = launch.parentMetaId ?: effectiveVideoId,
+                                parentMetaType = launch.parentMetaType ?: launch.type,
+                                initialPositionMs = launch.resumePositionMs ?: 0L,
+                                initialProgressFraction = launch.resumeProgressFraction,
+                            )
                             if (playerSettings.externalPlayerEnabled) {
                                 openExternalPlayback(playerLaunch)
                                 StreamsRepository.setOverlayVisible(false)
@@ -2304,33 +2349,34 @@ private fun MainAppContent(
                             )
                         }
                         val playerLaunch = PlayerLaunch(
-                                title = launch.title,
-                                sourceUrl = sourceUrl,
-                                sourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request),
-                                sourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response),
-                                streamType = stream.streamType,
-                                sourceFilename = stream.playbackFilenameHint,
-                                sourceVideoSize = stream.behaviorHints.videoSize,
-                                logo = launch.logo,
-                                poster = launch.poster,
-                                background = launch.background,
-                                seasonNumber = launch.seasonNumber,
-                                episodeNumber = launch.episodeNumber,
-                                episodeTitle = launch.episodeTitle,
-                                episodeThumbnail = launch.episodeThumbnail,
-                                streamTitle = stream.streamLabel,
-                                streamSubtitle = stream.streamSubtitle,
-                                bingeGroup = stream.behaviorHints.bingeGroup,
-                                pauseDescription = pauseDescription,
-                                providerName = stream.addonName,
-                                providerAddonId = stream.addonId,
-                                contentType = launch.type,
-                                videoId = effectiveVideoId,
-                                parentMetaId = launch.parentMetaId ?: effectiveVideoId,
-                                parentMetaType = launch.parentMetaType ?: launch.type,
-                                initialPositionMs = launch.resumePositionMs ?: 0L,
-                                initialProgressFraction = launch.resumeProgressFraction,
-                            )
+                            profileId = launch.profileId,
+                            title = launch.title,
+                            sourceUrl = sourceUrl,
+                            sourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request),
+                            sourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response),
+                            streamType = stream.streamType,
+                            sourceFilename = stream.playbackFilenameHint,
+                            sourceVideoSize = stream.behaviorHints.videoSize,
+                            logo = launch.logo,
+                            poster = launch.poster,
+                            background = launch.background,
+                            seasonNumber = launch.seasonNumber,
+                            episodeNumber = launch.episodeNumber,
+                            episodeTitle = launch.episodeTitle,
+                            episodeThumbnail = launch.episodeThumbnail,
+                            streamTitle = stream.streamLabel,
+                            streamSubtitle = stream.streamSubtitle,
+                            bingeGroup = stream.behaviorHints.bingeGroup,
+                            pauseDescription = pauseDescription,
+                            providerName = stream.addonName,
+                            providerAddonId = stream.addonId,
+                            contentType = launch.type,
+                            videoId = effectiveVideoId,
+                            parentMetaId = launch.parentMetaId ?: effectiveVideoId,
+                            parentMetaType = launch.parentMetaType ?: launch.type,
+                            initialPositionMs = launch.resumePositionMs ?: 0L,
+                            initialProgressFraction = launch.resumeProgressFraction,
+                        )
                         if (playerSettings.externalPlayerEnabled) {
                             openExternalPlayback(playerLaunch)
                             StreamsRepository.consumeAutoPlay()
@@ -2432,6 +2478,7 @@ private fun MainAppContent(
                             )
                         }
                         val playerLaunch = PlayerLaunch(
+                            profileId = launch.profileId,
                             title = launch.title,
                             sourceUrl = sourceUrl,
                             sourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request),
@@ -2640,6 +2687,7 @@ private fun MainAppContent(
                         launch.videoId?.let { ResumePromptRepository.markPlayerEntered(it) }
                     }
                     PlayerScreen(
+                        profileId = launch.profileId,
                         title = launch.title,
                         sourceUrl = launch.sourceUrl,
                         sourceAudioUrl = launch.sourceAudioUrl,
@@ -2679,6 +2727,7 @@ private fun MainAppContent(
                         },
                         onOpenInExternalPlayer = { request ->
                             val playerLaunch = PlayerLaunch(
+                                profileId = launch.profileId,
                                 title = launch.title,
                                 sourceUrl = request.sourceUrl,
                                 sourceHeaders = request.sourceHeaders,
@@ -2804,27 +2853,28 @@ private fun MainAppContent(
                                     ?.takeIf { it.isResumable }
 
                                 val playerLaunch = PlayerLaunch(
-                                        title = item.title,
-                                        sourceUrl = sourceUrl,
-                                        sourceHeaders = emptyMap(),
-                                        sourceResponseHeaders = emptyMap(),
-                                        logo = item.logo,
-                                        poster = item.poster,
-                                        background = item.background,
-                                        seasonNumber = item.seasonNumber,
-                                        episodeNumber = item.episodeNumber,
-                                        episodeTitle = item.episodeTitle,
-                                        episodeThumbnail = item.episodeThumbnail,
-                                        streamTitle = item.streamTitle,
-                                        streamSubtitle = item.streamSubtitle,
-                                        providerName = item.providerName,
-                                        providerAddonId = item.providerAddonId,
-                                        contentType = item.contentType,
-                                        videoId = item.videoId,
-                                        parentMetaId = item.parentMetaId,
-                                        parentMetaType = item.parentMetaType,
-                                        initialPositionMs = resumeEntry?.lastPositionMs?.takeIf { it > 0L } ?: 0L,
-                                        initialProgressFraction = resumeEntry?.progressFraction?.takeIf { it > 0f },
+                                    profileId = activePlaybackProfileId,
+                                    title = item.title,
+                                    sourceUrl = sourceUrl,
+                                    sourceHeaders = emptyMap(),
+                                    sourceResponseHeaders = emptyMap(),
+                                    logo = item.logo,
+                                    poster = item.poster,
+                                    background = item.background,
+                                    seasonNumber = item.seasonNumber,
+                                    episodeNumber = item.episodeNumber,
+                                    episodeTitle = item.episodeTitle,
+                                    episodeThumbnail = item.episodeThumbnail,
+                                    streamTitle = item.streamTitle,
+                                    streamSubtitle = item.streamSubtitle,
+                                    providerName = item.providerName,
+                                    providerAddonId = item.providerAddonId,
+                                    contentType = item.contentType,
+                                    videoId = item.videoId,
+                                    parentMetaId = item.parentMetaId,
+                                    parentMetaType = item.parentMetaType,
+                                    initialPositionMs = resumeEntry?.lastPositionMs?.takeIf { it > 0L } ?: 0L,
+                                    initialProgressFraction = resumeEntry?.progressFraction?.takeIf { it > 0f },
                                 )
                                 if (playerSettingsUiState.externalPlayerEnabled) {
                                     coroutineScope.launch { openExternalPlayback(playerLaunch) }
@@ -2928,7 +2978,6 @@ private fun MainAppContent(
                             navController.navigate(DetailRoute(type = meta.type, id = meta.id))
                         },
                     )
-                }
                 }
             }
 
@@ -3140,6 +3189,7 @@ private fun MainAppContent(
                     .zIndex(25f),
             )
         }
+}
 }
 
 @Composable
