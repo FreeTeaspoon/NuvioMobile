@@ -210,6 +210,7 @@ fun PlayerScreen(
     torrentTrackers: List<String> = emptyList(),
     initialPositionMs: Long = 0L,
     initialProgressFraction: Float? = null,
+    contentLanguage: String? = null,
 ) {
     LockPlayerToLandscape()
     val playerSettingsUiState by remember {
