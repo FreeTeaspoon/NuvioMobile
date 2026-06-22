@@ -239,8 +239,8 @@ internal fun AndroidMedia3PlayerSurface(
         val loadControl = DefaultLoadControl.Builder()
             .setTargetBufferBytes(PlaybackTargetBufferBytes)
             .setBufferDurationsMs(
-                DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
-                PlaybackMaxBufferMs,
+                15_000,
+                70_000,
                 DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
                 5_000
             )
