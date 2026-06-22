@@ -317,7 +317,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       - name: Set up Gradle
         if: steps.existing_release.outputs.skip != 'true'
@@ -326,6 +326,11 @@ jobs:
       - name: Set up Android SDK
         if: steps.existing_release.outputs.skip != 'true'
         uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform
+        if: steps.existing_release.outputs.skip != 'true'
+        shell: bash
+        run: sdkmanager "platforms;android-37.0"
 
       - name: Write local build config
         if: steps.existing_release.outputs.skip != 'true'
@@ -372,7 +377,7 @@ jobs:
       - name: Build full release APK
         if: steps.existing_release.outputs.skip != 'true'
         shell: bash
-        run: ./gradlew --console=plain :composeApp:assembleFullRelease
+        run: ./gradlew --console=plain :androidApp:assembleFullRelease
 
       - name: Stage release asset
         if: steps.existing_release.outputs.skip != 'true'
@@ -381,7 +386,7 @@ jobs:
           set -euo pipefail
 
           mkdir -p dist
-          apk="$(find composeApp/build/outputs/apk/full/release -maxdepth 1 -name '*release*.apk' ! -name '*unsigned.apk' | head -n 1)"
+          apk="$(find androidApp/build/outputs/apk/full/release -maxdepth 1 -name '*release*.apk' ! -name '*unsigned.apk' | head -n 1)"
           if [ -z "${apk}" ]; then
             echo "::error::No signed full release APK was produced."
             exit 1
