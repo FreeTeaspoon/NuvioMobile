@@ -47,6 +47,7 @@ cd NuvioMobile
 ### Project Structure
 
 - `composeApp/` contains the shared Kotlin Multiplatform and Compose Multiplatform app code.
+- `androidApp/` contains the Android application packaging, flavors, signing, and APK outputs.
 - `composeApp/src/commonMain/` contains shared UI, features, repositories, and platform-agnostic logic.
 - `composeApp/src/androidMain/` contains Android-specific integrations.
 - `composeApp/src/iosMain/` contains iOS-specific integrations.
@@ -55,7 +56,7 @@ cd NuvioMobile
 Useful commands:
 
 ```bash
-./gradlew :composeApp:assembleDebug
+./gradlew :androidApp:assemblePlaystoreDebug
 ./gradlew :composeApp:compileKotlinIosSimulatorArm64
 ./scripts/build-distribution.sh
 ```
