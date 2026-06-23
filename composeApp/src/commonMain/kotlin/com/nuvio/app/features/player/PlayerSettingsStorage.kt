@@ -57,6 +57,12 @@ internal expect object PlayerSettingsStorage {
     fun saveStreamReuseLastLinkEnabled(enabled: Boolean)
     fun loadStreamReuseLastLinkCacheHours(): Int?
     fun saveStreamReuseLastLinkCacheHours(hours: Int)
+    fun loadAndroidLibmpvVideoOutput(): String?
+    fun saveAndroidLibmpvVideoOutput(output: String)
+    fun loadAndroidLibmpvHardwareDecodingEnabled(): Boolean?
+    fun saveAndroidLibmpvHardwareDecodingEnabled(enabled: Boolean)
+    fun loadAndroidLibmpvYuv420pEnabled(): Boolean?
+    fun saveAndroidLibmpvYuv420pEnabled(enabled: Boolean)
     fun loadDecoderPriority(): Int?
     fun saveDecoderPriority(priority: Int)
     fun loadMapDV7ToHevc(): Boolean?

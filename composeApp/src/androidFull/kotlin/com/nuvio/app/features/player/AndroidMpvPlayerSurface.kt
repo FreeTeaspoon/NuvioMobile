@@ -42,10 +42,14 @@ internal fun AndroidMpvPlayerSurface(
     sourceUrl: String,
     sourceAudioUrl: String?,
     sourceHeaders: Map<String, String>,
+    externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle>,
     initialPositionMs: Long,
     modifier: Modifier,
     playWhenReady: Boolean,
     resizeMode: PlayerResizeMode,
+    videoOutput: AndroidLibmpvVideoOutput,
+    hardwareDecodingEnabled: Boolean,
+    yuv420pEnabled: Boolean,
     onControllerReady: (PlayerEngineController) -> Unit,
     onSnapshot: (PlayerPlaybackSnapshot) -> Unit,
     onError: (String?) -> Unit,
@@ -58,10 +62,17 @@ internal fun AndroidMpvPlayerSurface(
     val sanitizedSourceHeaders = remember(sourceHeaders) {
         sanitizePlaybackHeaders(sourceHeaders)
     }
-    val playerView = remember(context) { AndroidMpvPlayerView(context) }
+    val playerView = remember(context, videoOutput, hardwareDecodingEnabled, yuv420pEnabled) {
+        AndroidMpvPlayerView(
+            context = context,
+            videoOutput = videoOutput,
+            hardwareDecodingEnabled = hardwareDecodingEnabled,
+            yuv420pEnabled = yuv420pEnabled,
+        )
+    }
     val playerController = remember(playerView) { AndroidMpvPlayerController(playerView) }
 
-    LaunchedEffect(playerController, sourceUrl, sourceAudioUrl, sanitizedSourceHeaders) {
+    LaunchedEffect(playerController, sourceUrl, sourceAudioUrl, sanitizedSourceHeaders, externalSubtitles) {
         latestOnControllerReady.value(playerController)
     }
 
@@ -113,6 +124,7 @@ internal fun AndroidMpvPlayerSurface(
                 videoUrl = sourceUrl,
                 audioUrl = sourceAudioUrl,
                 requestHeaders = sanitizedSourceHeaders,
+                externalSubtitles = externalSubtitles,
                 initialPositionMs = initialPositionMs.coerceAtLeast(0L),
             )
             view.setPaused(!playWhenReady)
@@ -191,6 +203,7 @@ private data class MpvPlaybackRequest(
     val videoUrl: String,
     val audioUrl: String?,
     val requestHeaders: Map<String, String>,
+    val externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle>,
     val initialPositionMs: Long,
 )
 
@@ -207,6 +220,9 @@ private data class MpvTrack(
 
 private class AndroidMpvPlayerView @JvmOverloads constructor(
     context: Context,
+    private val videoOutput: AndroidLibmpvVideoOutput = AndroidLibmpvVideoOutput.GpuNext,
+    private val hardwareDecodingEnabled: Boolean = true,
+    private val yuv420pEnabled: Boolean = false,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
 ) : TextureView(context, attrs, defStyleAttr),
@@ -290,12 +306,14 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         videoUrl: String,
         audioUrl: String?,
         requestHeaders: Map<String, String>,
+        externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle>,
         initialPositionMs: Long,
     ) {
         val request = MpvPlaybackRequest(
             videoUrl = videoUrl,
             audioUrl = audioUrl?.takeIf { it.isNotBlank() },
             requestHeaders = requestHeaders,
+            externalSubtitles = externalSubtitles,
             initialPositionMs = initialPositionMs.coerceAtLeast(0L),
         )
         currentRequestHeaders = request.requestHeaders
@@ -541,10 +559,13 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
 
     private fun initOptions() {
         MPVLib.setOptionString("profile", "fast")
-        MPVLib.setOptionString("vo", "gpu")
+        MPVLib.setOptionString("vo", videoOutput.mpvValue)
         MPVLib.setOptionString("gpu-context", "android")
         MPVLib.setOptionString("opengl-es", "yes")
-        MPVLib.setOptionString("hwdec", "auto-copy")
+        MPVLib.setOptionString("hwdec", if (hardwareDecodingEnabled) "auto" else "no")
+        if (yuv420pEnabled) {
+            MPVLib.setOptionString("vf", "format=yuv420p")
+        }
         MPVLib.setOptionString("target-colorspace-hint", "yes")
         MPVLib.setOptionString("target-prim", "auto")
         MPVLib.setOptionString("target-trc", "auto")
@@ -668,6 +689,32 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
                     MPVLib.command(arrayOf("audio-add", audioUrl.toMpvLoadTarget(), "select"))
                 }
             }, 200L)
+        }
+        request.externalSubtitles.forEachIndexed { index, subtitle ->
+            postDelayed({
+                if (isMpvInitialized && activeRequest == request) {
+                    addExternalSubtitle(subtitle)
+                }
+            }, 300L + (index * 40L))
+        }
+    }
+
+    private fun addExternalSubtitle(subtitle: com.nuvio.app.features.streams.StreamSubtitle) {
+        val subtitleHeaders = subtitle.headers.orEmpty()
+        if (subtitleHeaders.isNotEmpty()) {
+            applyHttpHeadersAsOptions(currentRequestHeaders + subtitleHeaders)
+        }
+        MPVLib.command(
+            arrayOf(
+                "sub-add",
+                subtitle.url.toMpvLoadTarget(),
+                "auto",
+                subtitle.name ?: subtitle.language,
+                subtitle.language,
+            ),
+        )
+        if (subtitleHeaders.isNotEmpty()) {
+            applyHttpHeadersAsOptions(currentRequestHeaders)
         }
     }
 
