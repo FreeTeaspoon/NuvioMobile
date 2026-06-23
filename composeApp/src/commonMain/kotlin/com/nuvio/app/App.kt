@@ -123,6 +123,7 @@ import com.nuvio.app.core.ui.dismissNuvioBottomSheet
 import com.nuvio.app.core.ui.isLiquidGlassNativeTabBarSupported
 import com.nuvio.app.core.ui.localizedContinueWatchingSubtitle
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.core.ui.nuvioBottomNavigationBarInsets
 import com.nuvio.app.features.auth.AuthScreen
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.catalog.CatalogRepository
@@ -182,6 +183,7 @@ import com.nuvio.app.features.profiles.ProfileEditScreen
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.profiles.ProfileSelectionScreen
 import com.nuvio.app.features.profiles.ProfileSwitcherTab
+import com.nuvio.app.features.profiles.NativeProfileSwitcherPopup
 import com.nuvio.app.features.profiles.SidebarProfileSwitcherStack
 import com.nuvio.app.features.profiles.profileAvatarImageUrl
 import com.nuvio.app.features.search.SearchScreen
@@ -891,8 +893,13 @@ private fun MainAppContent(
     val cloudLibraryPlayFailedText = stringResource(Res.string.cloud_library_play_failed)
     val cloudLibraryPlayDisabledText = stringResource(Res.string.cloud_library_play_disabled)
     val cloudLibraryPlayNotConnectedText = stringResource(Res.string.cloud_library_play_not_connected)
+    val nativeTabHomeTitle = stringResource(Res.string.compose_nav_home)
+    val nativeTabSearchTitle = stringResource(Res.string.compose_nav_search)
+    val nativeTabLibraryTitle = stringResource(Res.string.compose_nav_library)
+    val nativeTabProfileTitle = stringResource(Res.string.compose_nav_profile)
     val isTraktLibrarySource = libraryUiState.sourceMode == LibrarySourceMode.TRAKT
     var initialHomeReady by rememberSaveable { mutableStateOf(false) }
+    var nativeProfileSwitcherVisible by remember { mutableStateOf(false) }
     var offlineLaunchRouteHandled by rememberSaveable { mutableStateOf(false) }
     var networkToastBaselineReady by rememberSaveable { mutableStateOf(false) }
     var lastNetworkToastCondition by rememberSaveable { mutableStateOf(NetworkCondition.Unknown.name) }
@@ -920,6 +927,28 @@ private fun MainAppContent(
                 handleRootTabClick(requestedTab.toAppScreenTab())
             }
         }
+    }
+
+    LaunchedEffect(liquidGlassNativeTabBarSupported, liquidGlassNativeTabBarEnabled) {
+        NativeTabBridge.profileTabLongPresses.collectLatest {
+            if (liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled) {
+                nativeProfileSwitcherVisible = true
+            }
+        }
+    }
+
+    LaunchedEffect(
+        nativeTabHomeTitle,
+        nativeTabSearchTitle,
+        nativeTabLibraryTitle,
+        nativeTabProfileTitle,
+    ) {
+        NativeTabBridge.publishTabTitles(
+            home = nativeTabHomeTitle,
+            search = nativeTabSearchTitle,
+            library = nativeTabLibraryTitle,
+            profile = nativeTabProfileTitle,
+        )
     }
 
     LaunchedEffect(selectedTab) {
@@ -1239,6 +1268,7 @@ private fun MainAppContent(
                         profileId = activePlaybackProfileId,
                         title = playbackTitle,
                         sourceUrl = resolved.url,
+                        externalSubtitles = emptyList(),
                         streamTitle = playbackTitle,
                         streamSubtitle = item.name.takeIf { it != playbackTitle },
                         providerName = item.providerName,
@@ -1302,6 +1332,7 @@ private fun MainAppContent(
                         sourceUrl = localSourceUrl,
                         sourceHeaders = emptyMap(),
                         sourceResponseHeaders = emptyMap(),
+                        externalSubtitles = emptyList(),
                         logo = logo,
                         poster = poster,
                         background = background,
@@ -1542,6 +1573,11 @@ private fun MainAppContent(
                         val isTabletLayout = maxWidth >= 768.dp
                         val useNativeBottomTabs =
                             liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
+                        val nativeTabSafeBottomPadding = nuvioBottomNavigationBarInsets()
+                            .asPaddingValues()
+                            .calculateBottomPadding()
+                        val nativeProfileTabAnchorBottomPadding =
+                            nativeTabSafeBottomPadding + NuvioTokens.Space.s10
                         val useFloatingBottomTabs = !isTabletLayout && !useNativeBottomTabs
                         val floatingBottomTabsBackdrop = rememberFloatingBottomBarBackdrop()
                         val useDesktopSidebar = isDesktop &&
@@ -1563,6 +1599,7 @@ private fun MainAppContent(
                             AppScreenTab.Settings,
                         )
                         val onProfileSelected: (NuvioProfile) -> Unit = { profile ->
+                            nativeProfileSwitcherVisible = false
                             profileSwitchLoading = true
                             selectedTab = AppScreenTab.Home
                             coroutineScope.launch {
@@ -1756,6 +1793,22 @@ private fun MainAppContent(
                                         onTabSelected = ::handleRootTabClick,
                                         onProfileSelected = onProfileSelected,
                                         onAddProfileRequested = onSwitchProfile,
+                                    )
+                                }
+
+                                if (!isTabletLayout && useNativeBottomTabs && tabsRouteActive) {
+                                    NativeProfileSwitcherPopup(
+                                        visible = nativeProfileSwitcherVisible,
+                                        isSwitchingProfile = profileSwitchLoading,
+                                        onDismissRequest = { nativeProfileSwitcherVisible = false },
+                                        onProfileSelected = onProfileSelected,
+                                        onAddProfileRequested = {
+                                            nativeProfileSwitcherVisible = false
+                                            onSwitchProfile()
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(bottom = nativeProfileTabAnchorBottomPadding),
                                     )
                                 }
                             }
@@ -2084,6 +2137,7 @@ private fun MainAppContent(
                             sourceUrl = sentinelUrl,
                             sourceHeaders = emptyMap(),
                             sourceResponseHeaders = emptyMap(),
+                            externalSubtitles = emptyList(),
                             logo = launch.logo,
                             poster = launch.poster,
                             background = launch.background,
@@ -2217,6 +2271,7 @@ private fun MainAppContent(
                                 sourceUrl = cached.url,
                                 sourceHeaders = sanitizePlaybackHeaders(cached.requestHeaders),
                                 sourceResponseHeaders = sanitizePlaybackResponseHeaders(cached.responseHeaders),
+                                externalSubtitles = emptyList(),
                                 streamType = cached.streamType,
                                 sourceFilename = cached.filename,
                                 sourceVideoSize = cached.videoSize,
@@ -2355,6 +2410,7 @@ private fun MainAppContent(
                             sourceUrl = sourceUrl,
                             sourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request),
                             sourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response),
+                            externalSubtitles = stream.externalSubtitles,
                             streamType = stream.streamType,
                             sourceFilename = stream.playbackFilenameHint,
                             sourceVideoSize = stream.behaviorHints.videoSize,
@@ -2484,6 +2540,7 @@ private fun MainAppContent(
                             sourceUrl = sourceUrl,
                             sourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request),
                             sourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response),
+                            externalSubtitles = stream.externalSubtitles,
                             streamType = stream.streamType,
                             sourceFilename = stream.playbackFilenameHint,
                             sourceVideoSize = stream.behaviorHints.videoSize,
@@ -2694,6 +2751,7 @@ private fun MainAppContent(
                         sourceAudioUrl = launch.sourceAudioUrl,
                         sourceHeaders = launch.sourceHeaders,
                         sourceResponseHeaders = launch.sourceResponseHeaders,
+                        externalSubtitles = launch.externalSubtitles,
                         streamType = launch.streamType,
                         sourceFilename = launch.sourceFilename,
                         sourceVideoSize = launch.sourceVideoSize,
@@ -2733,6 +2791,7 @@ private fun MainAppContent(
                                 title = launch.title,
                                 sourceUrl = request.sourceUrl,
                                 sourceHeaders = request.sourceHeaders,
+                                externalSubtitles = launch.externalSubtitles,
                                 logo = launch.logo,
                                 poster = launch.poster,
                                 background = launch.background,
@@ -2860,6 +2919,7 @@ private fun MainAppContent(
                                     sourceUrl = sourceUrl,
                                     sourceHeaders = emptyMap(),
                                     sourceResponseHeaders = emptyMap(),
+                                    externalSubtitles = emptyList(),
                                     logo = item.logo,
                                     poster = item.poster,
                                     background = item.background,

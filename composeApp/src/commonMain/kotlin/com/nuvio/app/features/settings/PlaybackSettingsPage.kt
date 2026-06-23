@@ -55,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.addons.enabledAddons
 import com.nuvio.app.features.player.AddonSubtitleStartupMode
+import com.nuvio.app.features.player.AndroidLibmpvVideoOutput
 import com.nuvio.app.features.player.AudioLanguageOption
 import com.nuvio.app.features.player.AvailableLanguageOptions
 import com.nuvio.app.features.player.ExternalPlayerApp
@@ -100,6 +101,9 @@ internal fun LazyListScope.playbackSettingsContent(
     secondaryPreferredSubtitleLanguage: String?,
     streamReuseLastLinkEnabled: Boolean,
     streamReuseLastLinkCacheHours: Int,
+    androidLibmpvVideoOutput: AndroidLibmpvVideoOutput,
+    androidLibmpvHardwareDecodingEnabled: Boolean,
+    androidLibmpvYuv420pEnabled: Boolean,
     decoderPriority: Int,
     mapDV7ToHevc: Boolean,
     tunnelingEnabled: Boolean,
@@ -122,6 +126,9 @@ internal fun LazyListScope.playbackSettingsContent(
             secondaryPreferredSubtitleLanguage = secondaryPreferredSubtitleLanguage,
             streamReuseLastLinkEnabled = streamReuseLastLinkEnabled,
             streamReuseLastLinkCacheHours = streamReuseLastLinkCacheHours,
+            androidLibmpvVideoOutput = androidLibmpvVideoOutput,
+            androidLibmpvHardwareDecodingEnabled = androidLibmpvHardwareDecodingEnabled,
+            androidLibmpvYuv420pEnabled = androidLibmpvYuv420pEnabled,
             decoderPriority = decoderPriority,
             mapDV7ToHevc = mapDV7ToHevc,
             tunnelingEnabled = tunnelingEnabled,
@@ -260,6 +267,9 @@ private fun PlaybackSettingsSection(
     secondaryPreferredSubtitleLanguage: String?,
     streamReuseLastLinkEnabled: Boolean,
     streamReuseLastLinkCacheHours: Int,
+    androidLibmpvVideoOutput: AndroidLibmpvVideoOutput,
+    androidLibmpvHardwareDecodingEnabled: Boolean,
+    androidLibmpvYuv420pEnabled: Boolean,
     decoderPriority: Int,
     mapDV7ToHevc: Boolean,
     tunnelingEnabled: Boolean,
@@ -280,6 +290,7 @@ private fun PlaybackSettingsSection(
     var showExternalPlayerDialog by remember { mutableStateOf(false) }
     var showExternalPlayerAppDialog by remember { mutableStateOf(false) }
     var showReuseCacheDurationDialog by remember { mutableStateOf(false) }
+    var showLibmpvVideoOutputDialog by remember { mutableStateOf(false) }
     var showDecoderPriorityDialog by remember { mutableStateOf(false) }
     var showHoldToSpeedValueDialog by remember { mutableStateOf(false) }
     var showIosAudioOutputDialog by remember { mutableStateOf(false) }
@@ -585,7 +596,8 @@ private fun PlaybackSettingsSection(
                         onClick = { showSubtitleOutlineColorDialog = true },
                     )
                 }
-                if (!isIos) {
+                val showLibassSettings = !isIos && playerEngine != PlayerEngineType.MPV
+                if (showLibassSettings) {
                     SettingsGroupDivider(isTablet = isTablet)
                     SettingsSwitchRow(
                         title = stringResource(Res.string.settings_playback_enable_libass),
@@ -790,15 +802,49 @@ private fun PlaybackSettingsSection(
 
         if (!isIos) {
             val decoderEnabled = !autoPlayPlayerSettings.externalPlayerEnabled
+            val libmpvOptionsVisible = AppFeaturePolicy.mpvPlaybackEngineSelectable &&
+                playerEngine == PlayerEngineType.MPV
+            val exoOptionsEnabled = decoderEnabled && !libmpvOptionsVisible
+            val libmpvOptionsEnabled = decoderEnabled && libmpvOptionsVisible
             SettingsSection(
                 title = stringResource(Res.string.settings_playback_section_decoder),
                 isTablet = isTablet,
             ) {
                 SettingsGroup(isTablet = isTablet) {
+                    if (libmpvOptionsVisible) {
+                        SettingsNavigationRow(
+                            title = stringResource(Res.string.settings_playback_libmpv_video_output),
+                            description = androidLibmpvVideoOutput.label,
+                            enabled = libmpvOptionsEnabled,
+                            isTablet = isTablet,
+                            onClick = { showLibmpvVideoOutputDialog = true },
+                        )
+                        SettingsGroupDivider(isTablet = isTablet)
+                        SettingsSwitchRow(
+                            title = stringResource(Res.string.settings_playback_libmpv_hardware_decoding),
+                            description = stringResource(Res.string.settings_playback_libmpv_hardware_decoding_description),
+                            checked = androidLibmpvHardwareDecodingEnabled,
+                            enabled = libmpvOptionsEnabled,
+                            isTablet = isTablet,
+                            onCheckedChange = PlayerSettingsRepository::setAndroidLibmpvHardwareDecodingEnabled,
+                        )
+                        SettingsGroupDivider(isTablet = isTablet)
+                        SettingsSwitchRow(
+                            title = stringResource(Res.string.settings_playback_libmpv_yuv420p),
+                            description = stringResource(Res.string.settings_playback_libmpv_yuv420p_description),
+                            checked = androidLibmpvYuv420pEnabled,
+                            enabled = libmpvOptionsEnabled,
+                            isTablet = isTablet,
+                            onCheckedChange = PlayerSettingsRepository::setAndroidLibmpvYuv420pEnabled,
+                        )
+                    }
+                    if (libmpvOptionsVisible) {
+                        SettingsGroupDivider(isTablet = isTablet)
+                    }
                     SettingsNavigationRow(
                         title = stringResource(Res.string.settings_playback_decoder_priority),
                         description = decoderPriorityLabel(decoderPriority),
-                        enabled = decoderEnabled,
+                        enabled = exoOptionsEnabled,
                         isTablet = isTablet,
                         onClick = { showDecoderPriorityDialog = true },
                     )
@@ -807,7 +853,7 @@ private fun PlaybackSettingsSection(
                         title = stringResource(Res.string.settings_playback_map_dv7_to_hevc),
                         description = stringResource(Res.string.settings_playback_map_dv7_to_hevc_description),
                         checked = mapDV7ToHevc,
-                        enabled = decoderEnabled,
+                        enabled = exoOptionsEnabled,
                         isTablet = isTablet,
                         onCheckedChange = PlayerSettingsRepository::setMapDV7ToHevc,
                     )
@@ -816,7 +862,7 @@ private fun PlaybackSettingsSection(
                         title = stringResource(Res.string.settings_playback_tunneled_playback),
                         description = stringResource(Res.string.settings_playback_tunneled_playback_description),
                         checked = tunnelingEnabled,
-                        enabled = decoderEnabled,
+                        enabled = exoOptionsEnabled,
                         isTablet = isTablet,
                         onCheckedChange = PlayerSettingsRepository::setTunnelingEnabled,
                     )
@@ -1309,6 +1355,21 @@ private fun PlaybackSettingsSection(
         )
     }
 
+    if (showLibmpvVideoOutputDialog) {
+        IosEnumSelectionDialog(
+            title = stringResource(Res.string.settings_playback_libmpv_video_output_dialog),
+            options = AndroidLibmpvVideoOutput.entries,
+            selected = androidLibmpvVideoOutput,
+            label = { it.label },
+            description = { it.description },
+            onSelect = {
+                PlayerSettingsRepository.setAndroidLibmpvVideoOutput(it)
+                showLibmpvVideoOutputDialog = false
+            },
+            onDismiss = { showLibmpvVideoOutputDialog = false },
+        )
+    }
+
     if (showHoldToSpeedValueDialog) {
         HoldToSpeedValueDialog(
             selectedSpeed = holdToSpeedValue,
@@ -1337,7 +1398,7 @@ private fun PlaybackSettingsSection(
     if (showIosAudioOutputDialog) {
         IosEnumSelectionDialog(
             title = stringResource(Res.string.settings_playback_ios_audio_output_dialog),
-            options = IosAudioOutputMode.entries,
+            options = IosAudioOutputMode.selectableEntries,
             selected = autoPlayPlayerSettings.iosAudioOutputMode,
             label = { it.label },
             description = {

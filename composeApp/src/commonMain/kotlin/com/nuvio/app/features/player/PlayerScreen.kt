@@ -180,6 +180,7 @@ fun PlayerScreen(
     sourceAudioUrl: String? = null,
     sourceHeaders: Map<String, String> = emptyMap(),
     sourceResponseHeaders: Map<String, String> = emptyMap(),
+    externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle> = emptyList(),
     streamType: String? = null,
     sourceFilename: String? = null,
     sourceVideoSize: Long? = null,
@@ -279,6 +280,9 @@ fun PlayerScreen(
         }
         var activeSourceResponseHeaders by remember(sourceUrl, sourceResponseHeaders) {
             mutableStateOf(sanitizePlaybackResponseHeaders(sourceResponseHeaders))
+        }
+        var activeExternalSubtitles by remember(sourceUrl, externalSubtitles) {
+            mutableStateOf(externalSubtitles)
         }
         var activeStreamType by rememberSaveable(sourceUrl, streamType) { mutableStateOf(streamType) }
         var activeSourceFilename by rememberSaveable(sourceUrl, sourceFilename) { mutableStateOf(sourceFilename) }
@@ -1438,6 +1442,7 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = emptyMap()
             activeSourceResponseHeaders = emptyMap()
+            activeExternalSubtitles = emptyList()
             activeStreamType = null
             activeTorrentInfoHash = infoHash
             activeTorrentFileIdx = stream.p2pFileIdx
@@ -1498,6 +1503,7 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = emptyMap()
             activeSourceResponseHeaders = emptyMap()
+            activeExternalSubtitles = emptyList()
             activeStreamType = null
             activeTorrentInfoHash = infoHash
             activeTorrentFileIdx = stream.p2pFileIdx
@@ -1576,6 +1582,7 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
             activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
+            activeExternalSubtitles = stream.externalSubtitles
             activeStreamType = stream.streamType
             activeSourceFilename = stream.playbackFilenameHint
             activeSourceVideoSize = stream.behaviorHints.videoSize
@@ -1668,6 +1675,7 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
             activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
+            activeExternalSubtitles = stream.externalSubtitles
             activeStreamType = stream.streamType
             activeSourceFilename = stream.playbackFilenameHint
             activeSourceVideoSize = stream.behaviorHints.videoSize
@@ -1718,6 +1726,7 @@ fun PlayerScreen(
             activeSourceAudioUrl = null
             activeSourceHeaders = emptyMap()
             activeSourceResponseHeaders = emptyMap()
+            activeExternalSubtitles = emptyList()
             activeStreamType = null
             activeSourceFilename = downloadItem.fileName
             activeSourceVideoSize = downloadItem.totalBytes
@@ -2771,6 +2780,7 @@ fun PlayerScreen(
                     sourceAudioUrl = activeSourceAudioUrl,
                     sourceHeaders = activeSourceHeaders,
                     sourceResponseHeaders = activeSourceResponseHeaders,
+                    externalSubtitles = activeExternalSubtitles,
                     streamType = activeStreamType,
                     sourceFilename = activeSourceFilename,
                     sourceVideoSize = activeSourceVideoSize,

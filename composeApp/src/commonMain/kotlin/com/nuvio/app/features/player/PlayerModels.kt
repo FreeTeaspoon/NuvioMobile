@@ -28,6 +28,7 @@ data class PlayerLaunch(
     val sourceAudioUrl: String? = null,
     val sourceHeaders: Map<String, String> = emptyMap(),
     val sourceResponseHeaders: Map<String, String> = emptyMap(),
+    val externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle> = emptyList(),
     val streamType: String? = null,
     val sourceFilename: String? = null,
     val sourceVideoSize: Long? = null,
@@ -176,6 +177,23 @@ enum class PlayerResizeMode {
     Zoom,
 }
 
+enum class AndroidLibmpvVideoOutput(
+    val mpvValue: String,
+    val label: String,
+    val description: String,
+) {
+    GpuNext(
+        mpvValue = "gpu-next",
+        label = "GPU next",
+        description = "Modern libmpv renderer with higher quality processing.",
+    ),
+    Gpu(
+        mpvValue = "gpu",
+        label = "GPU",
+        description = "Compatibility renderer for devices that have issues with GPU next.",
+    ),
+}
+
 enum class IosVideoOutputPreset(
     val label: String,
     val description: String,
@@ -263,9 +281,19 @@ enum class IosAudioOutputMode(
     val mpvValue: String,
     val label: String,
 ) {
-    Auto("avfoundation,audiounit,", "Auto"),
+    Auto("audiounit", "Auto"),
     AvFoundation("avfoundation", "AVFoundation"),
-    AudioUnit("audiounit", "AudioUnit"),
+    AudioUnit("audiounit", "AudioUnit");
+
+    companion object {
+        val selectableEntries: List<IosAudioOutputMode> = listOf(Auto, AudioUnit)
+
+        fun fromStoredName(name: String?): IosAudioOutputMode =
+            name
+                ?.let { runCatching { valueOf(it) }.getOrNull() }
+                ?.takeUnless { it == AvFoundation }
+                ?: Auto
+    }
 }
 
 @Composable
