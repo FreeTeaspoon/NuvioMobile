@@ -1914,4 +1914,15 @@
     <string name="community_donation_progress_remaining">After 100%%, additional support goes to development.</string>
     <string name="community_donation_progress_title">This month&apos;s server &amp; maintenance</string>
     <string name="community_loading_donation_progress">Loading funding progress...</string>
+    <string name="action_switch">Switch</string>
+    <string name="addons_appstore_add_description">Connect your own media server to browse and play from your personal library.</string>
+    <string name="addons_appstore_empty_subtitle">Add a server URL above when you want Nuvio to show your private library.</string>
+    <string name="addons_appstore_empty_title">No personal libraries connected.</string>
+    <string name="addons_appstore_input_placeholder">Server URL</string>
+    <string name="addons_appstore_install_button">Add</string>
+    <string name="compose_auth_terms_prefix">By signing up, I agree to the</string>
+    <string name="compose_auth_terms_link">Terms</string>
+    <string name="debug_backend_switch_confirm_title">Switch backend?</string>
+    <string name="debug_backend_switch_confirm_message">Switch to %1$s and sign out? You can sign in again on the selected backend.</string>
+    <string name="settings_content_discovery_addons_description_appstore">Connect personal media sources and manage access to your own library.</string>
 </resources>

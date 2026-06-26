@@ -476,7 +476,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     fun applySubtitleStyle(style: SubtitleStyleState) {
         subtitleStyle = style
         if (!isMpvInitialized) return
-        MPVLib.setPropertyString("sub-ass-override", "force")
+        MPVLib.setPropertyString("sub-ass-override", "no")
         MPVLib.setPropertyString("sub-color", style.textColor.toMpvColorString())
         MPVLib.setPropertyString("sub-border-color", "#FF000000")
         MPVLib.setPropertyDouble("sub-border-size", if (style.outlineEnabled) 3.0 else 0.0)
@@ -616,7 +616,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         MPVLib.setOptionString("sub-codepage", "auto")
         MPVLib.setOptionString("blend-subtitles", "no")
         MPVLib.setOptionString("sub-use-margins", "yes")
-        MPVLib.setOptionString("sub-ass-override", "force")
+        MPVLib.setOptionString("sub-ass-override", "no")
         MPVLib.setOptionString("sub-scale", "1.0")
         MPVLib.setOptionString("sub-scale-by-window", "yes")
         MPVLib.setOptionString("sub-scale-with-window", "yes")
