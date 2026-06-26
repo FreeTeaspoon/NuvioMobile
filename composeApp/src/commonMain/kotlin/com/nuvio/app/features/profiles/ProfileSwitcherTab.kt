@@ -302,7 +302,7 @@ fun ProfileSwitcherTab(
                                 )
                             }
 
-                            if (profiles.size < 4) {
+                            if (profiles.size < MAX_PROFILES) {
                                 PopupAddProfileBubble(
                                     delayMs = profiles.size * 50,
                                     onClick = {
@@ -480,7 +480,7 @@ fun NativeProfileSwitcherPopup(
                                     )
                                 }
 
-                                if (profiles.size < 4) {
+                                if (profiles.size < MAX_PROFILES) {
                                     PopupAddProfileBubble(
                                         delayMs = profiles.size * 50,
                                         onClick = {
