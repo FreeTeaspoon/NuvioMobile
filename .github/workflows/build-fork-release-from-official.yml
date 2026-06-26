@@ -368,6 +368,7 @@ jobs:
             printf 'TRAKT_CLIENT_ID=%s\n' "${TRAKT_CLIENT_ID}"
             printf 'TRAKT_CLIENT_SECRET=%s\n' "${TRAKT_CLIENT_SECRET}"
             printf 'TRAKT_REDIRECT_URI=%s\n' "${TRAKT_REDIRECT_URI}"
+            printf 'INTRODB_API_URL=https://api.introdb.app\n'
             printf 'NUVIO_RELEASE_STORE_FILE=release-key.jks\n'
             printf 'NUVIO_RELEASE_STORE_PASSWORD=%s\n' "${ANDROID_RELEASE_STORE_PASSWORD}"
             printf 'NUVIO_RELEASE_KEY_ALIAS=%s\n' "${ANDROID_RELEASE_KEY_ALIAS}"
