@@ -733,7 +733,7 @@ private fun buildPlaybackMediaItem(
         builder.setSubtitleConfigurations(
             externalSubtitles.map { subtitle ->
                 MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitle.url))
-                    .setMimeType(resolveSubtitleMimeType(subtitle.url))
+                    .setMimeType(resolveSubtitleMimeType(subtitle.url, subtitle.headers))
                     .setLanguage(subtitle.language)
                     .setLabel(subtitle.name ?: subtitle.language)
                     .setRoleFlags(C.ROLE_FLAG_SUBTITLE)
@@ -1301,8 +1301,8 @@ private class SubtitleOffsetRenderer(
     }
 }
 
-private fun resolveSubtitleMimeType(url: String): String {
-    probeSubtitleHeaders(url)?.let { (contentType, contentDisposition) ->
+private fun resolveSubtitleMimeType(url: String, headers: Map<String, String>? = null): String {
+    probeSubtitleHeaders(url, headers)?.let { (contentType, contentDisposition) ->
         mapSubtitleMime(contentType)?.let { return it }
         filenameFromContentDisposition(contentDisposition)?.let(::guessSubtitleMime)?.let { return it }
     }
@@ -1356,7 +1356,7 @@ private class SubtitleRequestHeaderDataSource(
     }
 }
 
-private fun probeSubtitleHeaders(url: String): Pair<String?, String?>? {
+private fun probeSubtitleHeaders(url: String, headers: Map<String, String>? = null): Pair<String?, String?>? {
     val methods = listOf("HEAD", "GET")
     methods.forEach { method ->
         runCatching {
@@ -1366,6 +1366,9 @@ private fun probeSubtitleHeaders(url: String): Pair<String?, String?>? {
                 readTimeout = 5_000
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", "*/*")
+                headers?.forEach { (key, value) ->
+                    setRequestProperty(key, value)
+                }
             }
             try {
                 connection.responseCode
