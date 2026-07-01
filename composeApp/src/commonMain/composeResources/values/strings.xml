@@ -789,7 +789,7 @@
     <string name="settings_notifications_test_title">Test notification</string>
     <string name="community_section_title">Community</string>
     <string name="community_section_description">See the people building and supporting Nuvio across Mobile, TV, and Web.</string>
-    <string name="community_donation_progress_title">This month&apos;s server &amp; maintenance</string>
+    <string name="community_donation_progress_title">This month's server &amp; maintenance</string>
     <string name="community_donation_progress_complete">Covered. Additional support now goes to development.</string>
     <string name="community_donation_progress_remaining">After 100%%, additional support goes to development.</string>
     <string name="community_loading_donation_progress">Loading funding progress...</string>
@@ -1428,7 +1428,6 @@
     <string name="trakt_sign_in_complete_failed">Failed to complete Trakt sign in</string>
     <string name="trakt_user_fallback">Trakt user</string>
     <string name="trakt_watchlist">Watchlist</string>
-    <!-- Trakt library sync errors -->
     <string name="trakt_error_authorization_expired">Trakt authorization expired</string>
     <string name="trakt_error_list_not_found">Trakt list not found</string>
     <string name="trakt_error_list_limit_reached">Trakt list limit reached</string>
@@ -1601,12 +1600,9 @@
     <string name="unit_bytes_kb">KB</string>
     <string name="unit_bytes_mb">MB</string>
     <string name="unit_bytes_gb">GB</string>
-    <!-- PlayerControls a11y -->
     <string name="player_action_submit_intro">Submit Intro</string>
     <string name="player_action_video_settings">Video settings</string>
-    <!-- CloudLibrary -->
     <string name="cloud_library_provider_unavailable">Cloud library is not available for %1$s.</string>
-    <!-- Player iOS video settings modal -->
     <string name="player_video_settings_title">Video</string>
     <string name="player_video_settings_reset_tuning">Reset tuning</string>
     <string name="player_video_settings_output_preset">Output preset</string>
@@ -1621,7 +1617,6 @@
     <string name="player_video_settings_contrast">Contrast</string>
     <string name="player_video_settings_saturation">Saturation</string>
     <string name="player_video_settings_gamma">Gamma</string>
-    <!-- iOS video output presets -->
     <string name="player_ios_preset_native_edr_label">Native EDR</string>
     <string name="player_ios_preset_native_edr_desc">Best for HDR-capable iPhones and iPads.</string>
     <string name="player_ios_preset_sdr_tone_mapped_label">SDR tone mapped</string>
@@ -1631,7 +1626,6 @@
     <string name="player_ios_preset_custom_label">Custom</string>
     <string name="player_ios_preset_custom_desc">Use your advanced values below.</string>
     <string name="player_ios_hardware_decoder_off">Off</string>
-    <!-- Playback settings iOS video output -->
     <string name="settings_playback_ios_video_output">iOS video output</string>
     <string name="settings_playback_ios_hardware_decoder">Hardware decoder</string>
     <string name="settings_playback_ios_extended_dynamic_range">Extended dynamic range</string>
@@ -1640,13 +1634,11 @@
     <string name="settings_playback_ios_display_color_hint_desc">Let mpv target the active display color space by default.</string>
     <string name="settings_playback_ios_target_primaries">Target primaries</string>
     <string name="settings_playback_ios_target_transfer">Target transfer</string>
-    <!-- Playback settings iOS audio output -->
     <string name="settings_playback_ios_audio_output_section">iOS audio output</string>
     <string name="settings_playback_ios_audio_output">Audio output</string>
     <string name="settings_playback_ios_audio_output_auto_desc">Use AudioUnit while AVFoundation output is temporarily disabled.</string>
     <string name="settings_playback_ios_audio_output_avfoundation_desc">Experimental support for Spatial Audio and multichannel output.</string>
     <string name="settings_playback_ios_audio_output_audiounit_desc">Use the legacy AudioUnit output.</string>
-    <!-- Debrid Result Management section -->
     <string name="settings_debrid_section_result_management">Result Management</string>
     <string name="settings_debrid_max_results">Max results</string>
     <string name="settings_debrid_max_results_desc">Limit how many results appear.</string>
@@ -1658,83 +1650,69 @@
     <string name="settings_debrid_per_quality_limit_desc">Cap repeated BluRay, WEB-DL, REMUX results after sorting.</string>
     <string name="settings_debrid_size_range">Size range</string>
     <string name="settings_debrid_size_range_desc">Filter results by file size.</string>
-    <!-- Debrid misc -->
     <string name="settings_debrid_learn_more">Learn more</string>
     <string name="settings_debrid_template_default_format">Default format</string>
     <string name="settings_debrid_template_original_format">Original format</string>
     <string name="settings_debrid_release_groups_hint">Enter one group per line.</string>
-    <!-- Debrid sort profiles -->
     <string name="settings_debrid_sort_original">Original order</string>
     <string name="settings_debrid_sort_best_quality">Best quality first</string>
     <string name="settings_debrid_sort_largest">Largest first</string>
     <string name="settings_debrid_sort_smallest">Smallest first</string>
     <string name="settings_debrid_sort_best_audio">Best audio first</string>
     <string name="settings_debrid_sort_language">Language first</string>
-    <!-- Debrid selection labels -->
     <string name="settings_debrid_selection_any">Any</string>
     <string name="settings_debrid_selection_count">%1$d selected</string>
-    <!-- Debrid result count labels -->
     <string name="settings_debrid_results_all">All results</string>
     <string name="settings_debrid_results_count">%1$d results</string>
-    <!-- Debrid size range labels -->
     <string name="settings_debrid_size_up_to">Up to %1$dGB</string>
     <string name="settings_debrid_size_min">%1$dGB+</string>
     <string name="settings_debrid_size_range_value">%1$d-%2$dGB</string>
-    <!-- Debrid rule rows: resolutions -->
     <string name="settings_debrid_rule_preferred_resolutions">Preferred resolutions</string>
     <string name="settings_debrid_rule_preferred_resolutions_desc">Sort selected resolutions first, in default order.</string>
     <string name="settings_debrid_rule_required_resolutions">Required resolutions</string>
     <string name="settings_debrid_rule_required_resolutions_desc">Only show selected resolutions.</string>
     <string name="settings_debrid_rule_excluded_resolutions">Excluded resolutions</string>
     <string name="settings_debrid_rule_excluded_resolutions_desc">Hide selected resolutions.</string>
-    <!-- Debrid rule rows: qualities -->
     <string name="settings_debrid_rule_preferred_qualities">Preferred qualities</string>
     <string name="settings_debrid_rule_preferred_qualities_desc">Sort selected qualities first, in default order.</string>
     <string name="settings_debrid_rule_required_qualities">Required qualities</string>
     <string name="settings_debrid_rule_required_qualities_desc">Only show selected qualities.</string>
     <string name="settings_debrid_rule_excluded_qualities">Excluded qualities</string>
     <string name="settings_debrid_rule_excluded_qualities_desc">Hide selected qualities.</string>
-    <!-- Debrid rule rows: visual tags -->
     <string name="settings_debrid_rule_preferred_visual_tags">Preferred visual tags</string>
     <string name="settings_debrid_rule_preferred_visual_tags_desc">Sort DV, HDR, 10bit, IMAX and similar tags.</string>
     <string name="settings_debrid_rule_required_visual_tags">Required visual tags</string>
     <string name="settings_debrid_rule_required_visual_tags_desc">Require DV, HDR, 10bit, IMAX, SDR and similar tags.</string>
     <string name="settings_debrid_rule_excluded_visual_tags">Excluded visual tags</string>
     <string name="settings_debrid_rule_excluded_visual_tags_desc">Hide DV, HDR, 10bit, 3D and similar tags.</string>
-    <!-- Debrid rule rows: audio tags -->
     <string name="settings_debrid_rule_preferred_audio_tags">Preferred audio tags</string>
     <string name="settings_debrid_rule_preferred_audio_tags_desc">Sort Atmos, TrueHD, DTS, AAC and similar tags.</string>
     <string name="settings_debrid_rule_required_audio_tags">Required audio tags</string>
     <string name="settings_debrid_rule_required_audio_tags_desc">Require Atmos, TrueHD, DTS, AAC and similar tags.</string>
     <string name="settings_debrid_rule_excluded_audio_tags">Excluded audio tags</string>
     <string name="settings_debrid_rule_excluded_audio_tags_desc">Hide selected audio tags.</string>
-    <!-- Debrid rule rows: channels -->
     <string name="settings_debrid_rule_preferred_channels">Preferred channels</string>
     <string name="settings_debrid_rule_preferred_channels_desc">Sort preferred channel layouts first.</string>
     <string name="settings_debrid_rule_required_channels">Required channels</string>
     <string name="settings_debrid_rule_required_channels_desc">Only show selected channel layouts.</string>
     <string name="settings_debrid_rule_excluded_channels">Excluded channels</string>
     <string name="settings_debrid_rule_excluded_channels_desc">Hide selected channel layouts.</string>
-    <!-- Debrid rule rows: encodes -->
     <string name="settings_debrid_rule_preferred_encodes">Preferred encodes</string>
     <string name="settings_debrid_rule_preferred_encodes_desc">Sort AV1, HEVC, AVC and similar encodes.</string>
     <string name="settings_debrid_rule_required_encodes">Required encodes</string>
     <string name="settings_debrid_rule_required_encodes_desc">Require AV1, HEVC, AVC and similar encodes.</string>
     <string name="settings_debrid_rule_excluded_encodes">Excluded encodes</string>
     <string name="settings_debrid_rule_excluded_encodes_desc">Hide selected encodes.</string>
-    <!-- Debrid rule rows: languages -->
     <string name="settings_debrid_rule_preferred_languages">Preferred languages</string>
     <string name="settings_debrid_rule_preferred_languages_desc">Sort preferred audio languages first.</string>
     <string name="settings_debrid_rule_required_languages">Required languages</string>
     <string name="settings_debrid_rule_required_languages_desc">Only show results with selected languages.</string>
     <string name="settings_debrid_rule_excluded_languages">Excluded languages</string>
     <string name="settings_debrid_rule_excluded_languages_desc">Hide results where every language is excluded.</string>
-    <!-- Debrid rule rows: release groups -->
     <string name="settings_debrid_rule_required_release_groups">Required release groups</string>
     <string name="settings_debrid_rule_required_release_groups_desc">Only show selected release groups.</string>
     <string name="settings_debrid_rule_excluded_release_groups">Excluded release groups</string>
     <string name="settings_debrid_rule_excluded_release_groups_desc">Hide selected release groups.</string>
-    <!-- Submit intro/recap/outro dialog -->
     <string name="submit_intro_title">Submit Timestamps</string>
     <string name="submit_intro_segment_type">SEGMENT TYPE</string>
     <string name="submit_intro_segment_intro">Intro</string>
@@ -1744,31 +1722,24 @@
     <string name="submit_intro_end_time">END TIME (MM:SS)</string>
     <string name="submit_intro_submit">Submit</string>
     <string name="submit_intro_capture">Capture</string>
-    <!-- iOS advanced playback -->
     <string name="settings_playback_ios_hw_decoder_dialog">Hardware decoder</string>
     <string name="settings_playback_ios_audio_output_dialog">Audio output</string>
     <string name="settings_playback_ios_target_primaries_dialog">Target primaries</string>
     <string name="settings_playback_ios_target_transfer_dialog">Target transfer</string>
-    <!-- Collection editor -->
     <string name="collections_editor_resolved_trakt_list">Resolved Trakt list</string>
     <string name="collections_editor_tmdb_discover">TMDB Discover</string>
     <string name="collections_editor_watch_region_placeholder">US, KR, JP, IN</string>
-    <!-- Collection editor error messages -->
     <string name="collections_editor_trakt_input_required">Enter a Trakt list name, URL, or ID</string>
     <string name="collections_editor_tmdb_invalid_id_error">Enter a valid TMDB ID or URL.</string>
     <string name="collections_editor_tmdb_load_error">Could not load TMDB source</string>
     <string name="collections_editor_trakt_id_url_required">Enter a Trakt list ID or URL</string>
     <string name="collections_editor_trakt_load_error">Could not load Trakt list</string>
-    <!-- Collection editor TMDB country chips -->
     <string name="collections_editor_tmdb_country_ca">Canada</string>
     <string name="collections_editor_tmdb_country_au">Australia</string>
     <string name="collections_editor_tmdb_country_de">Germany</string>
-    <!-- Collection editor media type suffixes (appended to source titles) -->
     <string name="collections_editor_media_movies_suffix">Movies</string>
     <string name="collections_editor_media_series_suffix">Series</string>
-    <!-- Cloud library -->
     <string name="cloud_library_playback_disabled">Cloud library is disabled.</string>
-    <!-- IntroDB settings -->
     <string name="settings_playback_introdb_invalid_api_key">Invalid API Key or connection failed</string>
     <string name="addons_manifest_missing_field">Manifest missing \"%1$s\"</string>
     <string name="collections_editor_tmdb_collection_title_format">TMDB Collection %1$s</string>
@@ -1889,24 +1860,14 @@
     <string name="updates_github_api_error">GitHub releases API error: %1$d</string>
     <string name="updates_no_channel_release">No update has been published yet.</string>
     <string name="updates_release_missing_title">Release has no tag or name</string>
-    <!-- Continue Watching air date display -->
     <string name="cw_airs_date">Airs %1$s</string>
     <string name="cw_airs_today">Airs today</string>
     <string name="cw_airs_tomorrow">Airs tomorrow</string>
-    <plurals name="cw_airs_in_days">
-        <item quantity="one">Airs in %1$d day</item>
-        <item quantity="other">Airs in %1$d days</item>
-    </plurals>
     <string name="cw_airs_date_short">%1$s</string>
     <string name="cw_airs_today_short">Today</string>
     <string name="cw_airs_tomorrow_short">Tomorrow</string>
-    <plurals name="cw_airs_in_days_short">
-        <item quantity="one">In %1$d day</item>
-        <item quantity="other">In %1$d days</item>
-    </plurals>
     <string name="cw_new_episode">New Episode</string>
     <string name="cw_new_season">New Season</string>
-    <!-- Pass 4 — platform stubs and dynamic title fallbacks -->
     <string name="collections_editor_trakt_list_title_format">Trakt List %1$s</string>
     <string name="external_player_android_system">Android system player</string>
     <string name="p2p_consent_title">P2P Streaming</string>
@@ -1926,6 +1887,28 @@
     <string name="player_torrent_starting_engine">Starting P2P engine…</string>
     <string name="player_error_failed_start_torrent">Failed to start torrent: %1$s</string>
     <string name="player_error_torrent">Torrent error: %1$s</string>
+    <string name="person_detail_born">Born</string>
+    <string name="person_detail_place_of_birth">Place of birth</string>
+    <string name="person_detail_credits">Credits</string>
+    <string name="person_detail_biography">Biography</string>
+    <string name="entity_browse_country">Country</string>
+    <string name="entity_browse_type">Type</string>
+    <string name="entity_browse_catalogue">Catalogue</string>
+    <string name="entity_browse_about">About</string>
+    <plurals name="entity_browse_title_count">
+        <item quantity="one">%d title</item>
+        <item quantity="other">%d titles</item>
+    </plurals>
+    <string name="player_external_loading_subtitles">Loading subtitles from addons...</string>
+    <string name="player_external_downloading_subtitles">Downloading subtitles...</string>
+    <string name="settings_meta_background_mode">Background Mode</string>
+    <string name="settings_meta_background_mode_description">Choose how artwork appears behind metadata pages.</string>
+    <string name="settings_meta_background_mode_normal">Normal</string>
+    <string name="settings_meta_background_mode_normal_description">Use the standard app background.</string>
+    <string name="settings_meta_background_mode_cinematic">Cinematic</string>
+    <string name="settings_meta_background_mode_cinematic_description">Show a soft blurred backdrop behind the page.</string>
+    <string name="settings_meta_background_mode_dominant">Dominant Color</string>
+    <string name="settings_meta_background_mode_dominant_description">Match the page background to the main color from the backdrop.</string>
     <string name="action_confirm">Confirm</string>
     <string name="watched_confirm_mark_title_unwatched">Mark %1$s as unwatched</string>
     <string name="watched_confirm_mark_title_watched">Mark %1$s as watched</string>
@@ -1966,5 +1949,4 @@
     <string name="settings_appearance_desktop_navigation_sheet_title">Choose Desktop Navigation</string>
     <string name="settings_appearance_desktop_navigation_sidebar">Sidebar</string>
     <string name="settings_appearance_desktop_navigation_top_bar">Top Bar</string>
-
 </resources>

@@ -1,4 +1,3 @@
-
 <resources>
     <string name="about_licenses_attributions_subtitle">Sources de données, remerciements et licences de plateforme</string>
     <string name="about_supporters_contributors_subtitle">Reconnaissance et crédits du projet</string>
@@ -20,6 +19,7 @@
     <string name="action_retry">Réessayer</string>
     <string name="action_save">Enregistrer</string>
     <string name="action_saving">Enregistrement…</string>
+    <string name="action_switch">Changer</string>
     <string name="action_validate">Valider</string>
     <string name="addon_installing">Installation en cours</string>
     <string name="addon_title">Addons</string>
@@ -32,6 +32,11 @@
     <string name="addons_badge_unavailable">Indisponible</string>
     <string name="addons_configure">Configurer l’addon</string>
     <string name="addons_delete">Supprimer l’addon</string>
+    <string name="addons_appstore_add_description">Connectez votre propre serveur multimédia pour parcourir et lire depuis votre bibliothèque personnelle.</string>
+    <string name="addons_appstore_empty_subtitle">Ajoutez une URL de serveur ci-dessus pour que Nuvio affiche votre bibliothèque privée.</string>
+    <string name="addons_appstore_empty_title">Aucune bibliothèque personnelle connectée.</string>
+    <string name="addons_appstore_input_placeholder">URL du serveur</string>
+    <string name="addons_appstore_install_button">Ajouter</string>
     <string name="addons_empty_subtitle">Ajoutez une URL de manifeste pour commencer à charger des catalogues, métadonnées, streams ou sous-titres dans Nuvio.</string>
     <string name="addons_empty_title">Aucun addon installé.</string>
     <string name="addons_error_enter_url">Saisissez une URL d’addon.</string>
@@ -311,6 +316,8 @@
     <string name="compose_auth_sign_up">S’inscrire</string>
     <string name="compose_auth_store_locally">Vos données seront uniquement stockées localement</string>
     <string name="compose_auth_tagline">Regardez tout, partout</string>
+    <string name="compose_auth_terms_prefix">En m’inscrivant, j’accepte les</string>
+    <string name="compose_auth_terms_link">Conditions d’utilisation</string>
     <string name="compose_auth_welcome_back">Bon retour</string>
     <string name="compose_catalog_subtitle_library">Bibliothèque</string>
     <string name="compose_catalog_subtitle_trakt_library">Bibliothèque Trakt</string>
@@ -524,9 +531,13 @@
     <string name="settings_account_status">Statut</string>
     <string name="settings_account_status_anonymous">Anonyme</string>
     <string name="settings_account_status_signed_in">Connecté</string>
+    <string name="settings_account_sync_backend">Backend de synchronisation</string>
+    <string name="debug_backend_switch_confirm_title">Changer de backend ?</string>
+    <string name="debug_backend_switch_confirm_message">Basculer vers %1$s et se déconnecter ? Vous pourrez vous reconnecter sur le backend sélectionné.</string>
     <string name="settings_appearance_amoled_black">Noir AMOLED</string>
     <string name="settings_appearance_amoled_description">Utilise des fonds noirs purs pour les écrans OLED.</string>
     <string name="settings_appearance_app_language">Langue de l’application</string>
+    <string name="settings_appearance_app_language_device">Langue de l’appareil</string>
     <string name="settings_appearance_app_language_sheet_title">Choisir la langue</string>
     <string name="settings_appearance_continue_watching_description">Afficher, masquer et ajuster le bandeau Continuer à regarder.</string>
     <string name="settings_appearance_liquid_glass">Liquid Glass</string>
@@ -621,6 +632,7 @@
     <string name="settings_content_discovery_section_home">ACCUEIL</string>
     <string name="settings_content_discovery_section_sources">SOURCES</string>
     <string name="settings_content_discovery_addons_description">Installez, supprimez, mettez à jour et ordonnez vos sources de contenu.</string>
+    <string name="settings_content_discovery_addons_description_appstore">Connectez des sources multimédias personnelles et gérez l’accès à votre propre bibliothèque.</string>
     <string name="settings_content_discovery_plugins_description">Installez des dépôts de scrapers JavaScript et testez des fournisseurs en interne.</string>
     <string name="settings_content_discovery_homescreen_description">Contrôle quels catalogues apparaissent à l’accueil et dans quel ordre.</string>
     <string name="settings_content_discovery_meta_screen_description">Désactivez des sections de détails et réorganisez tout sous le Hero.</string>
@@ -768,6 +780,10 @@
     <string name="settings_notifications_test_title">Notification de test</string>
     <string name="community_section_title">Communauté</string>
     <string name="community_section_description">Découvrez les personnes qui construisent et soutiennent Nuvio sur Mobile, TV et Web.</string>
+    <string name="community_donation_progress_title">Serveur et maintenance de ce mois-ci</string>
+    <string name="community_donation_progress_complete">Couvert. Le soutien supplémentaire va désormais au développement.</string>
+    <string name="community_donation_progress_remaining">Au-delà de 100 %%, le soutien supplémentaire va au développement.</string>
+    <string name="community_loading_donation_progress">Chargement de la progression du financement…</string>
     <string name="community_supporters_not_configured">L’API des supporters n’est pas configurée. Ajoutez DONATIONS_BASE_URL dans local.properties.</string>
     <string name="community_tab_contributors">Contributeurs</string>
     <string name="community_tab_supporters">Supporters</string>
@@ -830,6 +846,8 @@
     <string name="settings_playback_external_player_description_ios">Ouvre les nouvelles lectures avec le lecteur installé sélectionné.</string>
     <string name="settings_playback_external_player_forward_subtitles">Transmettre les sous-titres au lecteur externe</string>
     <string name="settings_playback_external_player_forward_subtitles_description">Récupère les sous-titres d’addons dans votre langue préférée et les transmet au lecteur externe.</string>
+    <string name="settings_playback_external_player_send_skip_segments">Envoyer les horodatages d’intro et d’outro</string>
+    <string name="settings_playback_external_player_send_skip_segments_description">Transmet les horodatages de saut d’intro et d’outro résolus au lecteur externe pour le saut automatique. Ne fonctionne que dans les lecteurs compatibles ; les autres l’ignorent.</string>
     <string name="settings_playback_external_player_none_available">Aucun lecteur externe compatible n’est installé</string>
     <string name="settings_playback_player_preference">Lecteur</string>
     <string name="settings_playback_player_preference_internal">Interne</string>
@@ -851,6 +869,8 @@
     <string name="settings_playback_not_set">Non défini</string>
     <string name="settings_playback_option_default">Par défaut</string>
     <string name="settings_playback_option_device_language">Langue de l’appareil</string>
+    <string name="settings_playback_option_original">Langue originale</string>
+    <string name="settings_playback_option_original_hint">Nécessite l’activation de l’enrichissement TMDB</string>
     <string name="settings_playback_option_forced">Forcé</string>
     <string name="settings_playback_option_none">Aucun</string>
     <string name="settings_playback_addon_subtitle_startup_all">Tous les sous-titres</string>
@@ -894,6 +914,16 @@
     <string name="settings_playback_secondary_audio_language">Langue audio secondaire</string>
     <string name="settings_playback_secondary_subtitle_language">Langue des sous-titres secondaire</string>
     <string name="settings_playback_section_decoder">DÉCODEUR</string>
+    <string name="settings_playback_engine">Moteur de lecture</string>
+    <string name="settings_playback_engine_auto_description">Utiliser d’abord ExoPlayer et basculer sur libmpv si la lecture échoue.</string>
+    <string name="settings_playback_engine_exoplayer_description">Utiliser ExoPlayer et les décodeurs Android Media3.</string>
+    <string name="settings_playback_engine_libmpv_description">Utiliser libmpv pour la lecture Android.</string>
+    <string name="settings_playback_libmpv_video_output">Moteur de rendu libmpv</string>
+    <string name="settings_playback_libmpv_video_output_dialog">Moteur de rendu libmpv</string>
+    <string name="settings_playback_libmpv_hardware_decoding">Décodage matériel libmpv</string>
+    <string name="settings_playback_libmpv_hardware_decoding_description">Utiliser le décodage matériel mpv quand il est disponible.</string>
+    <string name="settings_playback_libmpv_yuv420p">Compatibilité YUV420P libmpv</string>
+    <string name="settings_playback_libmpv_yuv420p_description">Forcer la sortie YUV420P pour les appareils ayant des problèmes de rendu ou de couleur.</string>
     <string name="settings_playback_section_next_episode">ÉPISODE SUIVANT</string>
     <string name="settings_playback_section_player">LECTEUR</string>
     <string name="settings_playback_section_skip_segments">PASSER LES SEGMENTS</string>
@@ -1280,6 +1310,7 @@
     <string name="streams_fetching">Récupération…</string>
     <string name="streams_finding_source">Recherche de la source…</string>
     <string name="streams_loading_subtitles">Chargement des sous-titres depuis les addons…</string>
+    <string name="streams_loading_skip_segments">Chargement des segments à passer…</string>
     <string name="streams_finding_streams">Recherche des streams…</string>
     <string name="streams_link_copied">Lien du stream copié</string>
     <string name="streams_no_direct_link">Aucun lien direct du stream disponible</string>
@@ -1349,7 +1380,7 @@
     <string name="notifications_test_preview_body">Aperçu de l’alerte de sortie d’épisode.</string>
     <string name="notifications_test_send_failed">Impossible d’envoyer une notification de test.</string>
     <string name="notifications_test_sent_for">Notification de test envoyée pour %1$s.</string>
-    <string name="player_engine_unavailable_rebuild">Moteur de lecture MPV indisponible. Reconstruis l’app.</string>
+    <string name="player_engine_unavailable_rebuild">Moteur de lecture MPV indisponible. Reconstruisez l’app.</string>
     <string name="player_unable_to_play_stream">Impossible de lire ce stream.</string>
     <string name="profile_pin_changed_requires_refresh">Le code PIN de ce profil a changé. Connectez-vous une fois pour mettre à jour le verrouillage sur cet appareil.</string>
     <string name="profile_pin_clear_failed">Impossible de supprimer le verrouillage PIN. Réessayez.</string>
@@ -1384,7 +1415,6 @@
     <string name="trakt_sign_in_complete_failed">Impossible de terminer la connexion Trakt</string>
     <string name="trakt_user_fallback">Utilisateur Trakt</string>
     <string name="trakt_watchlist">Liste de suivi</string>
-    <!-- Trakt library sync errors -->
     <string name="trakt_error_authorization_expired">Autorisation Trakt expirée</string>
     <string name="trakt_error_list_not_found">Liste Trakt introuvable</string>
     <string name="trakt_error_list_limit_reached">Limite de listes Trakt atteinte</string>
@@ -1422,8 +1452,10 @@
     <string name="action_resume_episode">Reprendre %1$s</string>
     <string name="collections_import_error_empty_json">Le JSON est vide.</string>
     <string name="collections_import_error_collection_blank_id">La collection %1$d a un ID vide.</string>
+    <string name="collections_import_error_collection_duplicate_id">L’identifiant de collection « %1$s » est utilisé plusieurs fois.</string>
     <string name="collections_import_error_collection_blank_title">La collection « %1$s » a un titre vide.</string>
     <string name="collections_import_error_folder_blank_id">Le dossier %1$d dans « %2$s » a un ID vide.</string>
+    <string name="collections_import_error_folder_duplicate_id">L’identifiant de dossier « %1$s » est utilisé plusieurs fois dans « %2$s ».</string>
     <string name="collections_import_error_folder_blank_title">Le dossier « %1$s » dans « %2$s » a un titre vide.</string>
     <string name="collections_import_error_source_blank_fields">La source %1$d dans le dossier « %2$s » a des champs vides.</string>
     <string name="collections_import_error_trakt_list_id">La source %1$d dans le dossier « %2$s » n’a pas d’ID de liste Trakt.</string>
@@ -1555,12 +1587,9 @@
     <string name="unit_bytes_kb">Ko</string>
     <string name="unit_bytes_mb">Mo</string>
     <string name="unit_bytes_gb">Go</string>
-    <!-- PlayerControls a11y -->
     <string name="player_action_submit_intro">Soumettre l’intro</string>
     <string name="player_action_video_settings">Paramètres vidéo</string>
-    <!-- CloudLibrary -->
     <string name="cloud_library_provider_unavailable">La cloud library n’est pas disponible pour %1$s.</string>
-    <!-- Player iOS video settings modal -->
     <string name="player_video_settings_title">Vidéo</string>
     <string name="player_video_settings_reset_tuning">Réinitialiser le réglage</string>
     <string name="player_video_settings_output_preset">Préréglage de sortie</string>
@@ -1575,7 +1604,6 @@
     <string name="player_video_settings_contrast">Contraste</string>
     <string name="player_video_settings_saturation">Saturation</string>
     <string name="player_video_settings_gamma">Gamma</string>
-    <!-- iOS video output presets -->
     <string name="player_ios_preset_native_edr_label">Native EDR</string>
     <string name="player_ios_preset_native_edr_desc">Optimal pour les iPhones et iPads compatibles HDR.</string>
     <string name="player_ios_preset_sdr_tone_mapped_label">SDR tone mapped</string>
@@ -1585,7 +1613,6 @@
     <string name="player_ios_preset_custom_label">Personnalisé</string>
     <string name="player_ios_preset_custom_desc">Utilisez vos valeurs avancées ci-dessous.</string>
     <string name="player_ios_hardware_decoder_off">Désactivé</string>
-    <!-- Playback settings iOS video output -->
     <string name="settings_playback_ios_video_output">Sortie vidéo iOS</string>
     <string name="settings_playback_ios_hardware_decoder">Décodeur matériel</string>
     <string name="settings_playback_ios_extended_dynamic_range">Plage dynamique étendue</string>
@@ -1599,7 +1626,6 @@
     <string name="settings_playback_ios_audio_output_auto_desc">Utilise AudioUnit tant que la sortie AVFoundation est temporairement désactivée.</string>
     <string name="settings_playback_ios_audio_output_avfoundation_desc">Prise en charge expérimentale de l’audio spatial et de la sortie multicanal.</string>
     <string name="settings_playback_ios_audio_output_audiounit_desc">Utilise l’ancienne sortie AudioUnit.</string>
-    <!-- Debrid Result Management section -->
     <string name="settings_debrid_section_result_management">Gestion des résultats</string>
     <string name="settings_debrid_max_results">Nombre max de résultats</string>
     <string name="settings_debrid_max_results_desc">Limite le nombre de résultats affichés.</string>
@@ -1611,83 +1637,69 @@
     <string name="settings_debrid_per_quality_limit_desc">Plafonne les résultats répétés en BluRay, WEB-DL, REMUX après le tri.</string>
     <string name="settings_debrid_size_range">Plage de taille</string>
     <string name="settings_debrid_size_range_desc">Filtre les résultats par taille de fichier.</string>
-    <!-- Debrid misc -->
     <string name="settings_debrid_learn_more">En savoir plus</string>
     <string name="settings_debrid_template_default_format">Format par défaut</string>
     <string name="settings_debrid_template_original_format">Format d’origine</string>
     <string name="settings_debrid_release_groups_hint">Saisissez un groupe par ligne.</string>
-    <!-- Debrid sort profiles -->
     <string name="settings_debrid_sort_original">Ordre original</string>
     <string name="settings_debrid_sort_best_quality">Meilleure qualité d’abord</string>
     <string name="settings_debrid_sort_largest">Plus gros d’abord</string>
     <string name="settings_debrid_sort_smallest">Plus petits d’abord</string>
     <string name="settings_debrid_sort_best_audio">Meilleur audio d’abord</string>
     <string name="settings_debrid_sort_language">Langue d’abord</string>
-    <!-- Debrid selection labels -->
     <string name="settings_debrid_selection_any">Tous</string>
     <string name="settings_debrid_selection_count">%1$d sélectionné(s)</string>
-    <!-- Debrid result count labels -->
     <string name="settings_debrid_results_all">Tous les résultats</string>
     <string name="settings_debrid_results_count">%1$d résultats</string>
-    <!-- Debrid size range labels -->
     <string name="settings_debrid_size_up_to">Jusqu’à %1$d Go</string>
     <string name="settings_debrid_size_min">%1$d Go et plus</string>
     <string name="settings_debrid_size_range_value">%1$d-%2$d Go</string>
-    <!-- Debrid rule rows: resolutions -->
     <string name="settings_debrid_rule_preferred_resolutions">Résolutions préférées</string>
     <string name="settings_debrid_rule_preferred_resolutions_desc">Trie d’abord les résolutions sélectionnées, dans l’ordre par défaut.</string>
     <string name="settings_debrid_rule_required_resolutions">Résolutions requises</string>
     <string name="settings_debrid_rule_required_resolutions_desc">Affiche uniquement les résolutions sélectionnées.</string>
     <string name="settings_debrid_rule_excluded_resolutions">Résolutions exclues</string>
     <string name="settings_debrid_rule_excluded_resolutions_desc">Masque les résolutions sélectionnées.</string>
-    <!-- Debrid rule rows: qualities -->
     <string name="settings_debrid_rule_preferred_qualities">Qualités préférées</string>
     <string name="settings_debrid_rule_preferred_qualities_desc">Trie d’abord les qualités sélectionnées, dans l’ordre par défaut.</string>
     <string name="settings_debrid_rule_required_qualities">Qualités requises</string>
     <string name="settings_debrid_rule_required_qualities_desc">Affiche uniquement les qualités sélectionnées.</string>
     <string name="settings_debrid_rule_excluded_qualities">Qualités exclues</string>
     <string name="settings_debrid_rule_excluded_qualities_desc">Masque les qualités sélectionnées.</string>
-    <!-- Debrid rule rows: visual tags -->
     <string name="settings_debrid_rule_preferred_visual_tags">Tags visuels préférés</string>
     <string name="settings_debrid_rule_preferred_visual_tags_desc">Trie d’abord les tags DV, HDR, 10bit, IMAX et similaires.</string>
     <string name="settings_debrid_rule_required_visual_tags">Tags visuels requis</string>
     <string name="settings_debrid_rule_required_visual_tags_desc">Exige les tags DV, HDR, 10bit, IMAX, SDR et similaires.</string>
     <string name="settings_debrid_rule_excluded_visual_tags">Tags visuels exclus</string>
     <string name="settings_debrid_rule_excluded_visual_tags_desc">Masque les tags DV, HDR, 10bit, 3D et similaires.</string>
-    <!-- Debrid rule rows: audio tags -->
     <string name="settings_debrid_rule_preferred_audio_tags">Tags audio préférés</string>
     <string name="settings_debrid_rule_preferred_audio_tags_desc">Trie d’abord les tags Atmos, TrueHD, DTS, AAC et similaires.</string>
     <string name="settings_debrid_rule_required_audio_tags">Tags audio requis</string>
     <string name="settings_debrid_rule_required_audio_tags_desc">Exige les tags Atmos, TrueHD, DTS, AAC et similaires.</string>
     <string name="settings_debrid_rule_excluded_audio_tags">Tags audio exclus</string>
     <string name="settings_debrid_rule_excluded_audio_tags_desc">Masque les tags audio sélectionnés.</string>
-    <!-- Debrid rule rows: channels -->
     <string name="settings_debrid_rule_preferred_channels">Canaux préférés</string>
     <string name="settings_debrid_rule_preferred_channels_desc">Trie d’abord les configurations de canaux préférées.</string>
     <string name="settings_debrid_rule_required_channels">Canaux requis</string>
     <string name="settings_debrid_rule_required_channels_desc">Affiche uniquement les configurations de canaux sélectionnées.</string>
     <string name="settings_debrid_rule_excluded_channels">Canaux exclus</string>
     <string name="settings_debrid_rule_excluded_channels_desc">Masque les configurations de canaux sélectionnées.</string>
-    <!-- Debrid rule rows: encodes -->
     <string name="settings_debrid_rule_preferred_encodes">Encodages préférés</string>
     <string name="settings_debrid_rule_preferred_encodes_desc">Trie d’abord les encodages AV1, HEVC, AVC et similaires.</string>
     <string name="settings_debrid_rule_required_encodes">Encodages requis</string>
     <string name="settings_debrid_rule_required_encodes_desc">Exige les encodages AV1, HEVC, AVC et similaires.</string>
     <string name="settings_debrid_rule_excluded_encodes">Encodages exclus</string>
     <string name="settings_debrid_rule_excluded_encodes_desc">Masque les encodages sélectionnés.</string>
-    <!-- Debrid rule rows: languages -->
     <string name="settings_debrid_rule_preferred_languages">Langues préférées</string>
     <string name="settings_debrid_rule_preferred_languages_desc">Trie d’abord les langues audio préférées.</string>
     <string name="settings_debrid_rule_required_languages">Langues requises</string>
     <string name="settings_debrid_rule_required_languages_desc">Affiche uniquement les résultats avec les langues sélectionnées.</string>
     <string name="settings_debrid_rule_excluded_languages">Langues exclues</string>
     <string name="settings_debrid_rule_excluded_languages_desc">Masque les résultats où toutes les langues sont exclues.</string>
-    <!-- Debrid rule rows: release groups -->
     <string name="settings_debrid_rule_required_release_groups">Release groups requis</string>
     <string name="settings_debrid_rule_required_release_groups_desc">Affiche uniquement les release groups sélectionnés.</string>
     <string name="settings_debrid_rule_excluded_release_groups">Release groups exclus</string>
     <string name="settings_debrid_rule_excluded_release_groups_desc">Masque les release groups sélectionnés.</string>
-    <!-- Submit intro/recap/outro dialog -->
     <string name="submit_intro_title">Soumettre les timestamps</string>
     <string name="submit_intro_segment_type">TYPE DE SEGMENT</string>
     <string name="submit_intro_segment_intro">Intro</string>
@@ -1697,33 +1709,25 @@
     <string name="submit_intro_end_time">FIN (MM:SS)</string>
     <string name="submit_intro_submit">Soumettre</string>
     <string name="submit_intro_capture">Capturer</string>
-    <!-- iOS advanced playback -->
     <string name="settings_playback_ios_hw_decoder_dialog">Décodeur matériel</string>
     <string name="settings_playback_ios_audio_output_dialog">Sortie audio</string>
     <string name="settings_playback_ios_target_primaries_dialog">Primaires cibles</string>
     <string name="settings_playback_ios_target_transfer_dialog">Transfert cible</string>
-    <!-- Collection editor -->
     <string name="collections_editor_resolved_trakt_list">Liste Trakt résolue</string>
     <string name="collections_editor_tmdb_discover">TMDB Discover</string>
     <string name="collections_editor_watch_region_placeholder">US, KR, JP, IN</string>
-    <!-- Collection editor error messages -->
     <string name="collections_editor_trakt_input_required">Saisissez un nom de liste Trakt, une URL ou un ID</string>
     <string name="collections_editor_tmdb_invalid_id_error">Saisissez un ID ou une URL TMDB valide.</string>
     <string name="collections_editor_tmdb_load_error">Impossible de charger la source TMDB</string>
     <string name="collections_editor_trakt_id_url_required">Saisissez un ID ou une URL de liste Trakt</string>
     <string name="collections_editor_trakt_load_error">Impossible de charger la liste Trakt</string>
-    <!-- Collection editor TMDB country chips -->
     <string name="collections_editor_tmdb_country_ca">Canada</string>
     <string name="collections_editor_tmdb_country_au">Australie</string>
     <string name="collections_editor_tmdb_country_de">Allemagne</string>
-    <!-- Collection editor media type suffixes (appended to source titles) -->
     <string name="collections_editor_media_movies_suffix">Films</string>
     <string name="collections_editor_media_series_suffix">Séries</string>
-    <!-- Cloud library -->
     <string name="cloud_library_playback_disabled">La cloud library est désactivée.</string>
-    <!-- IntroDB settings -->
     <string name="settings_playback_introdb_invalid_api_key">Clé API invalide ou échec de connexion</string>
-    <!-- TMDB placeholders & trakt status (restored after cherry-pick) -->
     <string name="collections_editor_tmdb_country_placeholder">US, KR, JP, IN</string>
     <string name="collections_editor_tmdb_date_from_placeholder">2020-01-01</string>
     <string name="collections_editor_tmdb_date_to_placeholder">2024-12-31</string>
@@ -1784,7 +1788,7 @@
     <string name="network_please_check_connection">Vérifiez votre connexion et réessayez.</string>
     <string name="network_request_failed_http">Échec de la requête (HTTP %1$d)</string>
     <string name="player_addon_subtitle_display_format">%1$s (%2$s)</string>
-    <string name="player_error_mpv_unavailable">Moteur de lecture MPV indisponible. Reconstruis l’app.</string>
+    <string name="player_error_mpv_unavailable">Moteur de lecture MPV indisponible. Reconstruisez l’app.</string>
     <string name="player_error_unable_to_play_stream">Impossible de lire ce stream.</string>
     <string name="plugins_badge_disabled">Plugins désactivés</string>
     <string name="plugins_badge_enabled">Plugins activés</string>
@@ -1856,26 +1860,14 @@
     <string name="updates_github_api_error">Erreur API releases GitHub : %1$d</string>
     <string name="updates_no_channel_release">Aucune mise à jour n’a encore été publiée.</string>
     <string name="updates_release_missing_title">La release n’a pas de tag ni de nom</string>
-    <!-- Continue Watching air date display -->
     <string name="cw_airs_date">Diffusion le %1$s</string>
     <string name="cw_airs_today">Diffusion aujourd’hui</string>
     <string name="cw_airs_tomorrow">Diffusion demain</string>
-    <plurals name="cw_airs_in_days">
-        <item quantity="one">Diffusion dans %1$d jour</item>
-        <item quantity="many">Diffusion dans %1$d jours</item>
-        <item quantity="other">Diffusion dans %1$d jours</item>
-    </plurals>
     <string name="cw_airs_date_short">%1$s</string>
     <string name="cw_airs_today_short">Aujourd’hui</string>
     <string name="cw_airs_tomorrow_short">Demain</string>
-    <plurals name="cw_airs_in_days_short">
-        <item quantity="one">Dans %1$d jour</item>
-        <item quantity="many">Dans %1$d jours</item>
-        <item quantity="other">Dans %1$d jours</item>
-    </plurals>
     <string name="cw_new_episode">Nouvel épisode</string>
     <string name="cw_new_season">Nouvelle saison</string>
-    <!-- Pass 4 — platform stubs and dynamic title fallbacks -->
     <string name="collections_editor_trakt_list_title_format">Liste Trakt %1$s</string>
     <string name="external_player_android_system">Lecteur système Android</string>
     <string name="p2p_consent_title">Streaming P2P</string>
@@ -1895,6 +1887,16 @@
     <string name="player_torrent_starting_engine">Démarrage du moteur P2P…</string>
     <string name="player_error_failed_start_torrent">Impossible de démarrer le torrent : %1$s</string>
     <string name="player_error_torrent">Erreur de torrent : %1$s</string>
+    <string name="person_detail_born">Naissance</string>
+    <string name="person_detail_place_of_birth">Lieu de naissance</string>
+    <string name="person_detail_credits">Crédits</string>
+    <string name="person_detail_biography">Biographie</string>
+    <string name="entity_browse_country">Pays</string>
+    <string name="entity_browse_type">Type</string>
+    <string name="entity_browse_catalogue">Catalogue</string>
+    <string name="entity_browse_about">À propos</string>
+    <string name="player_external_loading_subtitles">Chargement des sous-titres depuis les addons…</string>
+    <string name="player_external_downloading_subtitles">Téléchargement des sous-titres…</string>
     <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
     <string name="downloads_auto_open_offline_description">When Nuvio starts without a connection, open Downloads if playable files are saved.</string>
     <string name="settings_debrid_sort_default">Par dÃ©faut</string>
@@ -1935,24 +1937,4 @@
     <string name="settings_appearance_desktop_navigation_sheet_title">Choose Desktop Navigation</string>
     <string name="settings_appearance_desktop_navigation_sidebar">Sidebar</string>
     <string name="settings_appearance_desktop_navigation_top_bar">Top Bar</string>
-    <string name="community_donation_progress_complete">Covered. Additional support now goes to development.</string>
-    <string name="community_donation_progress_remaining">After 100%%, additional support goes to development.</string>
-    <string name="community_donation_progress_title">This month&apos;s server &amp; maintenance</string>
-    <string name="community_loading_donation_progress">Loading funding progress...</string>
-    <string name="settings_account_sync_backend">Sync backend</string>
-    <!-- English fallback strings added for untranslated upstream language/playback keys. -->
-    <string name="settings_appearance_app_language_device">Device language</string>
-    <string name="settings_playback_option_original">Original language</string>
-    <string name="settings_playback_option_original_hint">Requires TMDB enrichment to be enabled</string>
-    <string name="action_switch">Switch</string>
-    <string name="addons_appstore_add_description">Connect your own media server to browse and play from your personal library.</string>
-    <string name="addons_appstore_empty_subtitle">Add a server URL above when you want Nuvio to show your private library.</string>
-    <string name="addons_appstore_empty_title">No personal libraries connected.</string>
-    <string name="addons_appstore_input_placeholder">Server URL</string>
-    <string name="addons_appstore_install_button">Add</string>
-    <string name="compose_auth_terms_prefix">By signing up, I agree to the</string>
-    <string name="compose_auth_terms_link">Terms</string>
-    <string name="debug_backend_switch_confirm_title">Switch backend?</string>
-    <string name="debug_backend_switch_confirm_message">Switch to %1$s and sign out? You can sign in again on the selected backend.</string>
-    <string name="settings_content_discovery_addons_description_appstore">Connect personal media sources and manage access to your own library.</string>
 </resources>
