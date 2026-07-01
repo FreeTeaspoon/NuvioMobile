@@ -1863,9 +1863,17 @@
     <string name="cw_airs_date">Vysílá se %1$s</string>
     <string name="cw_airs_today">Vysílá se dnes</string>
     <string name="cw_airs_tomorrow">Vysílá se zítra</string>
+    <plurals name="cw_airs_in_days">
+        <item quantity="one">Vysílá se za %1$d den</item>
+        <item quantity="other">Vysílá se za %1$d dní</item>
+    </plurals>
     <string name="cw_airs_date_short">%1$s</string>
     <string name="cw_airs_today_short">Dnes</string>
     <string name="cw_airs_tomorrow_short">Zítra</string>
+    <plurals name="cw_airs_in_days_short">
+        <item quantity="one">Za %1$d den</item>
+        <item quantity="other">Za %1$d dní</item>
+    </plurals>
     <string name="cw_new_episode">Nová epizoda</string>
     <string name="cw_new_season">Nová série</string>
     <string name="collections_editor_trakt_list_title_format">Seznam Trakt %1$s</string>
