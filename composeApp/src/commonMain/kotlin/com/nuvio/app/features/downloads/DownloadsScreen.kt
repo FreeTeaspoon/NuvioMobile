@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
@@ -39,6 +40,7 @@ import com.nuvio.app.core.i18n.localizedByteUnit
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioStatusModal
+import com.nuvio.app.core.ui.NuvioToastController
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -54,6 +56,7 @@ fun DownloadsScreen(
 
     var selectedShowId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingDeleteItem by remember { mutableStateOf<DownloadItem?>(null) }
+    val openDownloadsDirectoryFailedText = stringResource(Res.string.downloads_open_directory_failed)
 
     val completedEpisodes = remember(uiState.items) {
         uiState.completedItems
@@ -80,6 +83,20 @@ fun DownloadsScreen(
                         selectedShowId = null
                     } else {
                         onBack()
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            if (!DownloadsPlatformDownloader.openDownloadsDirectory()) {
+                                NuvioToastController.show(openDownloadsDirectoryFailedText)
+                            }
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Folder,
+                            contentDescription = stringResource(Res.string.downloads_open_directory),
+                        )
                     }
                 },
             )

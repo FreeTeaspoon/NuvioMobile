@@ -336,8 +336,10 @@ jobs:
         if: steps.existing_release.outputs.skip != 'true'
         shell: bash
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || vars.SUPABASE_ANON_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL || secrets.NUVIO_SUPABASE_URL || vars.NUVIO_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || vars.SUPABASE_ANON_KEY || secrets.NUVIO_SUPABASE_ANON_KEY || vars.NUVIO_SUPABASE_ANON_KEY }}
+          NUVIO_SUPABASE_URL: ${{ secrets.NUVIO_SUPABASE_URL || vars.NUVIO_SUPABASE_URL || secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+          NUVIO_SUPABASE_ANON_KEY: ${{ secrets.NUVIO_SUPABASE_ANON_KEY || vars.NUVIO_SUPABASE_ANON_KEY || secrets.SUPABASE_ANON_KEY || vars.SUPABASE_ANON_KEY }}
           TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID || vars.TRAKT_CLIENT_ID }}
           TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
           TRAKT_REDIRECT_URI: ${{ secrets.TRAKT_REDIRECT_URI || vars.TRAKT_REDIRECT_URI || 'nuvio://auth/trakt' }}
@@ -365,6 +367,8 @@ jobs:
             printf 'sdk.dir=%s\n' "${ANDROID_HOME}"
             printf 'SUPABASE_URL=%s\n' "${SUPABASE_URL}"
             printf 'SUPABASE_ANON_KEY=%s\n' "${SUPABASE_ANON_KEY}"
+            printf 'NUVIO_SUPABASE_URL=%s\n' "${NUVIO_SUPABASE_URL}"
+            printf 'NUVIO_SUPABASE_ANON_KEY=%s\n' "${NUVIO_SUPABASE_ANON_KEY}"
             printf 'TRAKT_CLIENT_ID=%s\n' "${TRAKT_CLIENT_ID}"
             printf 'TRAKT_CLIENT_SECRET=%s\n' "${TRAKT_CLIENT_SECRET}"
             printf 'TRAKT_REDIRECT_URI=%s\n' "${TRAKT_REDIRECT_URI}"
