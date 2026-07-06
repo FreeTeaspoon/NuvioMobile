@@ -10,6 +10,13 @@ internal interface DownloadsTaskHandle {
     fun cancel()
 }
 
+internal data class LocalDownloadFile(
+    val fileName: String,
+    val localFileUri: String,
+    val sizeBytes: Long,
+    val lastModifiedEpochMs: Long,
+)
+
 internal expect object DownloadsPlatformDownloader {
     fun start(
         request: DownloadPlatformRequest,
@@ -23,6 +30,8 @@ internal expect object DownloadsPlatformDownloader {
     fun removePartialFile(destinationFileName: String): Boolean
 
     fun resolveLocalFileUri(localFileUri: String?, destinationFileName: String): String?
+
+    fun listCompletedFiles(): List<LocalDownloadFile>
 
     fun openDownloadsDirectory(): Boolean
 }

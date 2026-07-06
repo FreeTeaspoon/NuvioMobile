@@ -10,6 +10,8 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ### Fixed
 
+- Downloads made before signing in no longer disappear from the Downloads screen after logging out or switching account state, and existing local files are recovered after updating.
+
 ## 0.1.25.3
 
 ### Fixed

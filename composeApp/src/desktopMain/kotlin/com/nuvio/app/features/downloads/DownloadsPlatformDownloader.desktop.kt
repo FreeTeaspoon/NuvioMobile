@@ -8,6 +8,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import java.awt.Desktop
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URI
@@ -129,6 +130,26 @@ internal actual object DownloadsPlatformDownloader {
             ?: return null
         return File(downloadsDir, fileName).takeIf { it.exists() }?.toURI()?.toString()
     }
+
+    actual fun listCompletedFiles(): List<LocalDownloadFile> =
+        downloadsDir
+            .listFiles { file -> file.isFile && !file.name.endsWith(".part") && file.length() > 0L }
+            .orEmpty()
+            .map { file ->
+                LocalDownloadFile(
+                    fileName = file.name,
+                    localFileUri = file.toURI().toString(),
+                    sizeBytes = file.length(),
+                    lastModifiedEpochMs = file.lastModified().coerceAtLeast(0L),
+                )
+            }
+
+    actual fun openDownloadsDirectory(): Boolean =
+        runCatching {
+            if (!Desktop.isDesktopSupported()) return false
+            Desktop.getDesktop().open(downloadsDir)
+            true
+        }.getOrDefault(false)
 
     private fun sendDownloadRequest(
         request: DownloadPlatformRequest,

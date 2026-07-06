@@ -178,6 +178,28 @@ internal actual object DownloadsPlatformDownloader {
         }
     }
 
+    actual fun listCompletedFiles(): List<LocalDownloadFile> {
+        val downloadsDirectory = downloadsDirectoryPath()
+        val names = NSFileManager.defaultManager.contentsOfDirectoryAtPath(
+            path = downloadsDirectory,
+            error = null,
+        ) as? List<*> ?: return emptyList()
+
+        return names.mapNotNull { entry ->
+            val fileName = entry as? String ?: return@mapNotNull null
+            if (fileName.endsWith(".part")) return@mapNotNull null
+
+            val path = "$downloadsDirectory/$fileName"
+            val size = fileSizeOrNull(path)?.takeIf { it > 0L } ?: return@mapNotNull null
+            LocalDownloadFile(
+                fileName = fileName,
+                localFileUri = NSURL.fileURLWithPath(path).absoluteString ?: "file://$path",
+                sizeBytes = size,
+                lastModifiedEpochMs = fileModifiedEpochMsOrNull(path) ?: 0L,
+            )
+        }
+    }
+
     actual fun openDownloadsDirectory(): Boolean {
         val url = NSURL.fileURLWithPath(downloadsDirectoryPath())
         UIApplication.sharedApplication.openURL(
@@ -471,6 +493,13 @@ private fun fileSizeOrNull(path: String): Long? {
         is Number -> value.toLong()
         else -> null
     }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun fileModifiedEpochMsOrNull(path: String): Long? {
+    val attrs = NSFileManager.defaultManager.attributesOfItemAtPath(path, error = null)
+    val value = attrs?.get("NSFileModificationDate") as? NSDate ?: return null
+    return (value.timeIntervalSince1970 * 1000.0).toLong().coerceAtLeast(0L)
 }
 
 private fun String.toLocalPath(): String? {

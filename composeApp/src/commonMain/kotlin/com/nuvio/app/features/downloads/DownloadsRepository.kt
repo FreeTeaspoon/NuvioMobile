@@ -266,17 +266,16 @@ object DownloadsRepository {
 
     private fun loadFromDisk() {
         hasLoaded = true
+        val autoOpenOnOffline = DownloadsStorage.loadAutoOpenOnOffline() ?: true
         val payload = DownloadsStorage.loadPayload().orEmpty().trim()
-        if (payload.isEmpty()) {
-            _uiState.value = DownloadsUiState(
-                autoOpenOnOffline = DownloadsStorage.loadAutoOpenOnOffline() ?: true,
-            )
-            notifyLiveStatusPlatform()
-            return
-        }
 
         var shouldPersistNormalized = false
-        val normalized = DownloadsCodec.decodeItems(payload)
+        val decoded = if (payload.isEmpty()) {
+            emptyList()
+        } else {
+            DownloadsCodec.decodeItems(payload)
+        }
+        val normalized = decoded
             .map { item ->
                 val statusNormalized = if (item.status == DownloadStatus.Downloading) {
                     item.copy(
@@ -293,13 +292,15 @@ object DownloadsRepository {
                 }
                 localUriNormalized
             }
+        val recovered = recoverMissingLocalFiles(normalized)
+        val items = normalized + recovered
 
         _uiState.value = DownloadsUiState(
-            items = normalized,
-            autoOpenOnOffline = DownloadsStorage.loadAutoOpenOnOffline() ?: true,
+            items = items,
+            autoOpenOnOffline = autoOpenOnOffline,
         )
         notifyLiveStatusPlatform()
-        if (shouldPersistNormalized) {
+        if (shouldPersistNormalized || recovered.isNotEmpty()) {
             persist()
         }
     }
@@ -429,12 +430,56 @@ object DownloadsRepository {
         }
     }
 
+    private fun recoverMissingLocalFiles(existingItems: List<DownloadItem>): List<DownloadItem> {
+        val knownFileNames = existingItems
+            .map { it.fileName }
+            .filter { it.isNotBlank() }
+            .toSet()
+        val knownLocalUris = existingItems
+            .mapNotNull { item ->
+                DownloadsPlatformDownloader.resolveLocalFileUri(
+                    localFileUri = item.localFileUri,
+                    destinationFileName = item.fileName,
+                )
+            }
+            .toSet()
+
+        return DownloadsPlatformDownloader.listCompletedFiles()
+            .filterNot { file -> file.fileName in knownFileNames || file.localFileUri in knownLocalUris }
+            .map(::buildRecoveredDownloadItem)
+    }
+
     private fun DownloadItem.hasPlayableLocalFile(): Boolean =
         status == DownloadStatus.Completed &&
             DownloadsPlatformDownloader.resolveLocalFileUri(
                 localFileUri = localFileUri,
                 destinationFileName = fileName,
             ) != null
+}
+
+private fun buildRecoveredDownloadItem(file: LocalDownloadFile): DownloadItem {
+    val timestamp = file.lastModifiedEpochMs.takeIf { it > 0L } ?: DownloadsClock.nowEpochMs()
+    val title = file.fileName.recoveredTitleFromFileName()
+    val stableKey = file.fileName.sanitizeFileName().ifBlank { "file" }
+
+    return DownloadItem(
+        id = "recovered_${stableKey.take(80)}_${timestamp.toString(36)}",
+        contentType = "local",
+        parentMetaId = "recovered:$stableKey",
+        parentMetaType = "local",
+        videoId = "recovered:$stableKey",
+        title = title,
+        streamTitle = title,
+        providerName = "Local file",
+        sourceUrl = file.localFileUri,
+        localFileUri = file.localFileUri,
+        fileName = file.fileName,
+        status = DownloadStatus.Completed,
+        downloadedBytes = file.sizeBytes,
+        totalBytes = file.sizeBytes,
+        createdAtEpochMs = timestamp,
+        updatedAtEpochMs = timestamp,
+    )
 }
 
 @Serializable
@@ -537,6 +582,15 @@ private fun buildFileName(
         append('.')
         append(extension)
     }
+}
+
+private fun String.recoveredTitleFromFileName(): String {
+    val withoutExtension = substringBeforeLast('.', missingDelimiterValue = this)
+    val withoutGeneratedSuffix = withoutExtension.replace(Regex("_[0-9a-z]{6,}$"), "")
+    return withoutGeneratedSuffix
+        .replace('_', ' ')
+        .trim()
+        .ifBlank { "Recovered download" }
 }
 
 private fun String.sanitizeFileName(): String =
