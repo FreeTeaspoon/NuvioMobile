@@ -217,6 +217,22 @@ internal actual object DownloadsPlatformDownloader {
         return localFile.takeIf { it.exists() }?.toURI()?.toString()
     }
 
+    actual fun listCompletedFiles(): List<LocalDownloadFile> {
+        val context = appContext ?: return emptyList()
+        val downloadsDir = File(context.filesDir, "downloads")
+        return downloadsDir
+            .listFiles { file -> file.isFile && !file.name.endsWith(".part") && file.length() > 0L }
+            .orEmpty()
+            .map { file ->
+                LocalDownloadFile(
+                    fileName = file.name,
+                    localFileUri = file.toURI().toString(),
+                    sizeBytes = file.length(),
+                    lastModifiedEpochMs = file.lastModified().coerceAtLeast(0L),
+                )
+            }
+    }
+
     private fun registerForegroundDownload(context: Context): Int =
         synchronized(foregroundLock) {
             nextForegroundToken += 1
