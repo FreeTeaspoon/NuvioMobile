@@ -286,7 +286,8 @@ object DownloadsRepository {
                     item
                 }
 
-                val localUriNormalized = normalizeCompletedLocalFileUri(statusNormalized)
+                val recoveredMetadataNormalized = normalizeRecoveredEpisodeMetadata(statusNormalized)
+                val localUriNormalized = normalizeCompletedLocalFileUri(recoveredMetadataNormalized)
                 if (localUriNormalized != item) {
                     shouldPersistNormalized = true
                 }
@@ -430,6 +431,25 @@ object DownloadsRepository {
         }
     }
 
+    private fun normalizeRecoveredEpisodeMetadata(item: DownloadItem): DownloadItem {
+        if (item.seasonNumber != null || item.episodeNumber != null) return item
+        if (!item.id.startsWith("recovered_") && item.contentType != RecoveredDownloadContentType) return item
+        val metadata = item.fileName.recoveredDownloadMetadata() as? RecoveredDownloadMetadata.Episode
+            ?: return item
+
+        return item.copy(
+            contentType = RecoveredEpisodeContentType,
+            parentMetaId = metadata.parentMetaId,
+            parentMetaType = RecoveredEpisodeContentType,
+            videoId = metadata.videoId,
+            title = metadata.showTitle,
+            seasonNumber = metadata.seasonNumber,
+            episodeNumber = metadata.episodeNumber,
+            episodeTitle = metadata.episodeTitle,
+            streamTitle = metadata.displayTitle,
+        )
+    }
+
     private fun recoverMissingLocalFiles(existingItems: List<DownloadItem>): List<DownloadItem> {
         val knownFileNames = existingItems
             .map { it.fileName }
@@ -459,17 +479,20 @@ object DownloadsRepository {
 
 private fun buildRecoveredDownloadItem(file: LocalDownloadFile): DownloadItem {
     val timestamp = file.lastModifiedEpochMs.takeIf { it > 0L } ?: DownloadsClock.nowEpochMs()
-    val title = file.fileName.recoveredTitleFromFileName()
+    val metadata = file.fileName.recoveredDownloadMetadata()
     val stableKey = file.fileName.sanitizeFileName().ifBlank { "file" }
 
     return DownloadItem(
         id = "recovered_${stableKey.take(80)}_${timestamp.toString(36)}",
-        contentType = "local",
-        parentMetaId = "recovered:$stableKey",
-        parentMetaType = "local",
-        videoId = "recovered:$stableKey",
-        title = title,
-        streamTitle = title,
+        contentType = metadata.contentType,
+        parentMetaId = metadata.parentMetaId,
+        parentMetaType = metadata.contentType,
+        videoId = metadata.videoId,
+        title = metadata.title,
+        seasonNumber = metadata.seasonNumber,
+        episodeNumber = metadata.episodeNumber,
+        episodeTitle = metadata.episodeTitle,
+        streamTitle = metadata.displayTitle,
         providerName = "Local file",
         sourceUrl = file.localFileUri,
         localFileUri = file.localFileUri,
@@ -480,6 +503,46 @@ private fun buildRecoveredDownloadItem(file: LocalDownloadFile): DownloadItem {
         createdAtEpochMs = timestamp,
         updatedAtEpochMs = timestamp,
     )
+}
+
+private const val RecoveredDownloadContentType = "local"
+private const val RecoveredEpisodeContentType = "series"
+private const val RecoveredMovieContentType = "movie"
+
+private sealed class RecoveredDownloadMetadata {
+    abstract val contentType: String
+    abstract val parentMetaId: String
+    abstract val videoId: String
+    abstract val title: String
+    abstract val displayTitle: String
+    open val seasonNumber: Int? = null
+    open val episodeNumber: Int? = null
+    open val episodeTitle: String? = null
+
+    data class Movie(
+        override val title: String,
+        private val stableKey: String,
+    ) : RecoveredDownloadMetadata() {
+        override val contentType: String = RecoveredMovieContentType
+        override val parentMetaId: String = "recovered:movie:$stableKey"
+        override val videoId: String = "recovered:movie:$stableKey"
+        override val displayTitle: String = title
+    }
+
+    data class Episode(
+        val showTitle: String,
+        override val seasonNumber: Int,
+        override val episodeNumber: Int,
+        override val episodeTitle: String?,
+        private val showKey: String,
+        private val fileKey: String,
+        override val displayTitle: String,
+    ) : RecoveredDownloadMetadata() {
+        override val contentType: String = RecoveredEpisodeContentType
+        override val parentMetaId: String = "recovered:series:$showKey"
+        override val videoId: String = "recovered:episode:$fileKey"
+        override val title: String = showTitle
+    }
 }
 
 @Serializable
@@ -584,7 +647,37 @@ private fun buildFileName(
     }
 }
 
-private fun String.recoveredTitleFromFileName(): String {
+private fun String.recoveredDownloadMetadata(): RecoveredDownloadMetadata {
+    val displayName = recoveredDisplayNameFromFileName()
+    val stableKey = displayName.sanitizeFileName().ifBlank { "file" }
+    val episodeMatch = episodeCodeRegex.find(displayName)
+    if (episodeMatch != null) {
+        val showTitle = displayName.substring(0, episodeMatch.range.first).trim()
+        val episodeTitle = displayName.substring(episodeMatch.range.last + 1).trim().ifBlank { null }
+        val seasonNumber = episodeMatch.groupValues.getOrNull(1)?.toIntOrNull()
+        val episodeNumber = episodeMatch.groupValues.getOrNull(2)?.toIntOrNull()
+        if (showTitle.isNotBlank() && seasonNumber != null && episodeNumber != null) {
+            return RecoveredDownloadMetadata.Episode(
+                showTitle = showTitle,
+                seasonNumber = seasonNumber,
+                episodeNumber = episodeNumber,
+                episodeTitle = episodeTitle,
+                showKey = showTitle.sanitizeFileName().ifBlank { "show" },
+                fileKey = stableKey,
+                displayTitle = displayName,
+            )
+        }
+    }
+
+    return RecoveredDownloadMetadata.Movie(
+        title = displayName,
+        stableKey = stableKey,
+    )
+}
+
+private val episodeCodeRegex = Regex("""(?i)\bS(\d{1,2})E(\d{1,3})\b""")
+
+private fun String.recoveredDisplayNameFromFileName(): String {
     val withoutExtension = substringBeforeLast('.', missingDelimiterValue = this)
     val withoutGeneratedSuffix = withoutExtension.replace(Regex("_[0-9a-z]{6,}$"), "")
     return withoutGeneratedSuffix

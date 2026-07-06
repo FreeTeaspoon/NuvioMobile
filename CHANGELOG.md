@@ -11,6 +11,7 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 ### Fixed
 
 - Downloads made before signing in no longer disappear from the Downloads screen after logging out or switching account state, and existing local files are recovered after updating.
+- Recovered episode downloads now return to Shows with season and episode sorting instead of appearing as Movies.
 
 ## 0.1.25.3
 
