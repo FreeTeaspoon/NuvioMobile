@@ -29,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloudDownload
+import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -320,9 +321,8 @@ private fun AddonSubtitleList(
                 .padding(40.dp),
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator(
+            NuvioLoadingIndicator(
                 color = colorScheme.primary,
-                strokeWidth = 2.dp,
                 modifier = Modifier.size(32.dp),
             )
         }

@@ -191,6 +191,7 @@ fun PlayerScreen(
     pauseDescription: String? = null,
     onBack: () -> Unit,
     onOpenInExternalPlayer: ((ExternalPlayerPlaybackRequest) -> Unit)? = null,
+    onOpenExternalUrl: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     logo: String? = null,
     poster: String? = null,

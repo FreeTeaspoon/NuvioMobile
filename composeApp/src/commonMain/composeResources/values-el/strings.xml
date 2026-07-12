@@ -1967,4 +1967,6 @@
     <string name="settings_appearance_desktop_navigation_sheet_title">Choose Desktop Navigation</string>
     <string name="settings_appearance_desktop_navigation_sidebar">Sidebar</string>
     <string name="settings_appearance_desktop_navigation_top_bar">Top Bar</string>
+    <string name="settings_playback_parental_guide">Προειδοποιήσεις περιεχομένου</string>
+    <string name="settings_playback_parental_guide_description">Εμφάνιση επικάλυψης γονικής καθοδήγησης κατά την έναρξη της αναπαραγωγής.</string>
 </resources>
