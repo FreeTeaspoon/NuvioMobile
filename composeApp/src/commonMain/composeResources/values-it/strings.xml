@@ -1967,4 +1967,6 @@
     <string name="settings_appearance_desktop_navigation_sheet_title">Choose Desktop Navigation</string>
     <string name="settings_appearance_desktop_navigation_sidebar">Sidebar</string>
     <string name="settings_appearance_desktop_navigation_top_bar">Top Bar</string>
+    <string name="settings_playback_parental_guide">Avvisi sui contenuti</string>
+    <string name="settings_playback_parental_guide_description">Mostra l'avviso di guida parentale all'avvio della riproduzione.</string>
 </resources>

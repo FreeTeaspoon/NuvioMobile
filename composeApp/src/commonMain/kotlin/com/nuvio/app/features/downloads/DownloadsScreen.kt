@@ -48,13 +48,16 @@ import org.jetbrains.compose.resources.stringResource
 fun DownloadsScreen(
     onBack: () -> Unit,
     onOpenDownload: (DownloadItem) -> Unit,
+    initialShowId: String? = null,
+    onNavigateToShow: ((showId: String, title: String) -> Unit)? = null,
+    onBackFromShow: (() -> Unit)? = null,
 ) {
     val uiState by remember {
         DownloadsRepository.ensureLoaded()
         DownloadsRepository.uiState
     }.collectAsStateWithLifecycle()
 
-    var selectedShowId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedShowId by rememberSaveable(initialShowId) { mutableStateOf(initialShowId) }
     var pendingDeleteItem by remember { mutableStateOf<DownloadItem?>(null) }
     val openDownloadsDirectoryFailedText = stringResource(Res.string.downloads_open_directory_failed)
 
@@ -80,7 +83,7 @@ fun DownloadsScreen(
                 },
                 onBack = {
                     if (selectedShowId != null) {
-                        selectedShowId = null
+                        onBackFromShow?.invoke() ?: run { selectedShowId = null }
                     } else {
                         onBack()
                     }
@@ -106,7 +109,9 @@ fun DownloadsScreen(
             downloadsRootContent(
                 uiState = uiState,
                 onOpenDownload = onOpenDownload,
-                onOpenShow = { showId -> selectedShowId = showId },
+                onOpenShow = { showId, title ->
+                    onNavigateToShow?.invoke(showId, title) ?: run { selectedShowId = showId }
+                },
                 onDeleteRequest = { item -> pendingDeleteItem = item },
             )
         } else {
@@ -143,7 +148,7 @@ fun DownloadsScreen(
 private fun LazyListScope.downloadsRootContent(
     uiState: DownloadsUiState,
     onOpenDownload: (DownloadItem) -> Unit,
-    onOpenShow: (String) -> Unit,
+    onOpenShow: (showId: String, title: String) -> Unit,
     onDeleteRequest: (DownloadItem) -> Unit,
 ) {
     val activeItems = uiState.activeItems
@@ -208,7 +213,7 @@ private fun LazyListScope.downloadsRootContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 6.dp)
-                    .clickable { onOpenShow(item.parentMetaId) },
+                    .clickable { onOpenShow(item.parentMetaId, item.title) },
                 shape = MaterialTheme.shapes.medium,
                 color = MaterialTheme.colorScheme.surfaceContainer,
             ) {

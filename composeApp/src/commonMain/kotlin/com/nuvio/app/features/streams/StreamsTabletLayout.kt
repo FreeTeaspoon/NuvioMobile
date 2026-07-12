@@ -69,6 +69,7 @@ internal fun TabletStreamsLayout(
     onStreamSelected: (stream: StreamItem, resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit,
     onStreamLongPress: (StreamItem) -> Unit,
     onOpenImdbUrl: (String) -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hazeState = rememberHazeState()
@@ -200,6 +201,7 @@ internal fun TabletStreamsLayout(
                             groups = uiState.groups,
                             selectedFilter = uiState.selectedFilter,
                             onFilterSelected = { addonId -> StreamsRepository.selectFilter(addonId) },
+                            onRefresh = onRefresh,
                         )
 
                         ActiveScrapersStatusBlock(

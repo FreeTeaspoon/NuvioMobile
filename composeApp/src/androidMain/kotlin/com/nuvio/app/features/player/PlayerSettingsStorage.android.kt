@@ -20,6 +20,7 @@ import kotlinx.serialization.json.put
 actual object PlayerSettingsStorage {
     private const val preferencesName = "nuvio_player_settings"
     private const val showLoadingOverlayKey = "show_loading_overlay"
+    private const val showParentalGuideKey = "show_parental_guide"
     private const val resizeModeKey = "resize_mode"
     private const val videoZoomKey = "video_zoom"
     private const val playerEngineKey = "player_engine"
@@ -92,6 +93,7 @@ actual object PlayerSettingsStorage {
     private const val rememberedVideoZoomsKey = "remembered_video_zooms"
     private val syncKeys = listOf(
         showLoadingOverlayKey,
+        showParentalGuideKey,
         resizeModeKey,
         playerEngineKey,
         holdToSpeedEnabledKey,
@@ -180,6 +182,23 @@ actual object PlayerSettingsStorage {
         preferences
             ?.edit()
             ?.putBoolean(ProfileScopedKey.of(showLoadingOverlayKey), enabled)
+            ?.apply()
+    }
+
+    actual fun loadShowParentalGuide(): Boolean? =
+        preferences?.let { sharedPreferences ->
+            val key = ProfileScopedKey.of(showParentalGuideKey)
+            if (sharedPreferences.contains(key)) {
+                sharedPreferences.getBoolean(key, true)
+            } else {
+                null
+            }
+        }
+
+    actual fun saveShowParentalGuide(enabled: Boolean) {
+        preferences
+            ?.edit()
+            ?.putBoolean(ProfileScopedKey.of(showParentalGuideKey), enabled)
             ?.apply()
     }
 
@@ -1108,6 +1127,7 @@ actual object PlayerSettingsStorage {
 
     actual fun exportToSyncPayload(): JsonObject = buildJsonObject {
         loadShowLoadingOverlay()?.let { put(showLoadingOverlayKey, encodeSyncBoolean(it)) }
+        loadShowParentalGuide()?.let { put(showParentalGuideKey, encodeSyncBoolean(it)) }
         loadResizeMode()?.let { put(resizeModeKey, encodeSyncString(it)) }
         loadPlayerEngine()?.let { put(playerEngineKey, encodeSyncString(it)) }
         loadHoldToSpeedEnabled()?.let { put(holdToSpeedEnabledKey, encodeSyncBoolean(it)) }
@@ -1184,6 +1204,7 @@ actual object PlayerSettingsStorage {
         }?.apply()
 
         payload.decodeSyncBoolean(showLoadingOverlayKey)?.let(::saveShowLoadingOverlay)
+        payload.decodeSyncBoolean(showParentalGuideKey)?.let(::saveShowParentalGuide)
         payload.decodeSyncString(resizeModeKey)?.let(::saveResizeMode)
         payload.decodeSyncString(playerEngineKey)?.let(::savePlayerEngine)
         payload.decodeSyncBoolean(holdToSpeedEnabledKey)?.let(::saveHoldToSpeedEnabled)
