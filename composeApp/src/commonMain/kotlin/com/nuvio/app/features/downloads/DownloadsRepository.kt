@@ -14,6 +14,8 @@ import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 
 object DownloadsRepository {
+    private const val progressPublishIntervalMs = 500L
+
     private val _uiState = MutableStateFlow(DownloadsUiState())
     val uiState: StateFlow<DownloadsUiState> = _uiState.asStateFlow()
 
@@ -312,18 +314,48 @@ object DownloadsRepository {
             sourceHeaders = item.sourceHeaders,
             destinationFileName = item.fileName,
         )
+        var lastPublishedProgressAtEpochMs = Long.MIN_VALUE
+        var lastPublishedDownloadedBytes = -1L
+        var lastPublishedTotalBytes: Long? = null
 
         val handle = DownloadsPlatformDownloader.start(
             request = request,
             onProgress = { downloadedBytes, totalBytes ->
+                val normalizedDownloadedBytes = downloadedBytes.coerceAtLeast(0L)
+                val normalizedTotalBytes = totalBytes?.takeIf { it > 0L }
+                val now = DownloadsClock.nowEpochMs()
+                val isFirstUpdate = lastPublishedDownloadedBytes < 0L
+                val restarted = normalizedDownloadedBytes < lastPublishedDownloadedBytes
+                val totalChanged = normalizedTotalBytes != lastPublishedTotalBytes
+                val reachedEnd = normalizedTotalBytes != null &&
+                    normalizedDownloadedBytes >= normalizedTotalBytes
+                val elapsedMs = if (lastPublishedProgressAtEpochMs == Long.MIN_VALUE) {
+                    Long.MAX_VALUE
+                } else {
+                    now - lastPublishedProgressAtEpochMs
+                }
+
+                if (
+                    !isFirstUpdate &&
+                    !restarted &&
+                    !totalChanged &&
+                    !reachedEnd &&
+                    elapsedMs in 0 until progressPublishIntervalMs
+                ) {
+                    return@start
+                }
+
+                lastPublishedProgressAtEpochMs = now
+                lastPublishedDownloadedBytes = normalizedDownloadedBytes
+                lastPublishedTotalBytes = normalizedTotalBytes
                 mutateItem(item.id) { current ->
                     if (current.status != DownloadStatus.Downloading) {
                         current
                     } else {
                         current.copy(
-                            downloadedBytes = downloadedBytes.coerceAtLeast(0L),
-                            totalBytes = totalBytes?.takeIf { it > 0L },
-                            updatedAtEpochMs = DownloadsClock.nowEpochMs(),
+                            downloadedBytes = normalizedDownloadedBytes,
+                            totalBytes = normalizedTotalBytes,
+                            updatedAtEpochMs = now,
                             errorMessage = null,
                         )
                     }

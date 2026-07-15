@@ -21,10 +21,14 @@ import okhttp3.Route
 import nuvio.composeapp.generated.resources.*
 import okio.ByteString.Companion.encodeUtf8
 import org.jetbrains.compose.resources.getString
+import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URI
 import java.util.concurrent.TimeUnit
+
+private const val DOWNLOAD_READ_BUFFER_SIZE = 64 * 1024
+private const val DOWNLOAD_WRITE_BUFFER_SIZE = 256 * 1024
 
 private val downloadHttpClient = OkHttpClient.Builder()
     .addInterceptor { chain ->
@@ -147,8 +151,11 @@ internal actual object DownloadsPlatformDownloader {
                     onProgress(downloadedBytes, totalBytes)
 
                     body.byteStream().use { input ->
-                        FileOutputStream(tempFile, appendToTemp).use { output ->
-                            val buffer = ByteArray(16 * 1024)
+                        BufferedOutputStream(
+                            FileOutputStream(tempFile, appendToTemp),
+                            DOWNLOAD_WRITE_BUFFER_SIZE,
+                        ).use { output ->
+                            val buffer = ByteArray(DOWNLOAD_READ_BUFFER_SIZE)
                             while (true) {
                                 ensureActive()
                                 val read = input.read(buffer)
