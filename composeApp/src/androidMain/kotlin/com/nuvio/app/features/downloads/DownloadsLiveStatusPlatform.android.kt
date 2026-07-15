@@ -73,10 +73,12 @@ internal actual object DownloadsLiveStatusPlatform {
             lastRenderStateById.remove(downloadId)
         }
 
-        preferences(context)
-            .edit()
-            .putStringSet(trackedDownloadIdsKey, trackedNow)
-            .apply()
+        if (trackedBefore != trackedNow) {
+            preferences(context)
+                .edit()
+                .putStringSet(trackedDownloadIdsKey, trackedNow)
+                .apply()
+        }
     }
 
     private fun buildNotification(context: Context, item: DownloadItem): android.app.Notification {
