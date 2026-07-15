@@ -173,6 +173,7 @@ private fun LazyListScope.downloadsRootContent(
         ) { item ->
             DownloadRow(
                 item = item,
+                downloadSpeedBytesPerSecond = uiState.downloadSpeedBytesPerSecondById[item.id],
                 onOpen = { onOpenDownload(item) },
                 onPause = { DownloadsRepository.pauseDownload(item.id) },
                 onResume = { DownloadsRepository.resumeDownload(item.id) },
@@ -338,6 +339,7 @@ private fun LazyListScope.downloadsShowContent(
 @Composable
 private fun DownloadRow(
     item: DownloadItem,
+    downloadSpeedBytesPerSecond: Long? = null,
     onOpen: () -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -389,7 +391,7 @@ private fun DownloadRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = statusText(item),
+                        text = statusText(item, downloadSpeedBytesPerSecond),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -497,15 +499,22 @@ private fun SectionTitle(title: String) {
 }
 
 @Composable
-private fun statusText(item: DownloadItem): String {
+private fun statusText(
+    item: DownloadItem,
+    downloadSpeedBytesPerSecond: Long?,
+): String {
     val size = if (item.totalBytes != null && item.totalBytes > 0L) {
         "${formatBytes(item.downloadedBytes)} / ${formatBytes(item.totalBytes)}"
     } else {
         formatBytes(item.downloadedBytes)
     }
+    val downloadingDetail = downloadSpeedBytesPerSecond
+        ?.takeIf { it > 0L }
+        ?.let { "$size • ${formatBytes(it)}/s" }
+        ?: size
 
     return when (item.status) {
-        DownloadStatus.Downloading -> stringResource(Res.string.downloads_status_downloading, size)
+        DownloadStatus.Downloading -> stringResource(Res.string.downloads_status_downloading, downloadingDetail)
         DownloadStatus.Paused -> stringResource(Res.string.downloads_status_paused, size)
         DownloadStatus.Completed -> stringResource(
             Res.string.downloads_status_completed,
@@ -522,9 +531,16 @@ private fun formatBytes(bytes: Long): String {
     val gib = mib * 1024.0
     val value = bytes.toDouble()
     return when {
-        value >= gib -> "${((value / gib) * 10.0).toInt() / 10.0} ${localizedByteUnit("GB")}"
-        value >= mib -> "${((value / mib) * 10.0).toInt() / 10.0} ${localizedByteUnit("MB")}"
-        value >= kib -> "${((value / kib) * 10.0).toInt() / 10.0} ${localizedByteUnit("KB")}"
+        value >= gib -> "${formatTwoDecimals(value / gib)} ${localizedByteUnit("GB")}"
+        value >= mib -> "${formatTwoDecimals(value / mib)} ${localizedByteUnit("MB")}"
+        value >= kib -> "${formatTwoDecimals(value / kib)} ${localizedByteUnit("KB")}"
         else -> "$bytes ${localizedByteUnit("B")}"
     }
+}
+
+private fun formatTwoDecimals(value: Double): String {
+    val hundredths = (value.coerceAtLeast(0.0) * 100.0).toLong()
+    val whole = hundredths / 100L
+    val fraction = (hundredths % 100L).toString().padStart(2, '0')
+    return "$whole.$fraction"
 }
