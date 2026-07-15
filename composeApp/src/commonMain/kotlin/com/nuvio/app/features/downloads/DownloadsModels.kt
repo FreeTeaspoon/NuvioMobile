@@ -76,6 +76,7 @@ data class DownloadItem(
 data class DownloadsUiState(
     val items: List<DownloadItem> = emptyList(),
     val autoOpenOnOffline: Boolean = true,
+    val downloadSpeedBytesPerSecondById: Map<String, Long> = emptyMap(),
 ) {
     val activeItems: List<DownloadItem>
         get() = items.filter { it.status != DownloadStatus.Completed }

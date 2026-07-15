@@ -14,8 +14,6 @@ import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 
 object DownloadsRepository {
-    private const val progressPublishIntervalMs = 500L
-
     private val _uiState = MutableStateFlow(DownloadsUiState())
     val uiState: StateFlow<DownloadsUiState> = _uiState.asStateFlow()
 
@@ -314,9 +312,7 @@ object DownloadsRepository {
             sourceHeaders = item.sourceHeaders,
             destinationFileName = item.fileName,
         )
-        var lastPublishedProgressAtEpochMs = Long.MIN_VALUE
-        var lastPublishedDownloadedBytes = -1L
-        var lastPublishedTotalBytes: Long? = null
+        val progressTracker = DownloadProgressUpdateTracker()
 
         val handle = DownloadsPlatformDownloader.start(
             request = request,
@@ -324,42 +320,22 @@ object DownloadsRepository {
                 val normalizedDownloadedBytes = downloadedBytes.coerceAtLeast(0L)
                 val normalizedTotalBytes = totalBytes?.takeIf { it > 0L }
                 val now = DownloadsClock.nowEpochMs()
-                val isFirstUpdate = lastPublishedDownloadedBytes < 0L
-                val restarted = normalizedDownloadedBytes < lastPublishedDownloadedBytes
-                val totalChanged = normalizedTotalBytes != lastPublishedTotalBytes
-                val reachedEnd = normalizedTotalBytes != null &&
-                    normalizedDownloadedBytes >= normalizedTotalBytes
-                val elapsedMs = if (lastPublishedProgressAtEpochMs == Long.MIN_VALUE) {
-                    Long.MAX_VALUE
-                } else {
-                    now - lastPublishedProgressAtEpochMs
-                }
+                val update = progressTracker.update(
+                    downloadedBytes = normalizedDownloadedBytes,
+                    totalBytes = normalizedTotalBytes,
+                    nowMs = now,
+                )
+                if (!update.publishUi) return@start
 
-                if (
-                    !isFirstUpdate &&
-                    !restarted &&
-                    !totalChanged &&
-                    !reachedEnd &&
-                    elapsedMs in 0 until progressPublishIntervalMs
-                ) {
-                    return@start
-                }
-
-                lastPublishedProgressAtEpochMs = now
-                lastPublishedDownloadedBytes = normalizedDownloadedBytes
-                lastPublishedTotalBytes = normalizedTotalBytes
-                mutateItem(item.id) { current ->
-                    if (current.status != DownloadStatus.Downloading) {
-                        current
-                    } else {
-                        current.copy(
-                            downloadedBytes = normalizedDownloadedBytes,
-                            totalBytes = normalizedTotalBytes,
-                            updatedAtEpochMs = now,
-                            errorMessage = null,
-                        )
-                    }
-                }
+                publishProgress(
+                    downloadId = item.id,
+                    downloadedBytes = normalizedDownloadedBytes,
+                    totalBytes = normalizedTotalBytes,
+                    speedBytesPerSecond = update.speedBytesPerSecond,
+                    nowEpochMs = now,
+                    shouldPersist = update.persist,
+                    shouldNotify = update.notify,
+                )
             },
             onSuccess = { localFileUri, totalBytes ->
                 activeHandles.remove(item.id)
@@ -414,6 +390,50 @@ object DownloadsRepository {
         }
     }
 
+    private fun publishProgress(
+        downloadId: String,
+        downloadedBytes: Long,
+        totalBytes: Long?,
+        speedBytesPerSecond: Long?,
+        nowEpochMs: Long,
+        shouldPersist: Boolean,
+        shouldNotify: Boolean,
+    ) {
+        var changed = false
+        _uiState.update { state ->
+            var itemChanged = false
+            val updatedItems = state.items.map { current ->
+                if (current.id != downloadId || current.status != DownloadStatus.Downloading) {
+                    current
+                } else {
+                    itemChanged = true
+                    current.copy(
+                        downloadedBytes = downloadedBytes,
+                        totalBytes = totalBytes,
+                        updatedAtEpochMs = nowEpochMs,
+                        errorMessage = null,
+                    )
+                }
+            }
+            if (!itemChanged) return@update state
+            changed = true
+
+            val updatedSpeeds = if (speedBytesPerSecond != null && speedBytesPerSecond > 0L) {
+                state.downloadSpeedBytesPerSecondById + (downloadId to speedBytesPerSecond)
+            } else {
+                state.downloadSpeedBytesPerSecondById - downloadId
+            }
+            state.copy(
+                items = updatedItems,
+                downloadSpeedBytesPerSecondById = updatedSpeeds,
+            )
+        }
+
+        if (!changed) return
+        if (shouldNotify) notifyLiveStatusPlatform()
+        if (shouldPersist) persist()
+    }
+
     private fun replaceItem(item: DownloadItem) {
         val updated = _uiState.value.items.map { existing ->
             if (existing.id == item.id) item else existing
@@ -422,9 +442,14 @@ object DownloadsRepository {
     }
 
     private fun publish(items: List<DownloadItem>) {
+        val downloadingIds = items
+            .filter { it.status == DownloadStatus.Downloading }
+            .mapTo(mutableSetOf()) { it.id }
         _uiState.value = DownloadsUiState(
             items = items,
             autoOpenOnOffline = _uiState.value.autoOpenOnOffline,
+            downloadSpeedBytesPerSecondById = _uiState.value.downloadSpeedBytesPerSecondById
+                .filterKeys { it in downloadingIds },
         )
         notifyLiveStatusPlatform()
     }
