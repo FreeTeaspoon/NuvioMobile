@@ -13,4 +13,5 @@ actual object AppFeaturePolicy {
     actual val inAppUpdaterEnabled: Boolean = true
     actual val mpvPlaybackEngineSelectable: Boolean = true
     actual val imdbRatingLogoEnabled: Boolean = true
+    actual val mediaPlaybackForegroundServiceEnabled: Boolean = true
 }

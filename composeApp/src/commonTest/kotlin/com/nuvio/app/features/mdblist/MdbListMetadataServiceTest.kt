@@ -44,6 +44,7 @@ class MdbListMetadataServiceTest {
                     useTrakt = false,
                     useLetterboxd = false,
                     useAudience = false,
+                    useMal = false,
                 ),
             )
 
@@ -321,6 +322,7 @@ class MdbListMetadataServiceTest {
         useTrakt: Boolean = false,
         useLetterboxd: Boolean = false,
         useAudience: Boolean = false,
+        useMal: Boolean = false,
     ): MdbListSettings = MdbListSettings(
         enabled = true,
         apiKey = "test-key",
@@ -329,7 +331,8 @@ class MdbListMetadataServiceTest {
         useTomatoes = useTomatoes,
         useMetacritic = useMetacritic,
         useTrakt = useTrakt,
-        useLetterboxd = useLetterboxd,
-        useAudience = useAudience,
-    )
+            useLetterboxd = useLetterboxd,
+            useAudience = useAudience,
+            useMal = useMal,
+        )
 }

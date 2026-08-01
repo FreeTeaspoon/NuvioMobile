@@ -14,6 +14,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 private const val TAG = "NuvioPlayerEngine"
 
+/**
+ * Full builds keep the fork's bundled MPV/AAR surface, while the common Media3
+ * implementation remains the upstream player path. Keeping this adapter small
+ * makes the flavor-specific difference explicit and keeps future upstream
+ * player refactors out of the full-only MPV implementation.
+ */
 @Composable
 actual fun PlatformPlayerSurface(
     sourceUrl: String,
@@ -22,19 +28,14 @@ actual fun PlatformPlayerSurface(
     sourceResponseHeaders: Map<String, String>,
     externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle>,
     streamType: String?,
-    sourceFilename: String?,
-    sourceVideoSize: Long?,
     useYoutubeChunkedPlayback: Boolean,
     modifier: Modifier,
     playWhenReady: Boolean,
+    initialPositionMs: Long?,
+    initialPositionRequestKey: String?,
     resizeMode: PlayerResizeMode,
-    initialPositionMs: Long,
     useNativeController: Boolean,
-    playerControlsState: PlayerControlsState,
-    onPlayerControlsAction: (PlayerControlsAction) -> Boolean,
-    onPlayerControlsEvent: (String, Double) -> Boolean,
-    onPlayerControlsScrubChange: (Long) -> Boolean,
-    onPlayerControlsScrubFinished: (Long) -> Boolean,
+    onInitialPositionHandled: (key: String, handled: Boolean) -> Unit,
     onControllerReady: (PlayerEngineController) -> Unit,
     onSnapshot: (PlayerPlaybackSnapshot) -> Unit,
     onError: (String?) -> Unit,
@@ -43,48 +44,52 @@ actual fun PlatformPlayerSurface(
         PlayerSettingsRepository.ensureLoaded()
         PlayerSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
-    var fallbackToMpv by remember(sourceUrl, sourceFilename) {
-        mutableStateOf(false)
-    }
-    var fallbackPositionMs by remember(sourceUrl, sourceFilename) {
-        mutableStateOf(0L)
-    }
-    var latestMedia3Snapshot by remember(sourceUrl, sourceFilename) {
+    val playerSourceKey = listOf(
+        sourceUrl,
+        sourceAudioUrl.orEmpty(),
+        sanitizePlaybackHeaders(sourceHeaders),
+        sanitizePlaybackResponseHeaders(sourceResponseHeaders),
+        streamType.orEmpty(),
+        useYoutubeChunkedPlayback,
+        initialPositionRequestKey.orEmpty(),
+    )
+    var fallbackToMpv by remember(playerSourceKey) { mutableStateOf(false) }
+    var fallbackPositionMs by remember(playerSourceKey) { mutableStateOf(0L) }
+    var latestMedia3Snapshot by remember(playerSourceKey) {
         mutableStateOf(PlayerPlaybackSnapshot())
     }
-    val preferMpvForSource = remember(sourceUrl, sourceResponseHeaders, sourceFilename) {
+
+    val preferMpvForSource = remember(sourceUrl, sourceResponseHeaders) {
         shouldPreferMpvForPlaybackSource(
             sourceUrl = sourceUrl,
             responseHeaders = sourceResponseHeaders,
-            sourceFilename = sourceFilename,
         )
     }
-
-    val engineSelectionReason = when {
-        playerSettings.playerEngine == PlayerEngineType.MPV -> "MPV_USER_SELECTED"
-        fallbackToMpv -> "MPV_FALLBACK"
-        preferMpvForSource -> "MPV_DAV_SOURCE"
-        else -> "MEDIA3"
-    }
-
-    val useMpv = playerSettings.playerEngine == PlayerEngineType.MPV ||
+    val useMpv = playerSettings.androidPlaybackEngine == AndroidPlaybackEngine.Libmpv ||
+        playerSettings.playerEngine == PlayerEngineType.MPV ||
         fallbackToMpv ||
         preferMpvForSource
 
-    LaunchedEffect(engineSelectionReason) {
-        Log.d(TAG, "Selected player engine: $engineSelectionReason")
-    }
     LaunchedEffect(fallbackToMpv) {
         if (fallbackToMpv) onError(null)
     }
 
     if (useMpv) {
+        LaunchedEffect(initialPositionRequestKey) {
+            initialPositionRequestKey?.let { key ->
+                onInitialPositionHandled(key, false)
+            }
+        }
         AndroidMpvPlayerSurface(
             sourceUrl = sourceUrl,
             sourceAudioUrl = sourceAudioUrl,
             sourceHeaders = sourceHeaders,
             externalSubtitles = externalSubtitles,
-            initialPositionMs = if (fallbackToMpv) fallbackPositionMs else initialPositionMs,
+            initialPositionMs = if (fallbackToMpv) {
+                fallbackPositionMs
+            } else {
+                initialPositionMs ?: 0L
+            },
             modifier = modifier,
             playWhenReady = playWhenReady,
             resizeMode = resizeMode,
@@ -96,46 +101,46 @@ actual fun PlatformPlayerSurface(
             onError = onError,
         )
     } else {
-        AndroidMedia3PlayerSurface(
+        ExoPlayerSurface(
             sourceUrl = sourceUrl,
             sourceAudioUrl = sourceAudioUrl,
             sourceHeaders = sourceHeaders,
             sourceResponseHeaders = sourceResponseHeaders,
             externalSubtitles = externalSubtitles,
             streamType = streamType,
-            sourceFilename = sourceFilename,
-            sourceVideoSize = sourceVideoSize,
             useYoutubeChunkedPlayback = useYoutubeChunkedPlayback,
             modifier = modifier,
             playWhenReady = playWhenReady,
-            resizeMode = resizeMode,
             initialPositionMs = initialPositionMs,
+            initialPositionRequestKey = initialPositionRequestKey,
+            resizeMode = resizeMode,
             useNativeController = useNativeController,
-            playerControlsState = playerControlsState,
-            onPlayerControlsAction = onPlayerControlsAction,
-            onPlayerControlsEvent = onPlayerControlsEvent,
-            onPlayerControlsScrubChange = onPlayerControlsScrubChange,
-            onPlayerControlsScrubFinished = onPlayerControlsScrubFinished,
+            onInitialPositionHandled = onInitialPositionHandled,
             onControllerReady = onControllerReady,
             onSnapshot = { snapshot ->
                 latestMedia3Snapshot = snapshot
                 onSnapshot(snapshot)
             },
-            onError = onError,
-            onRecoverableSourceError = { message, snapshot ->
-                if (shouldFallbackToMpvForPlaybackError(
+            onError = { message ->
+                if (
+                    message != null &&
+                    shouldTreatMedia3VarintFailureAsEnded(
                         sourceUrl = sourceUrl,
                         responseHeaders = sourceResponseHeaders,
-                        sourceFilename = sourceFilename,
                         errorMessage = message,
+                        snapshot = latestMedia3Snapshot,
                     )
                 ) {
-                    fallbackPositionMs = maxOf(snapshot.positionMs, latestMedia3Snapshot.positionMs)
-                        .coerceAtLeast(0L)
+                    onSnapshot(latestMedia3Snapshot.asEndedPlaybackSnapshot())
+                } else if (
+                    message != null &&
+                    playerSettings.androidPlaybackEngine == AndroidPlaybackEngine.Auto
+                ) {
+                    fallbackPositionMs = latestMedia3Snapshot.positionMs.coerceAtLeast(0L)
                     fallbackToMpv = true
-                    true
+                    Log.w(TAG, "Media3 failed; falling back to bundled libmpv: $message")
                 } else {
-                    false
+                    onError(message)
                 }
             },
         )

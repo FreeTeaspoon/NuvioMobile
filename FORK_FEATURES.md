@@ -16,6 +16,12 @@ callback, flavor source set, or new file.
 | Data workflows | Fork backup/profile/desktop implementations and their platform-specific tests | `features/backup/**`, `features/profiles/**`, `desktopMain/**`, matching tests |
 | Release automation | Fork release/version workflows and fork-specific release notes | `.github/workflows/*fork*`, `.github/workflows/build-cmp-rewrite-release.yml`, `FORK_RELEASE_VERSIONING.md` |
 
+The shared player merge boundary is intentional: `androidMain` contains the
+upstream player implementation, `androidPlaystore` delegates to it, and
+`androidFull` adapts only the fork's bundled MPV/AAR path. If upstream changes
+the common player surface, update the two flavor adapters first; do not copy
+the entire upstream player into the full flavor or delete the full-only AAR.
+
 ## Upstream-shaped shared files
 
 Keep these files close to upstream and port fork behavior around the upstream

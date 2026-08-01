@@ -34,10 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,6 +55,7 @@ import com.nuvio.app.features.home.components.HomeCatalogRowSection
 import com.nuvio.app.features.home.components.HomeEmptyStateCard
 import com.nuvio.app.features.home.components.homeSectionHorizontalPaddingForWidth
 import com.nuvio.app.features.home.components.HomeSkeletonRow
+import com.nuvio.app.features.home.components.posterGridColumnCountForWidth
 import com.nuvio.app.features.watched.WatchedRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -85,27 +83,17 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun SearchScreen(
     modifier: Modifier = Modifier,
-    topChromePadding: Dp? = null,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onPosterLongClick: ((MetaPreview) -> Unit)? = null,
     searchFocusRequestCount: Int = 0,
     scrollToTopRequests: Flow<Unit> = emptyFlow(),
 ) {
     val focusRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
-    var handledSearchFocusRequestCount by remember { mutableStateOf(searchFocusRequestCount) }
-    var searchFieldCanFocus by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        focusManager.clearFocus(force = true)
-        searchFieldCanFocus = true
-    }
 
     LaunchedEffect(searchFocusRequestCount) {
-        if (searchFocusRequestCount > handledSearchFocusRequestCount) {
+        if (searchFocusRequestCount > 0) {
             focusRequester.requestFocus()
         }
-        handledSearchFocusRequestCount = searchFocusRequestCount
     }
 
     LaunchedEffect(Unit) {
@@ -238,7 +226,7 @@ fun SearchScreen(
         modifier = modifier.fillMaxSize(),
     ) {
         val discoverColumns = remember(maxWidth) {
-            discoverColumnCountForWidth(maxWidth)
+            posterGridColumnCountForWidth(maxWidth)
         }
         val homeSectionPadding = remember(maxWidth) {
             homeSectionHorizontalPaddingForWidth(maxWidth.value)
@@ -251,7 +239,6 @@ fun SearchScreen(
 
         NuvioScreen(
             horizontalPadding = 0.dp,
-            topPadding = if (topChromePadding != null) 0.dp else null,
             listState = listState,
             modifier = Modifier.fillMaxSize(),
         ) {
@@ -269,7 +256,6 @@ fun SearchScreen(
                     NuvioScreenHeader(
                         title = headerTitle,
                         modifier = Modifier.padding(horizontal = 16.dp),
-                        topPadding = topChromePadding,
                     )
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
                     androidx.compose.foundation.layout.Box(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -277,9 +263,7 @@ fun SearchScreen(
                             value = query,
                             onValueChange = { query = it },
                             placeholder = stringResource(Res.string.compose_search_placeholder),
-                            modifier = Modifier
-                                .focusProperties { canFocus = searchFieldCanFocus }
-                                .focusRequester(focusRequester),
+                            modifier = Modifier.focusRequester(focusRequester),
                             trailingContent = if (query.isNotBlank()) {
                                 {
                                     IconButton(onClick = { query = "" }) {
@@ -334,7 +318,6 @@ fun SearchScreen(
                         items(2) {
                             HomeSkeletonRow(
                                 modifier = Modifier.padding(horizontal = homeSectionPadding),
-                                showHeaderAccent = !homeCatalogSettingsUiState.hideCatalogUnderline,
                             )
                         }
                     }
@@ -343,7 +326,6 @@ fun SearchScreen(
                         items(2) {
                             HomeSkeletonRow(
                                 modifier = Modifier.padding(horizontal = homeSectionPadding),
-                                showHeaderAccent = !homeCatalogSettingsUiState.hideCatalogUnderline,
                             )
                         }
                     }
@@ -387,7 +369,6 @@ fun SearchScreen(
                             item(key = "search_loading_more") {
                                 HomeSkeletonRow(
                                     modifier = Modifier.padding(horizontal = homeSectionPadding),
-                                    showHeaderAccent = !homeCatalogSettingsUiState.hideCatalogUnderline,
                                 )
                             }
                         }
@@ -397,15 +378,6 @@ fun SearchScreen(
         }
     }
 }
-
-private fun discoverColumnCountForWidth(screenWidth: Dp): Int =
-    when {
-        screenWidth >= 1400.dp -> 7
-        screenWidth >= 1200.dp -> 6
-        screenWidth >= 1000.dp -> 5
-        screenWidth >= 840.dp -> 4
-        else -> 3
-    }
 
 @Composable
 private fun SearchEmptyStateCard(

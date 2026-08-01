@@ -181,7 +181,7 @@ object BackupRepository {
                     playerTrackPreferencesPayload = PlayerTrackPreferenceStorage.loadPayload().orEmpty(),
                     resumeWasInPlayer = ResumePromptStorage.loadWasInPlayer(),
                     resumeLastPlayerVideoId = ResumePromptStorage.loadLastPlayerVideoId(),
-                    traktAuthPayload = TraktAuthStorage.loadPayload().orEmpty(),
+                    traktAuthPayload = TraktAuthStorage.loadPayload(profileId).orEmpty(),
                     traktLibraryPayload = TraktLibraryStorage.loadPayload().orEmpty(),
                     traktSettingsPayload = TraktSettingsStorage.loadPayload().orEmpty(),
                     traktCommentsSettings = TraktCommentsStorage.exportToSyncPayload(),
@@ -208,7 +208,7 @@ object BackupRepository {
             WatchProgressStorage.savePayload(activeProfileIndex, profile.watchProgressPayload)
             WatchedStorage.savePayload(activeProfileIndex, profile.watchedPayload)
             SearchHistoryStorage.savePayload(profile.searchHistoryPayload)
-            applySettings(profile.settings)
+            applySettings(profile.settings, activeProfileIndex)
         }
 
         val currentProfilePayload = payload.copy(
@@ -228,7 +228,7 @@ object BackupRepository {
                 profile = null,
             )
 
-    private fun applySettings(settings: BackupSettingsPayload) {
+    private fun applySettings(settings: BackupSettingsPayload, profileId: Int) {
         ThemeSettingsStorage.replaceFromSyncPayload(settings.themeSettings)
         PosterCardStyleStorage.savePayload(settings.posterCardStylePayload)
         PlayerSettingsStorage.replaceFromSyncPayload(settings.playerSettings)
@@ -244,7 +244,7 @@ object BackupRepository {
         PlayerTrackPreferenceStorage.savePayload(settings.playerTrackPreferencesPayload)
         settings.resumeWasInPlayer?.let(ResumePromptStorage::saveWasInPlayer)
         ResumePromptStorage.saveLastPlayerVideoId(settings.resumeLastPlayerVideoId)
-        TraktAuthStorage.savePayload(settings.traktAuthPayload)
+        TraktAuthStorage.savePayload(profileId, settings.traktAuthPayload)
         TraktLibraryStorage.savePayload(settings.traktLibraryPayload)
         TraktSettingsStorage.savePayload(settings.traktSettingsPayload)
         TraktCommentsStorage.replaceFromSyncPayload(settings.traktCommentsSettings)
@@ -275,7 +275,7 @@ object BackupRepository {
         HomeCatalogSettingsRepository.onProfileChanged()
         CollectionMobileSettingsRepository.onProfileChanged()
         ContinueWatchingPreferencesRepository.onProfileChanged()
-        TraktAuthRepository.onProfileChanged()
+        TraktAuthRepository.onProfileChanged(activeProfileIndex)
         TraktSettingsRepository.onProfileChanged()
         TraktCommentsSettings.onProfileChanged()
         EpisodeReleaseNotificationsRepository.onProfileChanged()

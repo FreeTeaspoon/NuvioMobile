@@ -51,6 +51,7 @@ data class PlayerSettingsUiState(
     val addonSubtitleStartupMode: AddonSubtitleStartupMode = AddonSubtitleStartupMode.ALL_SUBTITLES,
     val streamReuseLastLinkEnabled: Boolean = false,
     val streamReuseLastLinkCacheHours: Int = 24,
+    val androidPlaybackEngine: AndroidPlaybackEngine = AndroidPlaybackEngine.Auto,
     val androidLibmpvVideoOutput: AndroidLibmpvVideoOutput = AndroidLibmpvVideoOutput.GpuNext,
     val androidLibmpvHardwareDecodingEnabled: Boolean = true,
     val androidLibmpvYuv420pEnabled: Boolean = false,
@@ -117,6 +118,7 @@ object PlayerSettingsRepository {
     private var addonSubtitleStartupMode = AddonSubtitleStartupMode.ALL_SUBTITLES
     private var streamReuseLastLinkEnabled = false
     private var streamReuseLastLinkCacheHours = 24
+    private var androidPlaybackEngine = AndroidPlaybackEngine.Auto
     private var androidLibmpvVideoOutput = AndroidLibmpvVideoOutput.GpuNext
     private var androidLibmpvHardwareDecodingEnabled = true
     private var androidLibmpvYuv420pEnabled = false
@@ -194,6 +196,7 @@ object PlayerSettingsRepository {
         addonSubtitleStartupMode = AddonSubtitleStartupMode.ALL_SUBTITLES
         streamReuseLastLinkEnabled = false
         streamReuseLastLinkCacheHours = 24
+        androidPlaybackEngine = AndroidPlaybackEngine.Auto
         androidLibmpvVideoOutput = AndroidLibmpvVideoOutput.GpuNext
         androidLibmpvHardwareDecodingEnabled = true
         androidLibmpvYuv420pEnabled = false
@@ -244,8 +247,9 @@ object PlayerSettingsRepository {
         resizeMode = PlayerSettingsStorage.loadResizeMode()
             ?.let { runCatching { PlayerResizeMode.valueOf(it) }.getOrNull() }
             ?: PlayerResizeMode.Fit
+        val legacyPlayerEngine = PlayerSettingsStorage.loadPlayerEngine()
         playerEngine = resolvePlayerEngine(
-            rawEngine = PlayerSettingsStorage.loadPlayerEngine(),
+            rawEngine = legacyPlayerEngine,
             mpvSelectable = AppFeaturePolicy.mpvPlaybackEngineSelectable,
         )
         holdToSpeedEnabled = PlayerSettingsStorage.loadHoldToSpeedEnabled() ?: true
@@ -293,6 +297,15 @@ object PlayerSettingsRepository {
             ?: AddonSubtitleStartupMode.ALL_SUBTITLES
         streamReuseLastLinkEnabled = PlayerSettingsStorage.loadStreamReuseLastLinkEnabled() ?: false
         streamReuseLastLinkCacheHours = PlayerSettingsStorage.loadStreamReuseLastLinkCacheHours() ?: 24
+        androidPlaybackEngine = PlayerSettingsStorage.loadAndroidPlaybackEngine()
+            ?.let { runCatching { AndroidPlaybackEngine.valueOf(it) }.getOrNull() }
+            ?: if (legacyPlayerEngine == null) {
+                AndroidPlaybackEngine.Auto
+            } else if (playerEngine == PlayerEngineType.MPV) {
+                AndroidPlaybackEngine.Libmpv
+            } else {
+                AndroidPlaybackEngine.ExoPlayer
+            }
         androidLibmpvVideoOutput = PlayerSettingsStorage.loadAndroidLibmpvVideoOutput()
             ?.let { runCatching { AndroidLibmpvVideoOutput.valueOf(it) }.getOrNull() }
             ?: AndroidLibmpvVideoOutput.GpuNext
@@ -400,10 +413,17 @@ object PlayerSettingsRepository {
     fun setPlayerEngine(engine: PlayerEngineType) {
         ensureLoaded()
         val normalized = resolvePlayerEngine(engine.name, AppFeaturePolicy.mpvPlaybackEngineSelectable)
-        if (playerEngine == normalized) return
+        val resolvedAndroidEngine = if (normalized == PlayerEngineType.MPV) {
+            AndroidPlaybackEngine.Libmpv
+        } else {
+            AndroidPlaybackEngine.ExoPlayer
+        }
+        if (playerEngine == normalized && androidPlaybackEngine == resolvedAndroidEngine) return
         playerEngine = normalized
+        androidPlaybackEngine = resolvedAndroidEngine
         publish()
         PlayerSettingsStorage.savePlayerEngine(engine.name)
+        PlayerSettingsStorage.saveAndroidPlaybackEngine(resolvedAndroidEngine.name)
     }
 
     fun setHoldToSpeedEnabled(enabled: Boolean) {
@@ -547,6 +567,14 @@ object PlayerSettingsRepository {
         streamReuseLastLinkCacheHours = hours
         publish()
         PlayerSettingsStorage.saveStreamReuseLastLinkCacheHours(hours)
+    }
+
+    fun setAndroidPlaybackEngine(engine: AndroidPlaybackEngine) {
+        ensureLoaded()
+        if (androidPlaybackEngine == engine) return
+        androidPlaybackEngine = engine
+        publish()
+        PlayerSettingsStorage.saveAndroidPlaybackEngine(engine.name)
     }
 
     fun setAndroidLibmpvVideoOutput(output: AndroidLibmpvVideoOutput) {
@@ -940,6 +968,7 @@ object PlayerSettingsRepository {
             addonSubtitleStartupMode = addonSubtitleStartupMode,
             streamReuseLastLinkEnabled = streamReuseLastLinkEnabled,
             streamReuseLastLinkCacheHours = streamReuseLastLinkCacheHours,
+            androidPlaybackEngine = androidPlaybackEngine,
             androidLibmpvVideoOutput = androidLibmpvVideoOutput,
             androidLibmpvHardwareDecodingEnabled = androidLibmpvHardwareDecodingEnabled,
             androidLibmpvYuv420pEnabled = androidLibmpvYuv420pEnabled,

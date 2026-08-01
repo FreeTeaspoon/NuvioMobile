@@ -50,9 +50,13 @@ val releaseAppVersionName = readXcconfigValue(appVersionConfigFile, "MARKETING_V
 val releaseAppVersionCode = readXcconfigValue(appVersionConfigFile, "CURRENT_PROJECT_VERSION")
     ?.toIntOrNull()
     ?: error("CURRENT_PROJECT_VERSION is missing or invalid in ${appVersionConfigFile.path}")
+val requestedTaskNames = gradle.startParameter.taskNames.map { it.substringAfterLast(':') }
+val buildsReleaseApks = requestedTaskNames.any {
+    it.startsWith("assemble", ignoreCase = true) && it.endsWith("Release", ignoreCase = true)
+}
 val releaseAbiSplitEnabled = providers.gradleProperty("nuvio.release.abiSplit")
     .map(String::toBoolean)
-    .orElse(false)
+    .orElse(buildsReleaseApks)
 
 android {
     namespace = "com.nuvio.android"
@@ -97,15 +101,6 @@ android {
         jniLibs.directories.add("../composeApp/src/full/jniLibs")
     }
 
-    splits {
-        abi {
-            isEnable = releaseAbiSplitEnabled.get()
-            reset()
-            include("arm64-v8a")
-            isUniversalApk = false
-        }
-    }
-
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -124,6 +119,15 @@ android {
                 "lib/*/libswscale.so",
                 "lib/*/libswresample.so"
             )
+        }
+    }
+
+    splits {
+        abi {
+            isEnable = releaseAbiSplitEnabled.get()
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = false
         }
     }
 
@@ -178,6 +182,7 @@ sentry {
 
 dependencies {
     implementation(project(":composeApp"))
+    implementation(libs.androidx.core.ktx)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     debugImplementation(libs.compose.uiTooling)
 }

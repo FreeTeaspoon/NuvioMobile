@@ -32,11 +32,13 @@
     <string name="addons_badge_unavailable">No disponible</string>
     <string name="addons_configure">Configurar complemento</string>
     <string name="addons_delete">Eliminar complemento</string>
-    <string name="addons_appstore_add_description">Conecte su propio servidor multimedia para navegar y reproducir desde su biblioteca personal.</string>
-    <string name="addons_appstore_empty_subtitle">Agregue una URL de servidor arriba cuando desee que Nuvio muestre su biblioteca privada.</string>
-    <string name="addons_appstore_empty_title">No hay bibliotecas personales conectadas.</string>
-    <string name="addons_appstore_input_placeholder">URL del servidor</string>
-    <string name="addons_appstore_install_button">Agregar</string>
+    <string name="addons_appstore_add_description">Lleva tu biblioteca a Nuvio con los complementos que utilizas.</string>
+    <string name="addons_appstore_empty_subtitle">Agrega un complemento para empezar a crear tu biblioteca.</string>
+    <string name="addons_appstore_empty_title">Haz tuyo Nuvio.</string>
+    <string name="addons_appstore_input_placeholder">URL del complemento</string>
+    <string name="addons_appstore_install_button">Agregar complemento</string>
+    <string name="store_empty_unavailable_title">Aún no hay nada aquí</string>
+    <string name="store_empty_unavailable_message">Tus complementos actuales aún no tienen nada que mostrar aquí.</string>
     <string name="addons_empty_subtitle">Agrega una URL de manifiesto para empezar a cargar catálogos, metadatos, streams o subtítulos en Nuvio.</string>
     <string name="addons_empty_title">Aún no hay complementos instalados.</string>
     <string name="addons_error_enter_url">Introduce una URL de complemento.</string>
@@ -62,7 +64,7 @@
     <string name="cd_selected">Seleccionado</string>
     <string name="collections_copy_json">Copiar JSON</string>
     <string name="collections_count_summary">%1$d colección(es), %2$d carpeta(s)</string>
-    <string name="collections_delete_message">¿Eliminar "%1$s"? Esto no se puede deshacer.</string>
+    <string name="collections_delete_message">¿Eliminar &quot;%1$s&quot;? Esto no se puede deshacer.</string>
     <string name="collections_delete_title">Eliminar colección</string>
     <string name="collections_editor_add_catalog">Añadir catálogo</string>
     <string name="collections_editor_add_folder">Añadir carpeta</string>
@@ -107,7 +109,7 @@
     <string name="collections_editor_shape_square">Cuadrado</string>
     <string name="collections_editor_shape_wide">Panorámico</string>
     <string name="collections_editor_show_all_tab_desc">Combinar todos los catálogos en una sola pestaña</string>
-    <string name="collections_editor_show_all_tab">Mostrar pestaña "Todo"</string>
+    <string name="collections_editor_show_all_tab">Mostrar pestaña &quot;Todo&quot;</string>
     <string name="collections_editor_show_gif_when_configured_desc">Reproducir el GIF configurado en lugar de la portada estática cuando esté disponible.</string>
     <string name="collections_editor_show_gif_when_configured">Mostrar GIF cuando esté configurado</string>
     <string name="collections_editor_source_count">%1$d fuente(s) · %2$s</string>
@@ -424,12 +426,14 @@
     <string name="compose_settings_page_licenses_attributions">Licencias y atribución</string>
     <string name="compose_settings_page_mdblist_ratings">Calificaciones de MDBList</string>
     <string name="compose_settings_page_meta_screen">Pantalla meta</string>
+    <string name="settings_appearance_section_detail_page">PANTALLA META</string>
     <string name="compose_settings_page_notifications">Notificaciones</string>
     <string name="compose_settings_page_playback">Reproducción</string>
     <string name="compose_settings_page_plugins">Plugins</string>
     <string name="compose_settings_page_poster_customization">Personalización de póster</string>
     <string name="compose_settings_page_root">Configuración</string>
     <string name="compose_settings_page_streams">Corrientes</string>
+    <string name="settings_appearance_section_streams">CORRIENTES</string>
     <string name="compose_settings_page_supporters_contributors">Patrocinadores y colaboradores</string>
     <string name="compose_settings_page_tmdb_enrichment">Enriquecimiento TMDB</string>
     <string name="compose_settings_page_trakt">Trakt</string>
@@ -442,7 +446,9 @@
     <string name="compose_settings_root_check_updates_description">Buscar nuevas versiones de la app.</string>
     <string name="compose_settings_root_check_updates_title">Buscar actualizaciones</string>
     <string name="compose_settings_root_content_discovery_description">Administra complementos y fuentes de descubrimiento.</string>
+    <string name="compose_settings_root_content_discovery_description_appstore">Administra tus complementos y elige qué aparece en Nuvio.</string>
     <string name="compose_settings_root_downloads_description">Administra tus películas y episodios descargados.</string>
+    <string name="compose_settings_root_downloads_description_appstore">Administra lo que has guardado en este dispositivo.</string>
     <string name="compose_settings_root_downloads_title">Descargas</string>
     <string name="compose_settings_root_general_section">GENERAL</string>
     <string name="compose_settings_root_integrations_description">Conecta los servicios TMDB y MDBList.</string>
@@ -576,8 +582,6 @@
     <string name="settings_homescreen_show_hero_description">Mostrar un carrusel destacado en la parte superior del inicio. Elige hasta 2 catálogos de origen abajo.</string>
     <string name="layout_hide_unreleased">Ocultar contenido inédito</string>
     <string name="layout_hide_unreleased_sub">Oculta películas y programas que aún no se han estrenado.</string>
-    <string name="settings_homescreen_hide_catalog_underline">Ocultar subrayado del catálogo</string>
-    <string name="settings_homescreen_hide_catalog_underline_description">Elimine la línea de acento debajo de los títulos de catálogos y colecciones en toda la aplicación.</string>
     <string name="settings_homescreen_summary">%1$d de %2$d catálogos visibles • %3$d fuentes de Destacado seleccionadas</string>
     <string name="settings_homescreen_summary_hint">Abre un catálogo solo cuando necesites cambiarle el nombre o reordenarlo.</string>
     <string name="settings_homescreen_visible">Visible</string>
@@ -638,7 +642,7 @@
     <string name="settings_content_discovery_section_home">INICIO</string>
     <string name="settings_content_discovery_section_sources">FUENTES</string>
     <string name="settings_content_discovery_addons_description">Instala, elimina, actualiza y ordena tus fuentes de contenido.</string>
-    <string name="settings_content_discovery_addons_description_appstore">Conecte fuentes de medios personales y administre el acceso a su propia biblioteca.</string>
+    <string name="settings_content_discovery_addons_description_appstore">Agrega y administra los complementos que utilizas con Nuvio.</string>
     <string name="settings_content_discovery_plugins_description">Instala repositorios de scrapers en JavaScript y prueba proveedores internamente.</string>
     <string name="settings_content_discovery_homescreen_description">Controla qué catálogos aparecen en Inicio y en qué orden.</string>
     <string name="settings_content_discovery_meta_screen_description">Desactiva secciones de detalles y reordena todo debajo del Destacado.</string>
@@ -647,7 +651,7 @@
     <string name="settings_integrations_tmdb_description">Mejora las páginas de detalles con arte, créditos, metadatos de episodios y más desde TMDB.</string>
     <string name="settings_integrations_mdblist_description">Añade calificaciones externas de IMDb, Rotten Tomatoes, Metacritic y otras a las páginas de detalles.</string>
     <string name="settings_integrations_debrid_description">Conecte cuentas para enlaces y acceso a la biblioteca</string>
-    <string name="settings_debrid_section_title">Servicios conectados</string>
+    <string name="settings_debrid_section_title">SERVICIOS CONECTADOS</string>
     <string name="settings_debrid_experimental_notice">Estas integraciones son experimentales y pueden conservarse, modificarse o eliminarse más adelante.</string>
     <string name="settings_debrid_cloud_library">biblioteca en la nube</string>
     <string name="settings_debrid_cloud_library_description">Explore y reproduzca archivos que ya estén en sus cuentas conectadas.</string>
@@ -656,7 +660,7 @@
     <string name="settings_debrid_resolve_with">Resolver con</string>
     <string name="settings_debrid_resolve_with_description">Elija qué cuenta conectada maneja los enlaces reproducibles.</string>
     <string name="settings_debrid_add_key_first">Primero conecte una cuenta.</string>
-    <string name="settings_debrid_section_providers">Cuentas</string>
+    <string name="settings_debrid_section_providers">CUENTAS</string>
     <string name="settings_debrid_provider_description">Conecta tu cuenta de %1$s.</string>
     <string name="settings_debrid_provider_device_description">Vincula tu cuenta de %1$s en el navegador.</string>
     <string name="settings_debrid_dialog_title">%1$s clave API</string>
@@ -676,26 +680,26 @@
     <string name="settings_debrid_device_auth_failed">No se pudo iniciar el inicio de sesión.</string>
     <string name="settings_debrid_device_auth_missing_configuration">Este método de inicio de sesión no está configurado en esta compilación.</string>
     <string name="settings_debrid_device_auth_expired">Este código expiró. Intentar otra vez.</string>
-    <string name="settings_debrid_section_instant_playback">Preparación de enlaces</string>
+    <string name="settings_debrid_section_instant_playback">PREPARACIÓN DE ENLACES</string>
     <string name="settings_debrid_prepare_instant_playback">Preparar enlaces</string>
     <string name="settings_debrid_prepare_instant_playback_description">Resuelva los enlaces reproducibles antes de que comience la reproducción.</string>
     <string name="settings_debrid_prepare_stream_count">Enlaces para preparar</string>
     <string name="settings_debrid_prepare_stream_count_warning">Utilice un recuento más bajo cuando sea posible. Los servicios conectados pueden limitar la cantidad de enlaces que se pueden resolver en un período de tiempo. Abrir una película o un episodio puede contar para esos límites incluso si no presiona Ver, porque los enlaces están preparados con anticipación.</string>
     <string name="settings_debrid_prepare_count_one">1 enlace</string>
     <string name="settings_debrid_prepare_count_many">%1$d enlaces</string>
-    <string name="settings_debrid_section_formatting">Formato</string>
+    <string name="settings_debrid_section_formatting">FORMATO</string>
     <string name="settings_debrid_name_template">Plantilla de nombre</string>
     <string name="settings_debrid_name_template_description">Controla cómo aparecen los nombres de los resultados. Déjelo en blanco para utilizar el nombre del resultado original.</string>
     <string name="settings_debrid_description_template">Plantilla de descripción</string>
     <string name="settings_debrid_description_template_description">Controla los metadatos que se muestran debajo de cada resultado. Déjelo en blanco para utilizar los detalles del resultado original.</string>
     <string name="settings_debrid_formatter_reset_title">Restablecer formato</string>
     <string name="settings_debrid_formatter_reset_subtitle">Restaurar el formato de resultados predeterminado.</string>
-    <string name="settings_stream_badges_section">Estilo de fusión</string>
+    <string name="settings_stream_badges_section">ESTILO DE FUSIÓN</string>
     <string name="settings_stream_size_badges_title">Insignias de tamaño</string>
     <string name="settings_stream_size_badges_description">Muestre insignias de tamaño de archivo en los resultados de la transmisión y en los paneles de fuentes del reproductor.</string>
     <string name="settings_stream_addon_logo_title">Logotipo del complemento</string>
     <string name="settings_stream_addon_logo_description">Muestra el logotipo y el nombre del complemento junto a las fuentes de transmisión.</string>
-    <string name="settings_stream_display_section">Mostrar</string>
+    <string name="settings_stream_display_section">MOSTRAR</string>
     <string name="settings_stream_badge_position_title">Posición de la insignia</string>
     <string name="settings_stream_badge_position_description">Elija si las insignias de tamaño y Fusion aparecen encima o debajo de las tarjetas de transmisión.</string>
     <string name="settings_stream_badge_position_dialog_title">Posición de la insignia</string>
@@ -1271,7 +1275,7 @@
     <string name="profile_custom_avatar_url">URL de avatar personalizada</string>
     <string name="profile_custom_avatar_url_description">Pegue el enlace de una imagen o déjelo vacío para usar el catálogo de avatar integrado.</string>
     <string name="profile_custom_avatar_url_placeholder">https://ejemplo.com/avatar.png</string>
-    <string name="profile_delete_confirm_message">Todos los datos de "%1$s" se eliminarán permanentemente.</string>
+    <string name="profile_delete_confirm_message">Todos los datos de &quot;%1$s&quot; se eliminarán permanentemente.</string>
     <string name="profile_delete_title">Eliminar perfil</string>
     <string name="profile_edit_add_title">Añadir perfil</string>
     <string name="profile_edit_edit_title">Editar perfil</string>
@@ -1425,6 +1429,7 @@
     <string name="trakt_sign_in_complete_failed">No se pudo completar el inicio de sesión de Trakt</string>
     <string name="trakt_user_fallback">Usuario de Trakt</string>
     <string name="trakt_watchlist">Lista de seguimiento</string>
+    <!-- Trakt library sync errors -->
     <string name="trakt_error_authorization_expired">La autorización de Trakt expiró</string>
     <string name="trakt_error_list_not_found">Lista de rutas no encontrada</string>
     <string name="trakt_error_list_limit_reached">Se alcanzó el límite de la lista de seguimiento</string>
@@ -1597,9 +1602,12 @@
     <string name="unit_bytes_kb">KB</string>
     <string name="unit_bytes_mb">MB</string>
     <string name="unit_bytes_gb">GB</string>
+    <!-- PlayerControls a11y -->
     <string name="player_action_submit_intro">Enviar introducción</string>
     <string name="player_action_video_settings">Configuración de vídeo</string>
+    <!-- CloudLibrary -->
     <string name="cloud_library_provider_unavailable">La biblioteca en la nube no está disponible para %1$s.</string>
+    <!-- Player iOS video settings modal -->
     <string name="player_video_settings_title">Video</string>
     <string name="player_video_settings_reset_tuning">Restablecer sintonización</string>
     <string name="player_video_settings_output_preset">Preajuste de salida</string>
@@ -1614,6 +1622,7 @@
     <string name="player_video_settings_contrast">Contraste</string>
     <string name="player_video_settings_saturation">Saturación</string>
     <string name="player_video_settings_gamma">Gama</string>
+    <!-- iOS video output presets -->
     <string name="player_ios_preset_native_edr_label">EDR nativo</string>
     <string name="player_ios_preset_native_edr_desc">Lo mejor para iPhones y iPads con capacidad HDR.</string>
     <string name="player_ios_preset_sdr_tone_mapped_label">Tono SDR mapeado</string>
@@ -1623,7 +1632,8 @@
     <string name="player_ios_preset_custom_label">Costumbre</string>
     <string name="player_ios_preset_custom_desc">Utilice sus valores avanzados a continuación.</string>
     <string name="player_ios_hardware_decoder_off">Apagado</string>
-    <string name="settings_playback_ios_video_output">salida de vídeo iOS</string>
+    <!-- Playback settings iOS video output -->
+    <string name="settings_playback_ios_video_output">SALIDA DE VÍDEO iOS</string>
     <string name="settings_playback_ios_hardware_decoder">Decodificador de hardware</string>
     <string name="settings_playback_ios_extended_dynamic_range">Rango dinámico extendido</string>
     <string name="settings_playback_ios_extended_dynamic_range_desc">Modo de salida Metal predeterminado para nuevas sesiones de reproducción.</string>
@@ -1631,12 +1641,14 @@
     <string name="settings_playback_ios_display_color_hint_desc">Deje que mpv apunte al espacio de color de visualización activo de forma predeterminada.</string>
     <string name="settings_playback_ios_target_primaries">Primarias objetivo</string>
     <string name="settings_playback_ios_target_transfer">Transferencia de destino</string>
-    <string name="settings_playback_ios_audio_output_section">salida de audio de iOS</string>
+    <!-- Playback settings iOS audio output -->
+    <string name="settings_playback_ios_audio_output_section">SALIDA DE AUDIO DE iOS</string>
     <string name="settings_playback_ios_audio_output">Salida de audio</string>
     <string name="settings_playback_ios_audio_output_auto_desc">Utilice AudioUnit mientras la salida de AVFoundation esté temporalmente desactivada.</string>
     <string name="settings_playback_ios_audio_output_avfoundation_desc">Soporte experimental para audio espacial y salida multicanal.</string>
     <string name="settings_playback_ios_audio_output_audiounit_desc">Utilice la salida AudioUnit heredada.</string>
-    <string name="settings_debrid_section_result_management">Gestión de resultados</string>
+    <!-- Debrid Result Management section -->
+    <string name="settings_debrid_section_result_management">GESTIÓN DE RESULTADOS</string>
     <string name="settings_debrid_max_results">Resultados máximos</string>
     <string name="settings_debrid_max_results_desc">Limite la cantidad de resultados que aparecen.</string>
     <string name="settings_debrid_sort_results">Ordenar resultados</string>
@@ -1647,69 +1659,83 @@
     <string name="settings_debrid_per_quality_limit_desc">Cap repitió los resultados de BluRay, WEB-DL, REMUX después de ordenar.</string>
     <string name="settings_debrid_size_range">Rango de tallas</string>
     <string name="settings_debrid_size_range_desc">Filtre los resultados por tamaño de archivo.</string>
+    <!-- Debrid misc -->
     <string name="settings_debrid_learn_more">Más información</string>
     <string name="settings_debrid_template_default_format">Formato predeterminado</string>
     <string name="settings_debrid_template_original_format">Formato original</string>
     <string name="settings_debrid_release_groups_hint">Introduzca un grupo por línea.</string>
+    <!-- Debrid sort profiles -->
     <string name="settings_debrid_sort_original">orden original</string>
     <string name="settings_debrid_sort_best_quality">La mejor calidad primero</string>
     <string name="settings_debrid_sort_largest">El más grande primero</string>
     <string name="settings_debrid_sort_smallest">Lo más pequeño primero</string>
     <string name="settings_debrid_sort_best_audio">Mejor audio primero</string>
     <string name="settings_debrid_sort_language">El idioma primero</string>
+    <!-- Debrid selection labels -->
     <string name="settings_debrid_selection_any">Cualquier</string>
     <string name="settings_debrid_selection_count">%1$d seleccionado</string>
+    <!-- Debrid result count labels -->
     <string name="settings_debrid_results_all">Todos los resultados</string>
     <string name="settings_debrid_results_count">%1$d resultados</string>
+    <!-- Debrid size range labels -->
     <string name="settings_debrid_size_up_to">Hasta %1$dGB</string>
     <string name="settings_debrid_size_min">%1$dGB+</string>
     <string name="settings_debrid_size_range_value">%1$d-%2$dGB</string>
+    <!-- Debrid rule rows: resolutions -->
     <string name="settings_debrid_rule_preferred_resolutions">Resoluciones preferidas</string>
     <string name="settings_debrid_rule_preferred_resolutions_desc">Ordene primero las resoluciones seleccionadas, en el orden predeterminado.</string>
     <string name="settings_debrid_rule_required_resolutions">Resoluciones requeridas</string>
     <string name="settings_debrid_rule_required_resolutions_desc">Mostrar solo resoluciones seleccionadas.</string>
     <string name="settings_debrid_rule_excluded_resolutions">Resoluciones excluidas</string>
     <string name="settings_debrid_rule_excluded_resolutions_desc">Ocultar resoluciones seleccionadas.</string>
+    <!-- Debrid rule rows: qualities -->
     <string name="settings_debrid_rule_preferred_qualities">Cualidades preferidas</string>
     <string name="settings_debrid_rule_preferred_qualities_desc">Ordene primero las calidades seleccionadas, en el orden predeterminado.</string>
     <string name="settings_debrid_rule_required_qualities">Cualidades requeridas</string>
     <string name="settings_debrid_rule_required_qualities_desc">Mostrar sólo calidades seleccionadas.</string>
     <string name="settings_debrid_rule_excluded_qualities">Calidades excluidas</string>
     <string name="settings_debrid_rule_excluded_qualities_desc">Ocultar cualidades seleccionadas.</string>
+    <!-- Debrid rule rows: visual tags -->
     <string name="settings_debrid_rule_preferred_visual_tags">Etiquetas visuales preferidas</string>
     <string name="settings_debrid_rule_preferred_visual_tags_desc">Ordene etiquetas DV, HDR, 10 bits, IMAX y similares.</string>
     <string name="settings_debrid_rule_required_visual_tags">Etiquetas visuales requeridas</string>
     <string name="settings_debrid_rule_required_visual_tags_desc">Requiere etiquetas DV, HDR, 10 bits, IMAX, SDR y similares.</string>
     <string name="settings_debrid_rule_excluded_visual_tags">Etiquetas visuales excluidas</string>
     <string name="settings_debrid_rule_excluded_visual_tags_desc">Oculte etiquetas DV, HDR, 10 bits, 3D y similares.</string>
+    <!-- Debrid rule rows: audio tags -->
     <string name="settings_debrid_rule_preferred_audio_tags">Etiquetas de audio preferidas</string>
     <string name="settings_debrid_rule_preferred_audio_tags_desc">Ordene etiquetas Atmos, TrueHD, DTS, AAC y similares.</string>
     <string name="settings_debrid_rule_required_audio_tags">Etiquetas de audio requeridas</string>
     <string name="settings_debrid_rule_required_audio_tags_desc">Requiere etiquetas Atmos, TrueHD, DTS, AAC y similares.</string>
     <string name="settings_debrid_rule_excluded_audio_tags">Etiquetas de audio excluidas</string>
     <string name="settings_debrid_rule_excluded_audio_tags_desc">Ocultar etiquetas de audio seleccionadas.</string>
+    <!-- Debrid rule rows: channels -->
     <string name="settings_debrid_rule_preferred_channels">Canales preferidos</string>
     <string name="settings_debrid_rule_preferred_channels_desc">Ordene primero los diseños de canales preferidos.</string>
     <string name="settings_debrid_rule_required_channels">Canales requeridos</string>
     <string name="settings_debrid_rule_required_channels_desc">Mostrar solo diseños de canales seleccionados.</string>
     <string name="settings_debrid_rule_excluded_channels">Canales excluidos</string>
     <string name="settings_debrid_rule_excluded_channels_desc">Ocultar diseños de canales seleccionados.</string>
+    <!-- Debrid rule rows: encodes -->
     <string name="settings_debrid_rule_preferred_encodes">Codificaciones preferidas</string>
     <string name="settings_debrid_rule_preferred_encodes_desc">Ordene AV1, HEVC, AVC y codificaciones similares.</string>
     <string name="settings_debrid_rule_required_encodes">Codificaciones requeridas</string>
     <string name="settings_debrid_rule_required_encodes_desc">Requiere AV1, HEVC, AVC y códigos similares.</string>
     <string name="settings_debrid_rule_excluded_encodes">Codificaciones excluidas</string>
     <string name="settings_debrid_rule_excluded_encodes_desc">Ocultar codificaciones seleccionadas.</string>
+    <!-- Debrid rule rows: languages -->
     <string name="settings_debrid_rule_preferred_languages">Idiomas preferidos</string>
     <string name="settings_debrid_rule_preferred_languages_desc">Ordene primero los idiomas de audio preferidos.</string>
     <string name="settings_debrid_rule_required_languages">Idiomas requeridos</string>
     <string name="settings_debrid_rule_required_languages_desc">Mostrar solo resultados con idiomas seleccionados.</string>
     <string name="settings_debrid_rule_excluded_languages">Idiomas excluidos</string>
     <string name="settings_debrid_rule_excluded_languages_desc">Ocultar resultados donde se excluyen todos los idiomas.</string>
+    <!-- Debrid rule rows: release groups -->
     <string name="settings_debrid_rule_required_release_groups">Grupos de versión necesarios</string>
     <string name="settings_debrid_rule_required_release_groups_desc">Mostrar solo grupos de lanzamiento seleccionados.</string>
     <string name="settings_debrid_rule_excluded_release_groups">Grupos de versiones excluidos</string>
     <string name="settings_debrid_rule_excluded_release_groups_desc">Ocultar grupos de lanzamiento seleccionados.</string>
+    <!-- Submit intro/recap/outro dialog -->
     <string name="submit_intro_title">Enviar marcas de tiempo</string>
     <string name="submit_intro_segment_type">TIPO DE SEGMENTO</string>
     <string name="submit_intro_segment_intro">Introducción</string>
@@ -1719,24 +1745,31 @@
     <string name="submit_intro_end_time">HORA DE FINALIZACIÓN (MM:SS)</string>
     <string name="submit_intro_submit">Entregar</string>
     <string name="submit_intro_capture">Captura</string>
+    <!-- iOS advanced playback -->
     <string name="settings_playback_ios_hw_decoder_dialog">Decodificador de hardware</string>
     <string name="settings_playback_ios_audio_output_dialog">Salida de audio</string>
     <string name="settings_playback_ios_target_primaries_dialog">Primarias objetivo</string>
     <string name="settings_playback_ios_target_transfer_dialog">Transferencia de destino</string>
+    <!-- Collection editor -->
     <string name="collections_editor_resolved_trakt_list">Lista de rutas resueltas</string>
     <string name="collections_editor_tmdb_discover">TMDB Descubrir</string>
     <string name="collections_editor_watch_region_placeholder">EE. UU., KR, JP, IN</string>
+    <!-- Collection editor error messages -->
     <string name="collections_editor_trakt_input_required">Ingrese un nombre, URL o ID de la lista Trakt</string>
     <string name="collections_editor_tmdb_invalid_id_error">Introduzca un ID o URL de TMDB válido.</string>
     <string name="collections_editor_tmdb_load_error">No se pudo cargar la fuente TMDB</string>
     <string name="collections_editor_trakt_id_url_required">Ingrese una ID o URL de la lista Trakt</string>
     <string name="collections_editor_trakt_load_error">No se pudo cargar la lista Trakt</string>
+    <!-- Collection editor TMDB country chips -->
     <string name="collections_editor_tmdb_country_ca">Canadá</string>
     <string name="collections_editor_tmdb_country_au">Australia</string>
     <string name="collections_editor_tmdb_country_de">Alemania</string>
+    <!-- Collection editor media type suffixes (appended to source titles) -->
     <string name="collections_editor_media_movies_suffix">Cine</string>
     <string name="collections_editor_media_series_suffix">Serie</string>
+    <!-- Cloud library -->
     <string name="cloud_library_playback_disabled">La biblioteca en la nube está deshabilitada.</string>
+    <!-- IntroDB settings -->
     <string name="settings_playback_introdb_invalid_api_key">Clave API no válida o error de conexión</string>
     <string name="addons_manifest_missing_field">Falta el manifiesto \\"%1$s\\"</string>
     <string name="collections_editor_tmdb_collection_title_format">Colección TMDB %1$s</string>
@@ -1857,6 +1890,7 @@
     <string name="updates_github_api_error">GitHub publica error de API: %1$d</string>
     <string name="updates_no_channel_release">Aún no se ha publicado ninguna actualización.</string>
     <string name="updates_release_missing_title">El lanzamiento no tiene etiqueta ni nombre.</string>
+    <!-- Continue Watching air date display -->
     <string name="cw_airs_date">Se transmite %1$s</string>
     <string name="cw_airs_today">Se transmite hoy</string>
     <string name="cw_airs_tomorrow">Se transmite mañana</string>
@@ -1873,6 +1907,7 @@
     </plurals>
     <string name="cw_new_episode">Nuevo episodio</string>
     <string name="cw_new_season">Nueva temporada</string>
+    <!-- Pass 4 — platform stubs and dynamic title fallbacks -->
     <string name="collections_editor_trakt_list_title_format">Lista de rutas %1$s</string>
     <string name="external_player_android_system">reproductor del sistema android</string>
     <string name="p2p_consent_title">Transmisión P2P</string>
@@ -1881,6 +1916,7 @@
     <string name="p2p_consent_cancel">Cancelar</string>
     <string name="p2p_error_unknown">Error de torrent desconocido</string>
     <string name="settings_p2p_title">Transmisión P2P</string>
+    <string name="settings_playback_section_p2p">TRANSMISIÓN P2P</string>
     <string name="settings_p2p_subtitle">Permitir transmisiones de igual a igual (torrent)</string>
     <string name="settings_p2p_hide_stats_title">Ocultar estadísticas de torrents</string>
     <string name="settings_p2p_hide_stats_subtitle">Ocultar buffer, semillas, pares y velocidad de descarga durante la carga y reproducción</string>
@@ -1892,6 +1928,8 @@
     <string name="player_torrent_starting_engine">Arrancando el motor P2P...</string>
     <string name="player_error_failed_start_torrent">No se pudo iniciar el torrent: %1$s</string>
     <string name="player_error_torrent">Error de torrent: %1$s</string>
+    <string name="settings_homescreen_hide_catalog_underline">Ocultar subrayado del catálogo</string>
+    <string name="settings_homescreen_hide_catalog_underline_description">Elimine la línea de acento debajo de los títulos de catálogos y colecciones en toda la aplicación.</string>
     <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
     <string name="downloads_auto_open_offline_description">When Nuvio starts without a connection, open Downloads if playable files are saved.</string>
     <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>

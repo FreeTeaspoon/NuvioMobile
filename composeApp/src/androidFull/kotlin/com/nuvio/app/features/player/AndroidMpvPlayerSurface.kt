@@ -181,11 +181,6 @@ private class AndroidMpvPlayerController(
         view.setSubtitleUri(url)
     }
 
-    override fun setSubtitleUri(url: String, onLoaded: (Boolean) -> Unit) {
-        view.setSubtitleUri(url)
-        view.postDelayed({ onLoaded(true) }, 300L)
-    }
-
     override fun clearExternalSubtitle() {
         view.clearExternalSubtitle()
     }

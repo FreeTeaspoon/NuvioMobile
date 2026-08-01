@@ -177,6 +177,14 @@ enum class PlayerResizeMode {
     Zoom,
 }
 
+enum class AndroidPlaybackEngine(
+    val label: String,
+) {
+    Auto("Auto"),
+    ExoPlayer("ExoPlayer"),
+    Libmpv("libmpv"),
+}
+
 enum class AndroidLibmpvVideoOutput(
     val mpvValue: String,
     val label: String,
@@ -326,6 +334,8 @@ data class PlayerPlaybackSnapshot(
     val positionMs: Long = 0L,
     val bufferedPositionMs: Long = 0L,
     val playbackSpeed: Float = 1f,
+    val videoWidth: Int = 0,
+    val videoHeight: Int = 0,
 )
 
 data class PlayerNowPlayingInfo(

@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="about_licenses_attributions_subtitle">Sources de données, remerciements et licences de plateforme</string>
     <string name="about_supporters_contributors_subtitle">Reconnaissance et crédits du projet</string>
@@ -32,11 +33,13 @@
     <string name="addons_badge_unavailable">Indisponible</string>
     <string name="addons_configure">Configurer l’addon</string>
     <string name="addons_delete">Supprimer l’addon</string>
-    <string name="addons_appstore_add_description">Connectez votre propre serveur multimédia pour parcourir et lire depuis votre bibliothèque personnelle.</string>
-    <string name="addons_appstore_empty_subtitle">Ajoutez une URL de serveur ci-dessus pour que Nuvio affiche votre bibliothèque privée.</string>
-    <string name="addons_appstore_empty_title">Aucune bibliothèque personnelle connectée.</string>
-    <string name="addons_appstore_input_placeholder">URL du serveur</string>
-    <string name="addons_appstore_install_button">Ajouter</string>
+    <string name="addons_appstore_add_description">Retrouvez votre bibliothèque dans Nuvio avec les addons que vous utilisez.</string>
+    <string name="addons_appstore_empty_subtitle">Ajoutez un addon pour commencer à créer votre bibliothèque.</string>
+    <string name="addons_appstore_empty_title">Personnalisez Nuvio.</string>
+    <string name="addons_appstore_input_placeholder">URL de l’addon</string>
+    <string name="addons_appstore_install_button">Ajouter un addon</string>
+    <string name="store_empty_unavailable_title">Rien à afficher pour le moment</string>
+    <string name="store_empty_unavailable_message">Vos addons actuels n’ont encore rien à afficher ici.</string>
     <string name="addons_empty_subtitle">Ajoutez une URL de manifeste pour commencer à charger des catalogues, métadonnées, streams ou sous-titres dans Nuvio.</string>
     <string name="addons_empty_title">Aucun addon installé.</string>
     <string name="addons_error_enter_url">Saisissez une URL d’addon.</string>
@@ -415,12 +418,14 @@
     <string name="compose_settings_page_licenses_attributions">Licences et attributions</string>
     <string name="compose_settings_page_mdblist_ratings">Notes MDBList</string>
     <string name="compose_settings_page_meta_screen">Écran méta</string>
+    <string name="settings_appearance_section_detail_page">ÉCRAN MÉTA</string>
     <string name="compose_settings_page_notifications">Notifications</string>
     <string name="compose_settings_page_playback">Lecture</string>
     <string name="compose_settings_page_plugins">Plugins</string>
     <string name="compose_settings_page_poster_customization">Personnalisation des affiches</string>
     <string name="compose_settings_page_root">Paramètres</string>
     <string name="compose_settings_page_streams">Streams</string>
+    <string name="settings_appearance_section_streams">STREAMS</string>
     <string name="compose_settings_page_supporters_contributors">Supporters et contributeurs</string>
     <string name="compose_settings_page_tmdb_enrichment">Enrichissement TMDB</string>
     <string name="compose_settings_page_trakt">Trakt</string>
@@ -433,7 +438,9 @@
     <string name="compose_settings_root_check_updates_description">Rechercher de nouvelles versions de l’application.</string>
     <string name="compose_settings_root_check_updates_title">Vérifier les mises à jour</string>
     <string name="compose_settings_root_content_discovery_description">Gérez les addons et sources de découverte.</string>
+    <string name="compose_settings_root_content_discovery_description_appstore">Gérez vos addons et choisissez ce qui apparaît dans Nuvio.</string>
     <string name="compose_settings_root_downloads_description">Gérez vos films et épisodes téléchargés.</string>
+    <string name="compose_settings_root_downloads_description_appstore">Gérez ce que vous avez enregistré sur cet appareil.</string>
     <string name="compose_settings_root_downloads_title">Téléchargements</string>
     <string name="compose_settings_root_general_section">GÉNÉRAL</string>
     <string name="compose_settings_root_integrations_description">Connectez les services TMDB et MDBList.</string>
@@ -477,7 +484,7 @@
     <string name="settings_licenses_attributions_tmdb_title">The Movie Database (TMDB)</string>
     <string name="settings_licenses_attributions_tmdb_body">Nuvio utilise l’API TMDB pour les métadonnées de films et séries, les visuels, les bandes-annonces, le casting, les détails de production, les collections et les recommandations. Ce produit utilise l’API TMDB mais n’est ni approuvé ni certifié par TMDB.</string>
     <string name="settings_licenses_attributions_imdb_title">Jeux de données non commerciaux IMDb</string>
-    <string name="settings_licenses_attributions_imdb_body">Nuvio utilise les jeux de données non commerciaux IMDb, y compris title.ratings.tsv.gz, pour les notes et le nombre de votes IMDb. Informations fournies par IMDb (https://www.imdb.com). Utilisé avec autorisation. Les données IMDb sont destinées à un usage personnel et non commercial selon les conditions d'IMDb.</string>
+    <string name="settings_licenses_attributions_imdb_body">Nuvio utilise les jeux de données non commerciaux IMDb, y compris title.ratings.tsv.gz, pour les notes et le nombre de votes IMDb. Informations fournies par IMDb (https://www.imdb.com). Utilisé avec autorisation. Les données IMDb sont destinées à un usage personnel et non commercial selon les conditions d&apos;IMDb.</string>
     <string name="settings_licenses_attributions_trakt_title">Trakt</string>
     <string name="settings_licenses_attributions_trakt_body">Nuvio se connecte à Trakt pour l’authentification du compte, l’historique de visionnage, la synchronisation de progression, les données de bibliothèque, les notes, les listes et les commentaires. Nuvio n’est ni affilié ni approuvé par Trakt.</string>
     <string name="settings_licenses_attributions_premiumize_title">Premiumize</string>
@@ -585,8 +592,6 @@
     <string name="settings_homescreen_show_hero_description">Afficher un carrousel Hero en vedette en haut de l’accueil. Choisissez jusqu’à 2 catalogues sources ci-dessous.</string>
     <string name="layout_hide_unreleased">Masquer le contenu non sorti</string>
     <string name="layout_hide_unreleased_sub">Masque les films et séries qui ne sont pas encore sortis.</string>
-    <string name="settings_homescreen_hide_catalog_underline">Masquer le soulignement des catalogues</string>
-    <string name="settings_homescreen_hide_catalog_underline_description">Supprime la ligne d’accent sous les titres de catalogues et de collections dans toute l’app.</string>
     <string name="settings_homescreen_summary">%1$d sur %2$d catalogues visibles • %3$d sources Hero sélectionnées</string>
     <string name="settings_homescreen_summary_hint">Ouvrez un catalogue uniquement si vous avez besoin de le renommer ou de le réorganiser.</string>
     <string name="settings_homescreen_visible">Visible</string>
@@ -647,7 +652,7 @@
     <string name="settings_content_discovery_section_home">ACCUEIL</string>
     <string name="settings_content_discovery_section_sources">SOURCES</string>
     <string name="settings_content_discovery_addons_description">Installez, supprimez, mettez à jour et ordonnez vos sources de contenu.</string>
-    <string name="settings_content_discovery_addons_description_appstore">Connectez des sources multimédias personnelles et gérez l’accès à votre propre bibliothèque.</string>
+    <string name="settings_content_discovery_addons_description_appstore">Ajoutez et gérez les addons que vous utilisez avec Nuvio.</string>
     <string name="settings_content_discovery_plugins_description">Installez des dépôts de scrapers JavaScript et testez des fournisseurs en interne.</string>
     <string name="settings_content_discovery_homescreen_description">Contrôle quels catalogues apparaissent à l’accueil et dans quel ordre.</string>
     <string name="settings_content_discovery_meta_screen_description">Désactivez des sections de détails et réorganisez tout sous le Hero.</string>
@@ -656,7 +661,7 @@
     <string name="settings_integrations_tmdb_description">Enrichissez les pages de détails avec de l’art, des crédits, des métadonnées d’épisodes et plus depuis TMDB.</string>
     <string name="settings_integrations_mdblist_description">Ajoutez des notes externes d’IMDb, Rotten Tomatoes, Metacritic et d’autres aux pages de détails.</string>
     <string name="settings_integrations_debrid_description">Connectez des comptes pour les liens et l’accès à la bibliothèque</string>
-    <string name="settings_debrid_section_title">Services connectés</string>
+    <string name="settings_debrid_section_title">SERVICES CONNECTÉS</string>
     <string name="settings_debrid_experimental_notice">Ces intégrations sont expérimentales et peuvent être conservées, modifiées ou supprimées plus tard.</string>
     <string name="settings_debrid_cloud_library">Cloud library</string>
     <string name="settings_debrid_cloud_library_description">Parcourez et lisez les fichiers déjà présents dans vos comptes connectés.</string>
@@ -665,7 +670,7 @@
     <string name="settings_debrid_resolve_with">Résoudre avec</string>
     <string name="settings_debrid_resolve_with_description">Choisissez quel compte connecté gère les liens lisibles.</string>
     <string name="settings_debrid_add_key_first">Connectez d’abord un compte.</string>
-    <string name="settings_debrid_section_providers">Comptes</string>
+    <string name="settings_debrid_section_providers">COMPTES</string>
     <string name="settings_debrid_provider_description">Connectez votre compte %1$s.</string>
     <string name="settings_debrid_provider_device_description">Liez votre compte %1$s dans le navigateur.</string>
     <string name="settings_debrid_dialog_title">Clé API %1$s</string>
@@ -685,26 +690,26 @@
     <string name="settings_debrid_device_auth_failed">Impossible de démarrer la connexion.</string>
     <string name="settings_debrid_device_auth_missing_configuration">Cette méthode de connexion n’est pas configurée dans ce build.</string>
     <string name="settings_debrid_device_auth_expired">Ce code a expiré. Réessayez.</string>
-    <string name="settings_debrid_section_instant_playback">Préparation des liens</string>
+    <string name="settings_debrid_section_instant_playback">PRÉPARATION DES LIENS</string>
     <string name="settings_debrid_prepare_instant_playback">Préparer les liens</string>
     <string name="settings_debrid_prepare_instant_playback_description">Résoudre les liens lisibles avant le démarrage de la lecture.</string>
     <string name="settings_debrid_prepare_stream_count">Liens à préparer</string>
     <string name="settings_debrid_prepare_stream_count_warning">Utilisez un nombre plus faible si possible. Les services connectés peuvent limiter le nombre de liens résolus sur une période donnée. Ouvrir un film ou un épisode peut compter dans ces limites même si vous n’appuyez pas sur Regarder, car les liens sont préparés à l’avance.</string>
     <string name="settings_debrid_prepare_count_one">1 lien</string>
     <string name="settings_debrid_prepare_count_many">%1$d liens</string>
-    <string name="settings_debrid_section_formatting">Mise en forme</string>
+    <string name="settings_debrid_section_formatting">MISE EN FORME</string>
     <string name="settings_debrid_name_template">Modèle de nom</string>
     <string name="settings_debrid_name_template_description">Contrôle la manière dont les noms de résultats apparaissent.</string>
     <string name="settings_debrid_description_template">Modèle de description</string>
     <string name="settings_debrid_description_template_description">Contrôle les métadonnées affichées sous chaque résultat.</string>
     <string name="settings_debrid_formatter_reset_title">Réinitialiser la mise en forme</string>
     <string name="settings_debrid_formatter_reset_subtitle">Restaurer la mise en forme par défaut des résultats.</string>
-    <string name="settings_stream_badges_section">Style Fusion</string>
+    <string name="settings_stream_badges_section">STYLE FUSION</string>
     <string name="settings_stream_size_badges_title">Badges de taille</string>
     <string name="settings_stream_size_badges_description">Affiche les badges de taille de fichier dans les résultats de flux et les panneaux de source du lecteur.</string>
     <string name="settings_stream_addon_logo_title">Logo de l’addon</string>
     <string name="settings_stream_addon_logo_description">Affiche le logo et le nom de l’addon à côté des sources de streams.</string>
-    <string name="settings_stream_display_section">Affichage</string>
+    <string name="settings_stream_display_section">AFFICHAGE</string>
     <string name="settings_stream_badge_position_title">Position des badges</string>
     <string name="settings_stream_badge_position_description">Choisissez si les badges Fusion et de taille apparaissent au-dessus ou en dessous des cartes de flux.</string>
     <string name="settings_stream_badge_position_dialog_title">Position des badges</string>
@@ -1288,7 +1293,7 @@
     <string name="profile_custom_avatar_url">URL d’avatar personnalisée</string>
     <string name="profile_custom_avatar_url_description">Collez un lien d’image, ou laissez vide pour utiliser le catalogue d’avatars intégré.</string>
     <string name="profile_custom_avatar_url_placeholder">https://example.com/avatar.png</string>
-    <string name="profile_delete_confirm_message">Toutes les données de "%1$s" seront définitivement supprimées.</string>
+    <string name="profile_delete_confirm_message">Toutes les données de &quot;%1$s&quot; seront définitivement supprimées.</string>
     <string name="profile_delete_title">Supprimer le profil</string>
     <string name="profile_edit_add_title">Ajouter un profil</string>
     <string name="profile_edit_edit_title">Modifier le profil</string>
@@ -1438,6 +1443,7 @@
     <string name="trakt_sign_in_complete_failed">Impossible de terminer la connexion Trakt</string>
     <string name="trakt_user_fallback">Utilisateur Trakt</string>
     <string name="trakt_watchlist">Liste de suivi</string>
+    <!-- Trakt library sync errors -->
     <string name="trakt_error_authorization_expired">Autorisation Trakt expirée</string>
     <string name="trakt_error_list_not_found">Liste Trakt introuvable</string>
     <string name="trakt_error_list_limit_reached">Limite de listes Trakt atteinte</string>
@@ -1610,9 +1616,12 @@
     <string name="unit_bytes_kb">Ko</string>
     <string name="unit_bytes_mb">Mo</string>
     <string name="unit_bytes_gb">Go</string>
+    <!-- PlayerControls a11y -->
     <string name="player_action_submit_intro">Soumettre l’intro</string>
     <string name="player_action_video_settings">Paramètres vidéo</string>
+    <!-- CloudLibrary -->
     <string name="cloud_library_provider_unavailable">La cloud library n’est pas disponible pour %1$s.</string>
+    <!-- Player iOS video settings modal -->
     <string name="player_video_settings_title">Vidéo</string>
     <string name="player_video_settings_reset_tuning">Réinitialiser le réglage</string>
     <string name="player_video_settings_output_preset">Préréglage de sortie</string>
@@ -1627,6 +1636,7 @@
     <string name="player_video_settings_contrast">Contraste</string>
     <string name="player_video_settings_saturation">Saturation</string>
     <string name="player_video_settings_gamma">Gamma</string>
+    <!-- iOS video output presets -->
     <string name="player_ios_preset_native_edr_label">Native EDR</string>
     <string name="player_ios_preset_native_edr_desc">Optimal pour les iPhones et iPads compatibles HDR.</string>
     <string name="player_ios_preset_sdr_tone_mapped_label">SDR tone mapped</string>
@@ -1636,7 +1646,8 @@
     <string name="player_ios_preset_custom_label">Personnalisé</string>
     <string name="player_ios_preset_custom_desc">Utilisez vos valeurs avancées ci-dessous.</string>
     <string name="player_ios_hardware_decoder_off">Désactivé</string>
-    <string name="settings_playback_ios_video_output">Sortie vidéo iOS</string>
+    <!-- Playback settings iOS video output -->
+    <string name="settings_playback_ios_video_output">SORTIE VIDÉO iOS</string>
     <string name="settings_playback_ios_hardware_decoder">Décodeur matériel</string>
     <string name="settings_playback_ios_extended_dynamic_range">Plage dynamique étendue</string>
     <string name="settings_playback_ios_extended_dynamic_range_desc">Mode de sortie Metal par défaut pour les nouvelles sessions de lecture.</string>
@@ -1644,12 +1655,13 @@
     <string name="settings_playback_ios_display_color_hint_desc">Permettre à mpv de cibler par défaut l’espace colorimétrique de l’écran actif.</string>
     <string name="settings_playback_ios_target_primaries">Primaires cibles</string>
     <string name="settings_playback_ios_target_transfer">Transfert cible</string>
-    <string name="settings_playback_ios_audio_output_section">Sortie audio iOS</string>
+    <string name="settings_playback_ios_audio_output_section">SORTIE AUDIO iOS</string>
     <string name="settings_playback_ios_audio_output">Sortie audio</string>
     <string name="settings_playback_ios_audio_output_auto_desc">Utilise AudioUnit tant que la sortie AVFoundation est temporairement désactivée.</string>
     <string name="settings_playback_ios_audio_output_avfoundation_desc">Prise en charge expérimentale de l’audio spatial et de la sortie multicanal.</string>
     <string name="settings_playback_ios_audio_output_audiounit_desc">Utilise l’ancienne sortie AudioUnit.</string>
-    <string name="settings_debrid_section_result_management">Gestion des résultats</string>
+    <!-- Debrid Result Management section -->
+    <string name="settings_debrid_section_result_management">GESTION DES RÉSULTATS</string>
     <string name="settings_debrid_max_results">Nombre max de résultats</string>
     <string name="settings_debrid_max_results_desc">Limite le nombre de résultats affichés.</string>
     <string name="settings_debrid_sort_results">Tri des résultats</string>
@@ -1660,69 +1672,83 @@
     <string name="settings_debrid_per_quality_limit_desc">Plafonne les résultats répétés en BluRay, WEB-DL, REMUX après le tri.</string>
     <string name="settings_debrid_size_range">Plage de taille</string>
     <string name="settings_debrid_size_range_desc">Filtre les résultats par taille de fichier.</string>
+    <!-- Debrid misc -->
     <string name="settings_debrid_learn_more">En savoir plus</string>
     <string name="settings_debrid_template_default_format">Format par défaut</string>
     <string name="settings_debrid_template_original_format">Format d’origine</string>
     <string name="settings_debrid_release_groups_hint">Saisissez un groupe par ligne.</string>
+    <!-- Debrid sort profiles -->
     <string name="settings_debrid_sort_original">Ordre original</string>
     <string name="settings_debrid_sort_best_quality">Meilleure qualité d’abord</string>
     <string name="settings_debrid_sort_largest">Plus gros d’abord</string>
     <string name="settings_debrid_sort_smallest">Plus petits d’abord</string>
     <string name="settings_debrid_sort_best_audio">Meilleur audio d’abord</string>
     <string name="settings_debrid_sort_language">Langue d’abord</string>
+    <!-- Debrid selection labels -->
     <string name="settings_debrid_selection_any">Tous</string>
     <string name="settings_debrid_selection_count">%1$d sélectionné(s)</string>
+    <!-- Debrid result count labels -->
     <string name="settings_debrid_results_all">Tous les résultats</string>
     <string name="settings_debrid_results_count">%1$d résultats</string>
+    <!-- Debrid size range labels -->
     <string name="settings_debrid_size_up_to">Jusqu’à %1$d Go</string>
     <string name="settings_debrid_size_min">%1$d Go et plus</string>
     <string name="settings_debrid_size_range_value">%1$d-%2$d Go</string>
+    <!-- Debrid rule rows: resolutions -->
     <string name="settings_debrid_rule_preferred_resolutions">Résolutions préférées</string>
     <string name="settings_debrid_rule_preferred_resolutions_desc">Trie d’abord les résolutions sélectionnées, dans l’ordre par défaut.</string>
     <string name="settings_debrid_rule_required_resolutions">Résolutions requises</string>
     <string name="settings_debrid_rule_required_resolutions_desc">Affiche uniquement les résolutions sélectionnées.</string>
     <string name="settings_debrid_rule_excluded_resolutions">Résolutions exclues</string>
     <string name="settings_debrid_rule_excluded_resolutions_desc">Masque les résolutions sélectionnées.</string>
+    <!-- Debrid rule rows: qualities -->
     <string name="settings_debrid_rule_preferred_qualities">Qualités préférées</string>
     <string name="settings_debrid_rule_preferred_qualities_desc">Trie d’abord les qualités sélectionnées, dans l’ordre par défaut.</string>
     <string name="settings_debrid_rule_required_qualities">Qualités requises</string>
     <string name="settings_debrid_rule_required_qualities_desc">Affiche uniquement les qualités sélectionnées.</string>
     <string name="settings_debrid_rule_excluded_qualities">Qualités exclues</string>
     <string name="settings_debrid_rule_excluded_qualities_desc">Masque les qualités sélectionnées.</string>
+    <!-- Debrid rule rows: visual tags -->
     <string name="settings_debrid_rule_preferred_visual_tags">Tags visuels préférés</string>
     <string name="settings_debrid_rule_preferred_visual_tags_desc">Trie d’abord les tags DV, HDR, 10bit, IMAX et similaires.</string>
     <string name="settings_debrid_rule_required_visual_tags">Tags visuels requis</string>
     <string name="settings_debrid_rule_required_visual_tags_desc">Exige les tags DV, HDR, 10bit, IMAX, SDR et similaires.</string>
     <string name="settings_debrid_rule_excluded_visual_tags">Tags visuels exclus</string>
     <string name="settings_debrid_rule_excluded_visual_tags_desc">Masque les tags DV, HDR, 10bit, 3D et similaires.</string>
+    <!-- Debrid rule rows: audio tags -->
     <string name="settings_debrid_rule_preferred_audio_tags">Tags audio préférés</string>
     <string name="settings_debrid_rule_preferred_audio_tags_desc">Trie d’abord les tags Atmos, TrueHD, DTS, AAC et similaires.</string>
     <string name="settings_debrid_rule_required_audio_tags">Tags audio requis</string>
     <string name="settings_debrid_rule_required_audio_tags_desc">Exige les tags Atmos, TrueHD, DTS, AAC et similaires.</string>
     <string name="settings_debrid_rule_excluded_audio_tags">Tags audio exclus</string>
     <string name="settings_debrid_rule_excluded_audio_tags_desc">Masque les tags audio sélectionnés.</string>
+    <!-- Debrid rule rows: channels -->
     <string name="settings_debrid_rule_preferred_channels">Canaux préférés</string>
     <string name="settings_debrid_rule_preferred_channels_desc">Trie d’abord les configurations de canaux préférées.</string>
     <string name="settings_debrid_rule_required_channels">Canaux requis</string>
     <string name="settings_debrid_rule_required_channels_desc">Affiche uniquement les configurations de canaux sélectionnées.</string>
     <string name="settings_debrid_rule_excluded_channels">Canaux exclus</string>
     <string name="settings_debrid_rule_excluded_channels_desc">Masque les configurations de canaux sélectionnées.</string>
+    <!-- Debrid rule rows: encodes -->
     <string name="settings_debrid_rule_preferred_encodes">Encodages préférés</string>
     <string name="settings_debrid_rule_preferred_encodes_desc">Trie d’abord les encodages AV1, HEVC, AVC et similaires.</string>
     <string name="settings_debrid_rule_required_encodes">Encodages requis</string>
     <string name="settings_debrid_rule_required_encodes_desc">Exige les encodages AV1, HEVC, AVC et similaires.</string>
     <string name="settings_debrid_rule_excluded_encodes">Encodages exclus</string>
     <string name="settings_debrid_rule_excluded_encodes_desc">Masque les encodages sélectionnés.</string>
+    <!-- Debrid rule rows: languages -->
     <string name="settings_debrid_rule_preferred_languages">Langues préférées</string>
     <string name="settings_debrid_rule_preferred_languages_desc">Trie d’abord les langues audio préférées.</string>
     <string name="settings_debrid_rule_required_languages">Langues requises</string>
     <string name="settings_debrid_rule_required_languages_desc">Affiche uniquement les résultats avec les langues sélectionnées.</string>
     <string name="settings_debrid_rule_excluded_languages">Langues exclues</string>
     <string name="settings_debrid_rule_excluded_languages_desc">Masque les résultats où toutes les langues sont exclues.</string>
+    <!-- Debrid rule rows: release groups -->
     <string name="settings_debrid_rule_required_release_groups">Release groups requis</string>
     <string name="settings_debrid_rule_required_release_groups_desc">Affiche uniquement les release groups sélectionnés.</string>
     <string name="settings_debrid_rule_excluded_release_groups">Release groups exclus</string>
     <string name="settings_debrid_rule_excluded_release_groups_desc">Masque les release groups sélectionnés.</string>
+    <!-- Submit intro/recap/outro dialog -->
     <string name="submit_intro_title">Soumettre les timestamps</string>
     <string name="submit_intro_segment_type">TYPE DE SEGMENT</string>
     <string name="submit_intro_segment_intro">Intro</string>
@@ -1732,25 +1758,33 @@
     <string name="submit_intro_end_time">FIN (MM:SS)</string>
     <string name="submit_intro_submit">Soumettre</string>
     <string name="submit_intro_capture">Capturer</string>
+    <!-- iOS advanced playback -->
     <string name="settings_playback_ios_hw_decoder_dialog">Décodeur matériel</string>
     <string name="settings_playback_ios_audio_output_dialog">Sortie audio</string>
     <string name="settings_playback_ios_target_primaries_dialog">Primaires cibles</string>
     <string name="settings_playback_ios_target_transfer_dialog">Transfert cible</string>
+    <!-- Collection editor -->
     <string name="collections_editor_resolved_trakt_list">Liste Trakt résolue</string>
     <string name="collections_editor_tmdb_discover">TMDB Discover</string>
     <string name="collections_editor_watch_region_placeholder">US, KR, JP, IN</string>
+    <!-- Collection editor error messages -->
     <string name="collections_editor_trakt_input_required">Saisissez un nom de liste Trakt, une URL ou un ID</string>
     <string name="collections_editor_tmdb_invalid_id_error">Saisissez un ID ou une URL TMDB valide.</string>
     <string name="collections_editor_tmdb_load_error">Impossible de charger la source TMDB</string>
     <string name="collections_editor_trakt_id_url_required">Saisissez un ID ou une URL de liste Trakt</string>
     <string name="collections_editor_trakt_load_error">Impossible de charger la liste Trakt</string>
+    <!-- Collection editor TMDB country chips -->
     <string name="collections_editor_tmdb_country_ca">Canada</string>
     <string name="collections_editor_tmdb_country_au">Australie</string>
     <string name="collections_editor_tmdb_country_de">Allemagne</string>
+    <!-- Collection editor media type suffixes (appended to source titles) -->
     <string name="collections_editor_media_movies_suffix">Films</string>
     <string name="collections_editor_media_series_suffix">Séries</string>
+    <!-- Cloud library -->
     <string name="cloud_library_playback_disabled">La cloud library est désactivée.</string>
+    <!-- IntroDB settings -->
     <string name="settings_playback_introdb_invalid_api_key">Clé API invalide ou échec de connexion</string>
+    <!-- TMDB placeholders & trakt status (restored after cherry-pick) -->
     <string name="collections_editor_tmdb_country_placeholder">US, KR, JP, IN</string>
     <string name="collections_editor_tmdb_date_from_placeholder">2020-01-01</string>
     <string name="collections_editor_tmdb_date_to_placeholder">2024-12-31</string>
@@ -1883,6 +1917,7 @@
     <string name="updates_github_api_error">Erreur API releases GitHub : %1$d</string>
     <string name="updates_no_channel_release">Aucune mise à jour n’a encore été publiée.</string>
     <string name="updates_release_missing_title">La release n’a pas de tag ni de nom</string>
+    <!-- Continue Watching air date display -->
     <string name="cw_airs_date">Diffusion le %1$s</string>
     <string name="cw_airs_today">Diffusion aujourd’hui</string>
     <string name="cw_airs_tomorrow">Diffusion demain</string>
@@ -1901,6 +1936,7 @@
     </plurals>
     <string name="cw_new_episode">Nouvel épisode</string>
     <string name="cw_new_season">Nouvelle saison</string>
+    <!-- Pass 4 — platform stubs and dynamic title fallbacks -->
     <string name="collections_editor_trakt_list_title_format">Liste Trakt %1$s</string>
     <string name="external_player_android_system">Lecteur système Android</string>
     <string name="p2p_consent_title">Streaming P2P</string>
@@ -1909,6 +1945,7 @@
     <string name="p2p_consent_cancel">Annuler</string>
     <string name="p2p_error_unknown">Erreur torrent inconnue</string>
     <string name="settings_p2p_title">Streaming P2P</string>
+    <string name="settings_playback_section_p2p">STREAMING P2P</string>
     <string name="settings_p2p_subtitle">Autoriser les flux pair-à-pair (torrent)</string>
     <string name="settings_p2p_hide_stats_title">Masquer les statistiques torrent</string>
     <string name="settings_p2p_hide_stats_subtitle">Masquer la mémoire tampon, les seeders, les pairs et la vitesse de téléchargement pendant le chargement et la lecture</string>
@@ -1920,6 +1957,7 @@
     <string name="player_torrent_starting_engine">Démarrage du moteur P2P…</string>
     <string name="player_error_failed_start_torrent">Impossible de démarrer le torrent : %1$s</string>
     <string name="player_error_torrent">Erreur de torrent : %1$s</string>
+    <!-- Person & TMDB entity detail (pass7) -->
     <string name="person_detail_born">Naissance</string>
     <string name="person_detail_place_of_birth">Lieu de naissance</string>
     <string name="person_detail_credits">Crédits</string>
@@ -1930,6 +1968,12 @@
     <string name="entity_browse_about">À propos</string>
     <string name="player_external_loading_subtitles">Chargement des sous-titres depuis les addons…</string>
     <string name="player_external_downloading_subtitles">Téléchargement des sous-titres…</string>
+    <plurals name="entity_browse_title_count">
+        <item quantity="one">%d titre</item>
+        <item quantity="other">%d titres</item>
+    </plurals>
+    <string name="settings_homescreen_hide_catalog_underline">Masquer le soulignement des catalogues</string>
+    <string name="settings_homescreen_hide_catalog_underline_description">Supprime la ligne d’accent sous les titres de catalogues et de collections dans toute l’app.</string>
     <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
     <string name="downloads_auto_open_offline_description">When Nuvio starts without a connection, open Downloads if playable files are saved.</string>
     <string name="settings_debrid_sort_default">Par dÃ©faut</string>
