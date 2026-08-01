@@ -34,6 +34,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +47,8 @@ import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.ui.nuvioHorizontalScrollBleed
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaExternalRating
+import com.nuvio.app.features.details.buildImdbParentsGuideUrl
+import com.nuvio.app.features.details.buildRatingProviderUrl
 import com.nuvio.app.features.details.formatRuntimeForDisplay
 import com.nuvio.app.features.details.formatMetaReleaseLineForDetails
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_AUDIENCE
@@ -76,6 +81,14 @@ fun DetailMetaInfo(
     modifier: Modifier = Modifier,
     horizontalScrollPadding: Dp = 0.dp,
 ) {
+    val uriHandler = LocalUriHandler.current
+    val openRatingUrl: (String) -> Unit = remember(uriHandler) {
+        { url ->
+            runCatching { uriHandler.openUri(url) }
+            Unit
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -114,14 +127,29 @@ fun DetailMetaInfo(
                     )
                 }
                 ageBadge?.let { badge ->
-                    DetailHeroMetaBadge(text = badge)
+                    val parentsGuideUrl = remember(meta) { buildImdbParentsGuideUrl(meta) }
+                    DetailHeroMetaBadge(
+                        text = badge,
+                        onClick = parentsGuideUrl?.let { url -> { openRatingUrl(url) } },
+                        onClickLabel = "Open IMDb Parents Guide",
+                    )
                 }
                 if (validImdbRating != null && !hasMdbImdbRating) {
+                    val imdbUrl = remember(meta) { buildRatingProviderUrl(meta, PROVIDER_IMDB) }
                     val imdbTextStyle = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.sp,
                     )
                     Row(
+                        modifier = imdbUrl?.let { url ->
+                            Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable(
+                                    onClickLabel = "Open IMDb",
+                                    role = Role.Button,
+                                    onClick = { openRatingUrl(url) },
+                                )
+                        } ?: Modifier,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         ImdbRatingSourceLabel(
@@ -145,8 +173,10 @@ fun DetailMetaInfo(
             exit = fadeOut() + shrinkVertically(),
         ) {
             DetailRatingsRow(
+                meta = meta,
                 ratings = meta.externalRatings,
                 horizontalScrollPadding = horizontalScrollPadding,
+                onOpenUrl = openRatingUrl,
             )
         }
 
@@ -203,8 +233,10 @@ fun DetailMetaInfo(
 
 @Composable
 private fun DetailRatingsRow(
+    meta: MetaDetails,
     ratings: List<MetaExternalRating>,
     horizontalScrollPadding: Dp,
+    onOpenUrl: (String) -> Unit,
 ) {
     val orderedRatings = remember(ratings) {
         val bySource = ratings.associateBy { it.source }
@@ -225,11 +257,24 @@ private fun DetailRatingsRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         orderedRatings.forEach { (visuals, rating) ->
+            val ratingUrl = remember(meta, visuals.source) {
+                buildRatingProviderUrl(meta, visuals.source)
+            }
             val ratingTextStyle = MaterialTheme.typography.titleSmall.copy(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.sp,
             )
             Row(
+                modifier = ratingUrl?.let { url ->
+                    Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(
+                            onClickLabel = "Open ${visuals.displayName}",
+                            role = Role.Button,
+                            onClick = { onOpenUrl(url) },
+                        )
+                        .padding(horizontal = 2.dp, vertical = 2.dp)
+                } ?: Modifier,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (visuals.source == PROVIDER_IMDB && !AppFeaturePolicy.imdbRatingLogoEnabled) {
@@ -310,12 +355,25 @@ private fun MetaLabelValueRow(
 private fun DetailHeroMetaBadge(
     text: String,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
 ) {
+    val badgeShape = RoundedCornerShape(6.dp)
     Box(
-        modifier = Modifier
+        modifier = (if (onClick != null) {
+            Modifier
+                .clip(badgeShape)
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = onClickLabel,
+                    onClick = onClick,
+                )
+        } else {
+            Modifier
+        })
             .border(
                 border = BorderStroke(1.dp, contentColor.copy(alpha = 0.55f)),
-                shape = RoundedCornerShape(6.dp),
+                shape = badgeShape,
             )
             .padding(horizontal = 8.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,

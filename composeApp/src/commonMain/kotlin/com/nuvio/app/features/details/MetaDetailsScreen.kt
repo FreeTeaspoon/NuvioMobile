@@ -77,6 +77,7 @@ import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.i18n.localizedSeasonEpisodeCode
 import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.NuvioCardDepthSurface
+import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioPosterZoomActionOverlay
 import com.nuvio.app.core.ui.PosterZoomAnchor
 import com.nuvio.app.core.ui.PosterZoomAnchorHolder
@@ -136,6 +137,11 @@ import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
+
+private data class WatchedConfirmationAction(
+    val title: String,
+    val onConfirm: () -> Unit,
+)
 
 @Composable
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -198,6 +204,7 @@ fun MetaDetailsScreen(
     var selectedEpisodeZoomAnchor by remember(type, id) { mutableStateOf<PosterZoomAnchor?>(null) }
     val episodeOverlayHazeState = rememberHazeState()
     var selectedSeasonForActions by remember(type, id) { mutableStateOf<Int?>(null) }
+    var pendingWatchedConfirmation by remember(type, id) { mutableStateOf<WatchedConfirmationAction?>(null) }
     val commentsEnabled by remember {
         TraktCommentsSettings.ensureLoaded()
         TraktCommentsSettings.enabled
@@ -431,11 +438,21 @@ fun MetaDetailsScreen(
                         LibraryRepository.toggleSaved(meta.toLibraryItem(savedAtEpochMs = 0L))
                     }
                 }
-                val toggleWatched = remember(metaPreview) {
+                val wholeWatchedActionText = if (isWatched) {
+                    stringResource(Res.string.watched_confirm_mark_title_unwatched, meta.name)
+                } else {
+                    stringResource(Res.string.watched_confirm_mark_title_watched, meta.name)
+                }
+                val toggleWatched = remember(metaPreview, wholeWatchedActionText) {
                     {
-                        detailsScope.launch {
-                            WatchingActions.togglePosterWatched(metaPreview)
-                        }
+                        pendingWatchedConfirmation = WatchedConfirmationAction(
+                            title = wholeWatchedActionText,
+                            onConfirm = {
+                                detailsScope.launch {
+                                    WatchingActions.togglePosterWatched(metaPreview)
+                                }
+                            },
+                        )
                         Unit
                     }
                 }
@@ -1084,6 +1101,26 @@ fun MetaDetailsScreen(
                                     progressByVideoId = progressByVideoId,
                                 )
                             }
+                            val previousWatchedActionText = if (arePreviousEpisodesWatched) {
+                                stringResource(Res.string.episode_mark_previous_unwatched)
+                            } else {
+                                stringResource(Res.string.episode_mark_previous_watched)
+                            }
+                            val seasonWatchedActionText = if (isSeasonWatched) {
+                                stringResource(
+                                    Res.string.episode_mark_season_unwatched,
+                                    selectedEpisode.season?.let {
+                                        stringResource(Res.string.episodes_season, it)
+                                    } ?: stringResource(Res.string.episodes_specials),
+                                )
+                            } else {
+                                stringResource(
+                                    Res.string.episode_mark_season_watched,
+                                    selectedEpisode.season?.let {
+                                        stringResource(Res.string.episodes_season, it)
+                                    } ?: stringResource(Res.string.episodes_specials),
+                                )
+                            }
                             EpisodeWatchedActionSheet(
                                 episode = selectedEpisode,
                                 seasonLabel = selectedEpisode.season?.let {
@@ -1102,17 +1139,27 @@ fun MetaDetailsScreen(
                                     )
                                 },
                                 onTogglePreviousWatched = {
-                                    WatchingActions.togglePreviousEpisodesWatched(
-                                        meta = meta,
-                                        episodes = previousEpisodes,
-                                        areCurrentlyWatched = arePreviousEpisodesWatched,
+                                    pendingWatchedConfirmation = WatchedConfirmationAction(
+                                        title = previousWatchedActionText,
+                                        onConfirm = {
+                                            WatchingActions.togglePreviousEpisodesWatched(
+                                                meta = meta,
+                                                episodes = previousEpisodes,
+                                                areCurrentlyWatched = arePreviousEpisodesWatched,
+                                            )
+                                        },
                                     )
                                 },
                                 onToggleSeasonWatched = {
-                                    WatchingActions.toggleSeasonWatched(
-                                        meta = meta,
-                                        episodes = seasonEpisodes,
-                                        areCurrentlyWatched = isSeasonWatched,
+                                    pendingWatchedConfirmation = WatchedConfirmationAction(
+                                        title = seasonWatchedActionText,
+                                        onConfirm = {
+                                            WatchingActions.toggleSeasonWatched(
+                                                meta = meta,
+                                                episodes = seasonEpisodes,
+                                                areCurrentlyWatched = isSeasonWatched,
+                                            )
+                                        },
                                     )
                                 },
                                 showPlayManually = showManualPlayOption,
@@ -1156,24 +1203,57 @@ fun MetaDetailsScreen(
                                     )
                                 }
                             }
+                            val seasonWatchedActionText = if (isSeasonWatched) {
+                                stringResource(Res.string.episode_mark_season_unwatched, seasonLabel)
+                            } else {
+                                stringResource(Res.string.episode_mark_season_watched, seasonLabel)
+                            }
+                            val previousSeasonsWatchedActionText = stringResource(Res.string.episode_mark_previous_seasons_watched)
                             SeasonWatchedActionSheet(
                                 seasonLabel = seasonLabel,
                                 isSeasonWatched = isSeasonWatched,
                                 canMarkPreviousSeasons = canMarkPreviousSeasons,
                                 onDismiss = { selectedSeasonForActions = null },
                                 onToggleSeasonWatched = {
-                                    WatchingActions.toggleSeasonWatched(
-                                        meta = meta,
-                                        episodes = seasonEpisodes,
-                                        areCurrentlyWatched = isSeasonWatched,
+                                    pendingWatchedConfirmation = WatchedConfirmationAction(
+                                        title = seasonWatchedActionText,
+                                        onConfirm = {
+                                            WatchingActions.toggleSeasonWatched(
+                                                meta = meta,
+                                                episodes = seasonEpisodes,
+                                                areCurrentlyWatched = isSeasonWatched,
+                                            )
+                                        },
                                     )
                                 },
                                 onMarkPreviousSeasonsWatched = {
-                                    WatchingActions.togglePreviousEpisodesWatched(
-                                        meta = meta,
-                                        episodes = previousSeasonEpisodes,
-                                        areCurrentlyWatched = false,
+                                    pendingWatchedConfirmation = WatchedConfirmationAction(
+                                        title = previousSeasonsWatchedActionText,
+                                        onConfirm = {
+                                            WatchingActions.togglePreviousEpisodesWatched(
+                                                meta = meta,
+                                                episodes = previousSeasonEpisodes,
+                                                areCurrentlyWatched = false,
+                                            )
+                                        },
                                     )
+                                },
+                            )
+                        }
+
+                        pendingWatchedConfirmation?.let { action ->
+                            NuvioStatusModal(
+                                title = action.title,
+                                message = stringResource(Res.string.watched_confirm_message),
+                                isVisible = true,
+                                confirmText = stringResource(Res.string.action_confirm),
+                                dismissText = stringResource(Res.string.action_cancel),
+                                onConfirm = {
+                                    pendingWatchedConfirmation = null
+                                    action.onConfirm()
+                                },
+                                onDismiss = {
+                                    pendingWatchedConfirmation = null
                                 },
                             )
                         }
@@ -1335,6 +1415,16 @@ fun MetaDetailsScreen(
             val seasonLabel = selectedEpisode.season?.let {
                 stringResource(Res.string.episodes_season, it)
             } ?: stringResource(Res.string.episodes_specials)
+            val previousWatchedActionText = if (arePreviousEpisodesWatched) {
+                stringResource(Res.string.episode_mark_previous_unwatched)
+            } else {
+                stringResource(Res.string.episode_mark_previous_watched)
+            }
+            val seasonWatchedActionText = if (isSeasonWatched) {
+                stringResource(Res.string.episode_mark_season_unwatched, seasonLabel)
+            } else {
+                stringResource(Res.string.episode_mark_season_watched, seasonLabel)
+            }
             NuvioPosterZoomActionOverlay(
                 imageUrl = zoomAnchor.imageUrl ?: selectedEpisode.thumbnail ?: meta.background ?: meta.poster,
                 title = selectedEpisode.title,
@@ -1370,10 +1460,15 @@ fun MetaDetailsScreen(
                                     stringResource(Res.string.episode_mark_previous_watched)
                                 },
                                 onSelected = {
-                                    WatchingActions.togglePreviousEpisodesWatched(
-                                        meta = meta,
-                                        episodes = previousEpisodes,
-                                        areCurrentlyWatched = arePreviousEpisodesWatched,
+                                    pendingWatchedConfirmation = WatchedConfirmationAction(
+                                        title = previousWatchedActionText,
+                                        onConfirm = {
+                                            WatchingActions.togglePreviousEpisodesWatched(
+                                                meta = meta,
+                                                episodes = previousEpisodes,
+                                                areCurrentlyWatched = arePreviousEpisodesWatched,
+                                            )
+                                        },
                                     )
                                 },
                             ),
@@ -1381,17 +1476,18 @@ fun MetaDetailsScreen(
                     }
                     add(
                         PosterZoomOverlayAction(
-                            icon = Icons.Default.PlaylistAddCheckCircle,
-                            label = if (isSeasonWatched) {
-                                stringResource(Res.string.episode_mark_season_unwatched, seasonLabel)
-                            } else {
-                                stringResource(Res.string.episode_mark_season_watched, seasonLabel)
-                            },
+                                icon = Icons.Default.PlaylistAddCheckCircle,
+                            label = seasonWatchedActionText,
                             onSelected = {
-                                WatchingActions.toggleSeasonWatched(
-                                    meta = meta,
-                                    episodes = seasonEpisodes,
-                                    areCurrentlyWatched = isSeasonWatched,
+                                pendingWatchedConfirmation = WatchedConfirmationAction(
+                                    title = seasonWatchedActionText,
+                                    onConfirm = {
+                                        WatchingActions.toggleSeasonWatched(
+                                            meta = meta,
+                                            episodes = seasonEpisodes,
+                                            areCurrentlyWatched = isSeasonWatched,
+                                        )
+                                    },
                                 )
                             },
                         ),

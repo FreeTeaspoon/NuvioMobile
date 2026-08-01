@@ -27,6 +27,9 @@ class SyncManagerTest {
                     profileSettingsApplied = true
                     events += "settings:end"
                 },
+                pullTraktCredentials = {
+                    events += "trakt-credentials"
+                },
                 pullLibrary = {
                     assertTrue(profileSettingsApplied)
                     events += "library"
@@ -41,7 +44,10 @@ class SyncManagerTest {
             onFailure = { _, error -> throw error },
         )
 
-        val lastPrerequisite = events.indexOf("settings:end")
+        val lastPrerequisite = maxOf(
+            events.indexOf("settings:end"),
+            events.indexOf("trakt-credentials"),
+        )
         assertTrue(events.indexOf("library") > lastPrerequisite)
         assertTrue(events.indexOf("active-watch-source") > lastPrerequisite)
         assertEquals(1, events.count { it == "active-watch-source" })
@@ -163,6 +169,7 @@ class SyncManagerTest {
             pullAddons = { events += "addons" },
             pullPlugins = { events += "plugins" },
             pullProfileSettings = { events += "settings" },
+            pullTraktCredentials = { events += "trakt-credentials" },
             pullLibrary = { events += "library" },
             refreshActiveWatchSource = { events += "active-watch-source" },
             pullCollections = { events += "collections" },
