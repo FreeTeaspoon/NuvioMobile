@@ -81,7 +81,9 @@ android {
         versionCode = releaseAppVersionCode
         versionName = releaseAppVersionName
         ndk {
-            abiFilters += "arm64-v8a"
+            if (!releaseAbiSplitEnabled.get()) {
+                abiFilters += "arm64-v8a"
+            }
         }
     }
 
