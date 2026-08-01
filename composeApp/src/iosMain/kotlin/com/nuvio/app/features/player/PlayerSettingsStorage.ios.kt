@@ -45,6 +45,7 @@ actual object PlayerSettingsStorage {
     private const val addonSubtitleStartupModeKey = "addon_subtitle_startup_mode"
     private const val streamReuseLastLinkEnabledKey = "stream_reuse_last_link_enabled"
     private const val streamReuseLastLinkCacheHoursKey = "stream_reuse_last_link_cache_hours"
+    private const val androidPlaybackEngineKey = "android_playback_engine"
     private const val androidLibmpvVideoOutputKey = "android_libmpv_video_output"
     private const val androidLibmpvHardwareDecodingEnabledKey = "android_libmpv_hardware_decoding_enabled"
     private const val androidLibmpvYuv420pEnabledKey = "android_libmpv_yuv420p_enabled"
@@ -116,6 +117,7 @@ actual object PlayerSettingsStorage {
         addonSubtitleStartupModeKey,
         streamReuseLastLinkEnabledKey,
         streamReuseLastLinkCacheHoursKey,
+        androidPlaybackEngineKey,
         androidLibmpvVideoOutputKey,
         androidLibmpvHardwareDecodingEnabledKey,
         androidLibmpvYuv420pEnabledKey,
@@ -510,6 +512,13 @@ actual object PlayerSettingsStorage {
 
     actual fun saveStreamReuseLastLinkCacheHours(hours: Int) {
         NSUserDefaults.standardUserDefaults.setInteger(hours.toLong(), forKey = ProfileScopedKey.of(streamReuseLastLinkCacheHoursKey))
+    }
+
+    actual fun loadAndroidPlaybackEngine(): String? =
+        NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(androidPlaybackEngineKey))
+
+    actual fun saveAndroidPlaybackEngine(engine: String) {
+        NSUserDefaults.standardUserDefaults.setObject(engine, forKey = ProfileScopedKey.of(androidPlaybackEngineKey))
     }
 
     actual fun loadAndroidLibmpvVideoOutput(): String? =
@@ -965,6 +974,7 @@ actual object PlayerSettingsStorage {
         loadAddonSubtitleStartupMode()?.let { put(addonSubtitleStartupModeKey, encodeSyncString(it)) }
         loadStreamReuseLastLinkEnabled()?.let { put(streamReuseLastLinkEnabledKey, encodeSyncBoolean(it)) }
         loadStreamReuseLastLinkCacheHours()?.let { put(streamReuseLastLinkCacheHoursKey, encodeSyncInt(it)) }
+        loadAndroidPlaybackEngine()?.let { put(androidPlaybackEngineKey, encodeSyncString(it)) }
         loadAndroidLibmpvVideoOutput()?.let { put(androidLibmpvVideoOutputKey, encodeSyncString(it)) }
         loadAndroidLibmpvHardwareDecodingEnabled()?.let {
             put(androidLibmpvHardwareDecodingEnabledKey, encodeSyncBoolean(it))
@@ -1040,6 +1050,7 @@ actual object PlayerSettingsStorage {
         payload.decodeSyncString(addonSubtitleStartupModeKey)?.let(::saveAddonSubtitleStartupMode)
         payload.decodeSyncBoolean(streamReuseLastLinkEnabledKey)?.let(::saveStreamReuseLastLinkEnabled)
         payload.decodeSyncInt(streamReuseLastLinkCacheHoursKey)?.let(::saveStreamReuseLastLinkCacheHours)
+        payload.decodeSyncString(androidPlaybackEngineKey)?.let(::saveAndroidPlaybackEngine)
         payload.decodeSyncString(androidLibmpvVideoOutputKey)?.let(::saveAndroidLibmpvVideoOutput)
         payload.decodeSyncBoolean(androidLibmpvHardwareDecodingEnabledKey)
             ?.let(::saveAndroidLibmpvHardwareDecodingEnabled)

@@ -72,7 +72,7 @@ fun NuvioFloatingPrompt(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     autoDismissMs: Long = AutoDismissDelayMs,
-    bottomClearance: Dp = NuvioNavigationBarScrollClearance,
+    bottomClearance: Dp = nuvioBottomNavigationExtraVerticalPadding + NuvioTokens.Space.s8,
 ) {
     val tokens = MaterialTheme.nuvio
     val visibilityState = remember { MutableTransitionState(false) }

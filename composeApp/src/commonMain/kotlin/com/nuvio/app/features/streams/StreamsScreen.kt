@@ -47,7 +47,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,23 +79,19 @@ import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
-import com.nuvio.app.features.downloads.DownloadEnqueueResult
 import com.nuvio.app.features.downloads.DownloadsRepository
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
-import com.nuvio.app.core.ui.NuvioAsyncImage as AsyncImage
+import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
 import com.nuvio.app.features.debrid.DebridSettingsRepository
 import com.nuvio.app.features.debrid.DirectDebridPlayableResult
 import com.nuvio.app.features.debrid.DirectDebridPlaybackResolver
 import com.nuvio.app.features.debrid.toastMessage
-import com.nuvio.app.features.p2p.P2pSettingsRepository
-import com.nuvio.app.features.p2p.P2pStreamingEngine
 import com.nuvio.app.features.player.PlayerSettingsRepository
-import com.nuvio.app.features.watchprogress.WatchProgressEntry
-import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.progressForPlaybackTarget
+import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.navigation.LocalUseNativeNavigation
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -106,46 +101,6 @@ import org.jetbrains.compose.resources.stringResource
 // ---------------------------------------------------------------------------
 // Streams Screen
 // ---------------------------------------------------------------------------
-
-internal data class EffectiveStreamResume(
-    val positionMs: Long?,
-    val progressFraction: Float?,
-)
-
-internal fun resolveEffectiveStreamResume(
-    requestedPositionMs: Long?,
-    requestedProgressFraction: Float?,
-    storedProgress: WatchProgressEntry?,
-    startFromBeginning: Boolean,
-): EffectiveStreamResume {
-    if (startFromBeginning) {
-        return EffectiveStreamResume(positionMs = null, progressFraction = null)
-    }
-
-    requestedPositionMs?.takeIf { it > 0L }?.let { positionMs ->
-        return EffectiveStreamResume(positionMs = positionMs, progressFraction = null)
-    }
-
-    storedProgress
-        ?.takeIf { it.isResumable }
-        ?.lastPositionMs
-        ?.takeIf { it > 0L }
-        ?.let { positionMs ->
-            return EffectiveStreamResume(positionMs = positionMs, progressFraction = null)
-        }
-
-    requestedProgressFraction?.takeIf { it > 0f }?.let { progressFraction ->
-        return EffectiveStreamResume(positionMs = null, progressFraction = progressFraction.coerceIn(0f, 1f))
-    }
-
-    val storedProgressFraction = storedProgress
-        ?.takeIf { it.isResumable }
-        ?.progressPercent
-        ?.takeIf { it > 0f }
-        ?.let { progressPercent -> (progressPercent / 100f).coerceIn(0f, 1f) }
-
-    return EffectiveStreamResume(positionMs = null, progressFraction = storedProgressFraction)
-}
 
 @Composable
 fun StreamsScreen(
@@ -173,7 +128,6 @@ fun StreamsScreen(
         resumePositionMs: Long?,
         resumeProgressFraction: Float?,
     ) -> Unit = { _, _, _, _ -> },
-    onOpenDownloads: (() -> Unit)? = null,
     onOpenImdbUrl: ((String) -> Unit)? = null,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -188,18 +142,12 @@ fun StreamsScreen(
         DebridSettingsRepository.ensureLoaded()
         DebridSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
-    val p2pSettings by remember {
-        P2pSettingsRepository.ensureLoaded()
-        P2pSettingsRepository.uiState
-    }.collectAsStateWithLifecycle()
     val watchProgressUiState by remember {
         WatchProgressRepository.ensureLoaded()
         WatchProgressRepository.uiState
     }.collectAsStateWithLifecycle()
     remember {
-        if (AppFeaturePolicy.downloadsEnabled) {
-            DownloadsRepository.ensureLoaded()
-        }
+        DownloadsRepository.ensureLoaded()
     }
     val isEpisode = seasonNumber != null && episodeNumber != null
     val clipboardManager = LocalClipboardManager.current
@@ -230,15 +178,6 @@ fun StreamsScreen(
     )
     val effectiveResumePositionMs = effectiveResume.positionMs
     val effectiveResumeProgressFraction = effectiveResume.progressFraction
-
-    DisposableEffect(P2pSettingsRepository.isVisible, p2pSettings.p2pEnabled) {
-        if (P2pSettingsRepository.isVisible && p2pSettings.p2pEnabled) {
-            P2pStreamingEngine.warmup()
-        }
-        onDispose {
-            P2pStreamingEngine.cooldownWarmup()
-        }
-    }
 
     LaunchedEffect(type, videoId, seasonNumber, episodeNumber, manualSelection) {
         StreamsRepository.load(
@@ -398,7 +337,6 @@ fun StreamsScreen(
         StreamActionsSheet(
             stream = streamActionsTarget,
             externalPlayerEnabled = playerSettings.externalPlayerEnabled,
-            showDownloadAction = AppFeaturePolicy.downloadsEnabled,
             onDismiss = { streamActionsTarget = null },
             onCopyLink = { stream ->
                 val directUrl = stream.playableDirectUrl ?: stream.externalOpenUrl
@@ -460,9 +398,6 @@ fun StreamsScreen(
                                     stream = resolved.stream,
                                 )
                                 NuvioToastController.show(result.toastMessage())
-                                if (result == DownloadEnqueueResult.Started || result == DownloadEnqueueResult.Replaced) {
-                                    onOpenDownloads?.invoke()
-                                }
                             }
                             else -> {
                                 val message = resolved.toastMessage()
@@ -489,9 +424,6 @@ fun StreamsScreen(
                         stream = stream,
                     )
                     NuvioToastController.show(result.toastMessage())
-                    if (result == DownloadEnqueueResult.Started || result == DownloadEnqueueResult.Replaced) {
-                        onOpenDownloads?.invoke()
-                    }
                 }
             },
             onOpen = { stream, openExternally ->
@@ -1163,7 +1095,6 @@ private fun StreamSourceHeader(
 private fun StreamActionsSheet(
     stream: StreamItem?,
     externalPlayerEnabled: Boolean,
-    showDownloadAction: Boolean,
     onDismiss: () -> Unit,
     onCopyLink: (StreamItem) -> Unit,
     onDownload: (StreamItem) -> Unit,
@@ -1242,19 +1173,17 @@ private fun StreamActionsSheet(
                     }
                 },
             )
-            if (showDownloadAction) {
-                NuvioBottomSheetDivider()
-                NuvioBottomSheetActionRow(
-                    icon = Icons.Rounded.Download,
-                    title = stringResource(Res.string.streams_download_file),
-                    onClick = {
-                        onDownload(stream)
-                        coroutineScope.launch {
-                            dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
-                        }
-                    },
-                )
-            }
+            NuvioBottomSheetDivider()
+            NuvioBottomSheetActionRow(
+                icon = Icons.Rounded.Download,
+                title = stringResource(Res.string.streams_download_file),
+                onClick = {
+                    onDownload(stream)
+                    coroutineScope.launch {
+                        dismissNuvioBottomSheet(sheetState = sheetState, onDismiss = onDismiss)
+                    }
+                },
+            )
         }
     }
 }

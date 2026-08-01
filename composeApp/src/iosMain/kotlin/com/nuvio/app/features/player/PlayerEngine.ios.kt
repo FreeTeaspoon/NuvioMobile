@@ -48,19 +48,14 @@ actual fun PlatformPlayerSurface(
     sourceResponseHeaders: Map<String, String>,
     externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle>,
     streamType: String?,
-    sourceFilename: String?,
-    sourceVideoSize: Long?,
     useYoutubeChunkedPlayback: Boolean,
     modifier: Modifier,
     playWhenReady: Boolean,
+    initialPositionMs: Long?,
+    initialPositionRequestKey: String?,
     resizeMode: PlayerResizeMode,
-    initialPositionMs: Long,
     useNativeController: Boolean,
-    playerControlsState: PlayerControlsState,
-    onPlayerControlsAction: (PlayerControlsAction) -> Boolean,
-    onPlayerControlsEvent: (String, Double) -> Boolean,
-    onPlayerControlsScrubChange: (Long) -> Boolean,
-    onPlayerControlsScrubFinished: (Long) -> Boolean,
+    onInitialPositionHandled: (key: String, handled: Boolean) -> Unit,
     onControllerReady: (PlayerEngineController) -> Unit,
     onSnapshot: (PlayerPlaybackSnapshot) -> Unit,
     onError: (String?) -> Unit,
@@ -133,11 +128,6 @@ actual fun PlatformPlayerSurface(
 
             override fun setPlaybackSpeed(speed: Float) {
                 bridge.setPlaybackSpeed(speed)
-            }
-
-            override fun setVideoZoom(state: PlayerVideoZoomState) {
-                val normalized = state.normalized()
-                bridge.setVideoZoom(normalized.zoom, false)
             }
 
             override fun setMuted(muted: Boolean) {
@@ -379,10 +369,8 @@ actual fun PlatformPlayerSurface(
             },
             interactive = false,
         )
-
         if (useNativeController) {
             var isPlayingLocal by remember { mutableStateOf(playWhenReady) }
-
             Box(
                 modifier = Modifier
                     .fillMaxSize()

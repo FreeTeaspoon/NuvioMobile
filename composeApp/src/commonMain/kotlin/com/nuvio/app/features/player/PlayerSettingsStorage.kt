@@ -61,6 +61,8 @@ internal expect object PlayerSettingsStorage {
     fun saveStreamReuseLastLinkEnabled(enabled: Boolean)
     fun loadStreamReuseLastLinkCacheHours(): Int?
     fun saveStreamReuseLastLinkCacheHours(hours: Int)
+    fun loadAndroidPlaybackEngine(): String?
+    fun saveAndroidPlaybackEngine(engine: String)
     fun loadAndroidLibmpvVideoOutput(): String?
     fun saveAndroidLibmpvVideoOutput(output: String)
     fun loadAndroidLibmpvHardwareDecodingEnabled(): Boolean?

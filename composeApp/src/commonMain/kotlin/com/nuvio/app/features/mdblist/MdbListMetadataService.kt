@@ -30,6 +30,7 @@ object MdbListMetadataService {
     const val PROVIDER_TRAKT = "trakt"
     const val PROVIDER_LETTERBOXD = "letterboxd"
     const val PROVIDER_AUDIENCE = "audience"
+    const val PROVIDER_MAL = "mal"
 
     val PROVIDER_PRIORITY_ORDER = listOf(
         PROVIDER_IMDB,
@@ -39,6 +40,7 @@ object MdbListMetadataService {
         PROVIDER_TRAKT,
         PROVIDER_LETTERBOXD,
         PROVIDER_AUDIENCE,
+        PROVIDER_MAL,
     )
 
     private val log = Logger.withTag("MdbListMetadata")
