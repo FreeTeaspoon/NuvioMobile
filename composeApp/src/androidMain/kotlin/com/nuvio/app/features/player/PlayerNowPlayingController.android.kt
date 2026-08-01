@@ -129,7 +129,10 @@ internal class AndroidPlayerNowPlayingController(
 
             val artworkChanged = metadata?.artworkUrl != normalized.artworkUrl
             metadata = normalized
-            mediaSession.isActive = true
+            runCatching { mediaSession.isActive = true }
+                .onFailure { error ->
+                    Log.w(NOW_PLAYING_TAG, "Unable to activate playback session", error)
+                }
 
             if (artworkChanged) {
                 artworkArt = null
@@ -198,14 +201,19 @@ internal class AndroidPlayerNowPlayingController(
         artworkDisplayIcon = null
         artworkNotificationIcon = null
         resetPublishedPlaybackState()
-        mediaSession.setMetadata(null)
-        mediaSession.setPlaybackState(
-            PlaybackState.Builder()
-                .setState(PlaybackState.STATE_NONE, 0L, 0f)
-                .build(),
-        )
-        mediaSession.isActive = false
-        PlayerNowPlayingService.hide(appContext)
+        runCatching { mediaSession.setMetadata(null) }
+            .onFailure { error -> Log.w(NOW_PLAYING_TAG, "Unable to clear playback metadata", error) }
+        runCatching {
+            mediaSession.setPlaybackState(
+                PlaybackState.Builder()
+                    .setState(PlaybackState.STATE_NONE, 0L, 0f)
+                    .build(),
+            )
+        }.onFailure { error -> Log.w(NOW_PLAYING_TAG, "Unable to clear playback state", error) }
+        runCatching { mediaSession.isActive = false }
+            .onFailure { error -> Log.w(NOW_PLAYING_TAG, "Unable to deactivate playback session", error) }
+        runCatching { PlayerNowPlayingService.hide(appContext) }
+            .onFailure { error -> Log.w(NOW_PLAYING_TAG, "Unable to hide playback notification", error) }
     }
 
     private fun publishMetadata() {
@@ -224,15 +232,19 @@ internal class AndroidPlayerNowPlayingController(
 
         val base = builder.build()
         val withArtwork = artworkArt?.takeIf { !it.isRecycled }?.let { art ->
-            MediaMetadata.Builder(base)
-                .putBitmap(MediaMetadata.METADATA_KEY_ART, art)
-                .apply {
-                    artworkAlbumArt?.takeIf { !it.isRecycled }
-                        ?.let { putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, it) }
-                    artworkDisplayIcon?.takeIf { !it.isRecycled }
-                        ?.let { putBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON, it) }
-                }
-                .build()
+            runCatching {
+                MediaMetadata.Builder(base)
+                    .putBitmap(MediaMetadata.METADATA_KEY_ART, art)
+                    .apply {
+                        artworkAlbumArt?.takeIf { !it.isRecycled }
+                            ?.let { putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, it) }
+                        artworkDisplayIcon?.takeIf { !it.isRecycled }
+                            ?.let { putBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON, it) }
+                    }
+                    .build()
+            }.onFailure { error ->
+                Log.w(NOW_PLAYING_TAG, "Unable to add artwork to playback metadata", error)
+            }.getOrNull()
         }
 
         if (withArtwork == null || runCatching { mediaSession.setMetadata(withArtwork) }.isFailure) {
@@ -269,18 +281,24 @@ internal class AndroidPlayerNowPlayingController(
             PlaybackState.ACTION_REWIND or
             PlaybackState.ACTION_STOP
 
-        mediaSession.setPlaybackState(
-            PlaybackState.Builder()
-                .setActions(actions)
-                .setState(
-                    state,
-                    current.positionMs.coerceAtLeast(0L),
-                    playbackSpeed,
-                    SystemClock.elapsedRealtime(),
-                )
-                .setBufferedPosition(current.bufferedPositionMs.coerceAtLeast(0L))
-                .build(),
-        )
+        val published = runCatching {
+            mediaSession.setPlaybackState(
+                PlaybackState.Builder()
+                    .setActions(actions)
+                    .setState(
+                        state,
+                        current.positionMs.coerceAtLeast(0L),
+                        playbackSpeed,
+                        SystemClock.elapsedRealtime(),
+                    )
+                    .setBufferedPosition(current.bufferedPositionMs.coerceAtLeast(0L))
+                    .build(),
+            )
+        }
+        if (published.isFailure) {
+            Log.w(NOW_PLAYING_TAG, "Unable to publish playback state", published.exceptionOrNull())
+            return
+        }
 
         lastPublishedPositionMs = current.positionMs
         lastPublishedDurationMs = current.durationMs
@@ -293,13 +311,26 @@ internal class AndroidPlayerNowPlayingController(
     private fun publishNotification() {
         if (!AppFeaturePolicy.mediaPlaybackForegroundServiceEnabled) return
         val currentMetadata = metadata ?: return
-        val notification = buildNotification(
-            context = appContext,
-            sessionToken = mediaSession.sessionToken,
-            metadata = currentMetadata,
-            snapshot = snapshot,
-            artwork = artworkNotificationIcon?.takeIf { !it.isRecycled },
-        )
+        val notification = runCatching {
+            buildNotification(
+                context = appContext,
+                sessionToken = mediaSession.sessionToken,
+                metadata = currentMetadata,
+                snapshot = snapshot,
+                artwork = artworkNotificationIcon?.takeIf { !it.isRecycled },
+            )
+        }.recoverCatching { error ->
+            Log.w(NOW_PLAYING_TAG, "Unable to publish artwork notification; retrying without artwork", error)
+            buildNotification(
+                context = appContext,
+                sessionToken = mediaSession.sessionToken,
+                metadata = currentMetadata,
+                snapshot = snapshot,
+                artwork = null,
+            )
+        }.onFailure { error ->
+            Log.w(NOW_PLAYING_TAG, "Unable to build playback notification", error)
+        }.getOrNull() ?: return
         PlayerNowPlayingService.publish(appContext, notification)
     }
 

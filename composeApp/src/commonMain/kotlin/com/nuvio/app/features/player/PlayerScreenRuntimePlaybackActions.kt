@@ -1,14 +1,31 @@
 package com.nuvio.app.features.player
 
+import co.touchlab.kermit.Logger
 import com.nuvio.app.features.tmdb.TmdbService
 import com.nuvio.app.features.trakt.TraktScrobbleRepository
 import com.nuvio.app.features.watchprogress.WatchProgressClock
 import com.nuvio.app.features.watchprogress.WatchProgressPlaybackSession
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.buildPlaybackVideoId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private val playbackSideEffectLog = Logger.withTag("PlayerRuntime")
+
+private inline fun runPlaybackSideEffectSafely(
+    operation: String,
+    block: () -> Unit,
+) {
+    try {
+        block()
+    } catch (error: CancellationException) {
+        throw error
+    } catch (error: Throwable) {
+        playbackSideEffectLog.e(error) { "Playback side effect failed: $operation" }
+    }
+}
 
 internal fun PlayerScreenRuntime.applyVideoZoomState(state: PlayerVideoZoomState) {
     val normalized = state.normalized()
@@ -150,20 +167,29 @@ internal fun PlayerScreenRuntime.emitTraktScrobbleStart() {
     scrobbleStartRequestGeneration = requestGeneration
 
     scope.launch {
-        val item = currentTraktScrobbleItem()
-        if (item == null) {
-            hasRequestedScrobbleStartForCurrentItem = false
-            return@launch
+        try {
+            val item = currentTraktScrobbleItem()
+            if (item == null) {
+                hasRequestedScrobbleStartForCurrentItem = false
+                return@launch
+            }
+            if (requestGeneration != scrobbleStartRequestGeneration || !hasRequestedScrobbleStartForCurrentItem) {
+                return@launch
+            }
+            currentTraktScrobbleItem = item
+            TraktScrobbleRepository.scrobbleStart(
+                profileId = profileId,
+                item = item,
+                progressPercent = currentPlaybackProgressPercent(),
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            if (requestGeneration == scrobbleStartRequestGeneration) {
+                hasRequestedScrobbleStartForCurrentItem = false
+            }
+            playbackSideEffectLog.e(error) { "Trakt scrobble start failed" }
         }
-        if (requestGeneration != scrobbleStartRequestGeneration || !hasRequestedScrobbleStartForCurrentItem) {
-            return@launch
-        }
-        currentTraktScrobbleItem = item
-        TraktScrobbleRepository.scrobbleStart(
-            profileId = profileId,
-            item = item,
-            progressPercent = currentPlaybackProgressPercent(),
-        )
     }
 }
 
@@ -175,12 +201,18 @@ internal fun PlayerScreenRuntime.emitTraktScrobbleStop(progressPercent: Float? =
     val itemSnapshot = currentTraktScrobbleItem
     val inputsSnapshot = snapshotTraktScrobbleItemInputs()
     scope.launch(NonCancellable) {
-        val item = itemSnapshot ?: inputsSnapshot.buildItem() ?: return@launch
-        TraktScrobbleRepository.scrobbleStop(
-            profileId = profileId,
-            item = item,
-            progressPercent = percent,
-        )
+        try {
+            val item = itemSnapshot ?: inputsSnapshot.buildItem() ?: return@launch
+            TraktScrobbleRepository.scrobbleStop(
+                profileId = profileId,
+                item = item,
+                progressPercent = percent,
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            playbackSideEffectLog.e(error) { "Trakt scrobble stop failed" }
+        }
     }
     currentTraktScrobbleItem = null
     hasRequestedScrobbleStartForCurrentItem = false
@@ -221,11 +253,15 @@ internal suspend fun PlayerScreenRuntime.resolveParentalGuideImdbId(): String? {
 }
 
 internal fun PlayerScreenRuntime.flushWatchProgress() {
-    emitStopScrobbleForCurrentProgress()
-    WatchProgressRepository.flushPlaybackProgress(
-        session = playbackSession,
-        snapshot = playbackSnapshot,
-    )
+    runPlaybackSideEffectSafely("Trakt scrobble stop") {
+        emitStopScrobbleForCurrentProgress()
+    }
+    runPlaybackSideEffectSafely("watch progress flush") {
+        WatchProgressRepository.flushPlaybackProgress(
+            session = playbackSession,
+            snapshot = playbackSnapshot,
+        )
+    }
 }
 
 internal fun PlayerScreenRuntime.scheduleProgressSyncAfterSeek() {
@@ -233,20 +269,22 @@ internal fun PlayerScreenRuntime.scheduleProgressSyncAfterSeek() {
     seekProgressSyncJob?.cancel()
     seekProgressSyncJob = scope.launch {
         delay(PlayerSeekProgressSyncDebounceMs)
-        WatchProgressRepository.upsertPlaybackProgress(
-            session = playbackSession,
-            snapshot = playbackSnapshot,
-        )
+        runPlaybackSideEffectSafely("seek progress sync") {
+            WatchProgressRepository.upsertPlaybackProgress(
+                session = playbackSession,
+                snapshot = playbackSnapshot,
+            )
 
-        val progressPercent = currentPlaybackProgressPercent()
-        if (progressPercent >= 1f && progressPercent < 80f) {
-            emitTraktScrobbleStop(progressPercent)
-            val shouldRestartScrobbleNow = shouldRestartScrobbleAfterSeek && shouldPlay
-            if (shouldRestartScrobbleNow && playbackSnapshot.isPlaying) {
-                pendingScrobbleStartAfterSeek = false
-                emitTraktScrobbleStart()
-            } else if (shouldRestartScrobbleNow) {
-                pendingScrobbleStartAfterSeek = true
+            val progressPercent = currentPlaybackProgressPercent()
+            if (progressPercent >= 1f && progressPercent < 80f) {
+                emitTraktScrobbleStop(progressPercent)
+                val shouldRestartScrobbleNow = shouldRestartScrobbleAfterSeek && shouldPlay
+                if (shouldRestartScrobbleNow && playbackSnapshot.isPlaying) {
+                    pendingScrobbleStartAfterSeek = false
+                    emitTraktScrobbleStart()
+                } else if (shouldRestartScrobbleNow) {
+                    pendingScrobbleStartAfterSeek = true
+                }
             }
         }
     }
@@ -256,9 +294,11 @@ internal fun PlayerScreenRuntime.persistPlaybackProgressTick() {
     val now = WatchProgressClock.nowEpochMs()
     if (now - lastProgressPersistEpochMs < PlaybackProgressPersistIntervalMs) return
     lastProgressPersistEpochMs = now
-    WatchProgressRepository.upsertPlaybackProgress(
-        session = playbackSession,
-        snapshot = playbackSnapshot,
-        syncRemote = false,
-    )
+    runPlaybackSideEffectSafely("playback progress tick") {
+        WatchProgressRepository.upsertPlaybackProgress(
+            session = playbackSession,
+            snapshot = playbackSnapshot,
+            syncRemote = false,
+        )
+    }
 }

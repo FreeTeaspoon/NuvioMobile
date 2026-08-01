@@ -227,6 +227,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
 
     var onErrorChanged: (String?) -> Unit = {}
 
+    @Volatile
     private var isMpvInitialized = false
     private var surface: Surface? = null
     private var activeRequest: MpvPlaybackRequest? = null
@@ -273,6 +274,7 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
             }
             setPaused(isPaused)
         } catch (e: Throwable) {
+            isMpvInitialized = false
             Log.e(TAG, "Failed to initialize MPV", e)
             setPlaybackError("MPV initialization failed: ${e.message}")
         }
@@ -487,38 +489,44 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
         if (!isMpvInitialized) {
             return PlayerPlaybackSnapshot(isLoading = true)
         }
-        val durationSeconds = MPVLib.getPropertyDouble("duration/full")
-            ?: MPVLib.getPropertyDouble("duration")
-            ?: 0.0
-        val positionSeconds = MPVLib.getPropertyDouble("time-pos") ?: 0.0
-        val cachedSeconds = MPVLib.getPropertyDouble("demuxer-cache-time") ?: 0.0
-        val bufferedPositionMs = resolveMpvBufferedPositionMs(
-            positionSeconds = positionSeconds,
-            durationSeconds = durationSeconds,
-            cacheTimeSeconds = cachedSeconds,
-            seekableRanges = readMpvSeekableCacheRanges(),
-        )
-        val speed = MPVLib.getPropertyDouble("speed") ?: 1.0
-        val paused = MPVLib.getPropertyBoolean("pause") ?: isPaused
-        val pausedForCache = MPVLib.getPropertyBoolean("paused-for-cache") ?: false
-        val eofReached = MPVLib.getPropertyBoolean("eof-reached") ?: false
-        val idle = MPVLib.getPropertyBoolean("core-idle") ?: false
-        val seeking = MPVLib.getPropertyBoolean("seeking") ?: false
-        val activelyPlaying = !paused && !pausedForCache && !idle && !eofReached
-        val loading = pausedForCache ||
-            seeking ||
-            isSeekFramePending ||
-            !hasRenderedFrameForCurrentRequest
+        return runCatching {
+            val durationSeconds = MPVLib.getPropertyDouble("duration/full")
+                ?: MPVLib.getPropertyDouble("duration")
+                ?: 0.0
+            val positionSeconds = MPVLib.getPropertyDouble("time-pos") ?: 0.0
+            val cachedSeconds = MPVLib.getPropertyDouble("demuxer-cache-time") ?: 0.0
+            val bufferedPositionMs = resolveMpvBufferedPositionMs(
+                positionSeconds = positionSeconds,
+                durationSeconds = durationSeconds,
+                cacheTimeSeconds = cachedSeconds,
+                seekableRanges = readMpvSeekableCacheRanges(),
+            )
+            val speed = MPVLib.getPropertyDouble("speed") ?: 1.0
+            val paused = MPVLib.getPropertyBoolean("pause") ?: isPaused
+            val pausedForCache = MPVLib.getPropertyBoolean("paused-for-cache") ?: false
+            val eofReached = MPVLib.getPropertyBoolean("eof-reached") ?: false
+            val idle = MPVLib.getPropertyBoolean("core-idle") ?: false
+            val seeking = MPVLib.getPropertyBoolean("seeking") ?: false
+            val activelyPlaying = !paused && !pausedForCache && !idle && !eofReached
+            val loading = pausedForCache ||
+                seeking ||
+                isSeekFramePending ||
+                !hasRenderedFrameForCurrentRequest
 
-        return PlayerPlaybackSnapshot(
-            isLoading = loading,
-            isPlaying = activelyPlaying,
-            isEnded = eofReached,
-            durationMs = (durationSeconds.coerceAtLeast(0.0) * 1000.0).toLong(),
-            positionMs = (positionSeconds.coerceAtLeast(0.0) * 1000.0).toLong(),
-            bufferedPositionMs = bufferedPositionMs,
-            playbackSpeed = speed.toFloat().takeIf { it > 0f } ?: 1f,
-        )
+            PlayerPlaybackSnapshot(
+                isLoading = loading,
+                isPlaying = activelyPlaying,
+                isEnded = eofReached,
+                durationMs = (durationSeconds.coerceAtLeast(0.0) * 1000.0).toLong(),
+                positionMs = (positionSeconds.coerceAtLeast(0.0) * 1000.0).toLong(),
+                bufferedPositionMs = bufferedPositionMs,
+                playbackSpeed = speed.toFloat().takeIf { it > 0f } ?: 1f,
+            )
+        }.getOrElse { error ->
+            isMpvInitialized = false
+            Log.w(TAG, "MPV snapshot failed; treating the player as unavailable", error)
+            PlayerPlaybackSnapshot(isLoading = true)
+        }
     }
 
     fun errorMessage(): String? =
@@ -526,11 +534,11 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
 
     fun destroyPlayer() {
         if (!isMpvInitialized) return
+        isMpvInitialized = false
         runCatching { MPVLib.removeObserver(this) }
         runCatching { MPVLib.removeLogObserver(this) }
         runCatching { MPVLib.detachSurface() }
         runCatching { MPVLib.destroy() }
-        isMpvInitialized = false
     }
 
     private fun readMpvSeekableCacheRanges(): List<MpvSeekableCacheRange> {
@@ -944,39 +952,54 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     }
 
     override fun eventProperty(property: String) {
-        if (property == "track-list") {
-            Log.d(TAG, "Track list changed")
+        post {
+            if (isMpvInitialized && property == "track-list") {
+                Log.d(TAG, "Track list changed")
+            }
         }
     }
 
     override fun eventProperty(property: String, value: Long) = Unit
 
     override fun eventProperty(property: String, value: Double) {
-        if (property == "time-pos" && value > 0.0) {
-            clearPlaybackError()
-            return
-        }
-        if ((property == "duration/full" || property == "duration") && value > 0.0) {
-            clearPlaybackError()
+        post {
+            if (!isMpvInitialized) return@post
+            if (property == "time-pos" && value > 0.0) {
+                clearPlaybackError()
+                return@post
+            }
+            if ((property == "duration/full" || property == "duration") && value > 0.0) {
+                clearPlaybackError()
+            }
         }
     }
 
     override fun eventProperty(property: String, value: Boolean) {
-        when (property) {
-            "paused-for-cache" -> isPlayerLoading = value
-            "seeking" -> {
-                isPlayerLoading = value
-                if (value) {
-                    isSeekFramePending = true
+        post {
+            if (!isMpvInitialized) return@post
+            when (property) {
+                "paused-for-cache" -> isPlayerLoading = value
+                "seeking" -> {
+                    isPlayerLoading = value
+                    if (value) {
+                        isSeekFramePending = true
+                    }
                 }
+                "eof-reached" -> if (value) isPlayerLoading = false
             }
-            "eof-reached" -> if (value) isPlayerLoading = false
         }
     }
 
     override fun eventProperty(property: String, value: String) = Unit
 
     override fun event(eventId: Int) {
+        post {
+            if (!isMpvInitialized) return@post
+            handleEvent(eventId)
+        }
+    }
+
+    private fun handleEvent(eventId: Int) {
         val mpvEventEndFile = 7
         val mpvEventFileLoaded = 8
         val mpvEventLogMessage = 2
@@ -1014,7 +1037,11 @@ private class AndroidMpvPlayerView @JvmOverloads constructor(
     }
 
     override fun logMessage(prefix: String, level: Int, text: String) {
-        appendPlaybackLog(prefix, level, text)
+        post {
+            if (isMpvInitialized) {
+                appendPlaybackLog(prefix, level, text)
+            }
+        }
     }
 }
 
