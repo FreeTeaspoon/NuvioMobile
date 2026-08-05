@@ -10,12 +10,14 @@ internal fun playbackMediaItemFromUrl(
     url: String,
     responseHeaders: Map<String, String> = emptyMap(),
     streamType: String? = null,
+    sourceFilename: String? = null,
 ): MediaItem {
     val builder = MediaItem.Builder().setUri(url)
     inferPlaybackMimeType(
         url = url,
         responseHeaders = responseHeaders,
         streamType = streamType,
+        sourceFilename = sourceFilename,
     )?.let(builder::setMimeType)
     return builder.build()
 }
@@ -24,9 +26,11 @@ internal fun inferPlaybackMimeType(
     url: String,
     responseHeaders: Map<String, String>,
     streamType: String?,
+    sourceFilename: String? = null,
 ): String? =
     inferMimeTypeFromStreamType(streamType)
         ?: inferMimeTypeFromResponseHeaders(responseHeaders)
+        ?: inferMimeTypeFromPath(sourceFilename)
         ?: inferMimeTypeFromPath(url)
 
 private fun inferMimeTypeFromStreamType(streamType: String?): String? {

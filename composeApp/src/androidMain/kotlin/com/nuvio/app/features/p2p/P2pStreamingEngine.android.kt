@@ -178,6 +178,7 @@ actual object P2pStreamingEngine {
             val magnetUri = buildP2pMagnetUri(
                 request.infoHash,
                 (DEFAULT_TRACKERS + request.trackers).distinct(),
+                request.magnetUri,
             )
             logPhase(requestSequence, startedAtMs, phase.get())
 

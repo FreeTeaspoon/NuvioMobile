@@ -28,6 +28,8 @@ actual fun PlatformPlayerSurface(
     sourceResponseHeaders: Map<String, String>,
     externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle>,
     streamType: String?,
+    sourceFilename: String?,
+    sourceVideoSize: Long?,
     useYoutubeChunkedPlayback: Boolean,
     modifier: Modifier,
     playWhenReady: Boolean,
@@ -50,6 +52,8 @@ actual fun PlatformPlayerSurface(
         sanitizePlaybackHeaders(sourceHeaders),
         sanitizePlaybackResponseHeaders(sourceResponseHeaders),
         streamType.orEmpty(),
+        sourceFilename.orEmpty(),
+        sourceVideoSize ?: 0L,
         useYoutubeChunkedPlayback,
         initialPositionRequestKey.orEmpty(),
     )
@@ -59,10 +63,11 @@ actual fun PlatformPlayerSurface(
         mutableStateOf(PlayerPlaybackSnapshot())
     }
 
-    val preferMpvForSource = remember(sourceUrl, sourceResponseHeaders) {
+    val preferMpvForSource = remember(sourceUrl, sourceResponseHeaders, sourceFilename) {
         shouldPreferMpvForPlaybackSource(
             sourceUrl = sourceUrl,
             responseHeaders = sourceResponseHeaders,
+            sourceFilename = sourceFilename,
         )
     }
     val useMpv = playerSettings.androidPlaybackEngine == AndroidPlaybackEngine.Libmpv ||
@@ -108,6 +113,8 @@ actual fun PlatformPlayerSurface(
             sourceResponseHeaders = sourceResponseHeaders,
             externalSubtitles = externalSubtitles,
             streamType = streamType,
+            sourceFilename = sourceFilename,
+            sourceVideoSize = sourceVideoSize,
             useYoutubeChunkedPlayback = useYoutubeChunkedPlayback,
             modifier = modifier,
             playWhenReady = playWhenReady,
@@ -127,6 +134,7 @@ actual fun PlatformPlayerSurface(
                     shouldTreatMedia3VarintFailureAsEnded(
                         sourceUrl = sourceUrl,
                         responseHeaders = sourceResponseHeaders,
+                        sourceFilename = sourceFilename,
                         errorMessage = message,
                         snapshot = latestMedia3Snapshot,
                     )

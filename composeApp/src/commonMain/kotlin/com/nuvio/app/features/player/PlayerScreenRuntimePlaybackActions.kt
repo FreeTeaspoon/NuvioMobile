@@ -37,6 +37,7 @@ internal fun PlayerScreenRuntime.openVideoZoomModal() {
     showVideoZoomModal = true
     showAudioModal = false
     showSubtitleModal = false
+    showSpeedModal = false
     showVideoSettingsModal = false
     controlsVisible = true
 }
