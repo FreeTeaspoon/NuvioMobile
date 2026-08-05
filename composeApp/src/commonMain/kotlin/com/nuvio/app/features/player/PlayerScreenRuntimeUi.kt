@@ -173,8 +173,10 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
                 sourceAudioUrl = activeSourceAudioUrl,
                 sourceHeaders = activeSourceHeaders,
                 sourceResponseHeaders = activeSourceResponseHeaders,
-                externalSubtitles = externalSubtitles,
+                externalSubtitles = activeExternalSubtitles,
                 streamType = activeStreamType,
+                sourceFilename = activeSourceFilename,
+                sourceVideoSize = activeSourceVideoSize,
                 modifier = Modifier.fillMaxSize(),
                 playWhenReady = shouldPlay,
                 initialPositionMs = activeInitialPositionMs.takeIf { it > 0L },
@@ -294,13 +296,15 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             onSeekBack = { seekBy(-10_000L) },
             onSeekForward = { seekBy(10_000L) },
             onVideoZoomClick = { openVideoZoomModal() },
-            onSpeedClick = { cyclePlaybackSpeed() },
+            onSpeedClick = { openSpeedModal() },
             onSubtitleClick = {
                 refreshTracks()
+                showSpeedModal = false
                 showSubtitleModal = true
             },
             onAudioClick = {
                 refreshTracks()
+                showSpeedModal = false
                 showAudioModal = true
             },
             onVideoSettingsClick = if (isIos) {
@@ -612,5 +616,18 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
             submitIntroSegmentType = "intro"
             showSubmitIntroModal = false
         },
+    )
+
+    PlaybackSpeedModal(
+        visible = showSpeedModal,
+        currentSpeed = playbackSnapshot.playbackSpeed,
+        onSpeedSelected = { speed ->
+            selectPlaybackSpeed(speed)
+            scope.launch {
+                kotlinx.coroutines.delay(200)
+                showSpeedModal = false
+            }
+        },
+        onDismiss = { showSpeedModal = false },
     )
 }

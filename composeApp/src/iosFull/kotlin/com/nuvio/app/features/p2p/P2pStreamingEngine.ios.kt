@@ -146,6 +146,7 @@ actual object P2pStreamingEngine {
             val magnet = buildP2pMagnetUri(
                 request.infoHash,
                 (DefaultTrackers + request.trackers).distinct(),
+                request.magnetUri,
             )
             phase = "ensure_engine"
             val activeEngine = ensureEngine()

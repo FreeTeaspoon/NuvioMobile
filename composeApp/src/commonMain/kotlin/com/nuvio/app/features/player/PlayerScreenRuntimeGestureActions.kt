@@ -65,6 +65,7 @@ internal fun PlayerScreenRuntime.lockPlayerControls() {
     renderedGestureFeedback = null
     showAudioModal = false
     showSubtitleModal = false
+    showSpeedModal = false
     showVideoSettingsModal = false
     showSourcesPanel = false
     showEpisodesPanel = false
@@ -223,12 +224,18 @@ internal fun PlayerScreenRuntime.cycleResizeMode() {
     controlsVisible = true
 }
 
-internal fun PlayerScreenRuntime.cyclePlaybackSpeed() {
-    val speeds = listOf(1f, 1.25f, 1.5f, 2f)
-    val current = playbackSnapshot.playbackSpeed
-    val next = speeds.firstOrNull { it > current + 0.01f } ?: speeds.first()
-    playerController?.setPlaybackSpeed(next)
-    showGestureMessage(formatPlaybackSpeedLabel(next))
+internal fun PlayerScreenRuntime.openSpeedModal() {
+    showSpeedModal = true
+    showAudioModal = false
+    showSubtitleModal = false
+    showVideoZoomModal = false
+    controlsVisible = true
+}
+
+internal fun PlayerScreenRuntime.selectPlaybackSpeed(speed: Float) {
+    val normalized = speed.coerceIn(0.25f, 4f)
+    playerController?.setPlaybackSpeed(normalized)
+    showGestureMessage(formatPlaybackSpeedLabel(normalized))
     controlsVisible = true
 }
 
