@@ -39,7 +39,7 @@ object WatchingActions {
         val isCurrentlyWatched = WatchedRepository.isWatched(
             id = preview.id,
             type = preview.type,
-        )
+        ) || WatchedRepository.isFullyWatchedSeries(id = preview.id, type = preview.type)
         val meta = MetaDetailsRepository.fetch(type = preview.type, id = preview.id)
         if (meta == null) {
             if (isCurrentlyWatched) {
