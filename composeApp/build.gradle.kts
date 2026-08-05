@@ -51,9 +51,6 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     @get:Input
     abstract val sentryEnvironment: Property<String>
 
-    @get:Input
-    abstract val realtimeSyncEnabled: Property<Boolean>
-
     @TaskAction
     fun generate() {
         val props = Properties()
@@ -89,19 +86,6 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
             )
         }
 
-        outDir.resolve("com/nuvio/app/core/sync").apply {
-            mkdirs()
-            resolve("RealtimeSyncConfig.kt").writeText(
-                """
-                |package com.nuvio.app.core.sync
-                |
-                |object RealtimeSyncConfig {
-                |    const val ENABLED = ${realtimeSyncEnabled.get()}
-                |}
-                """.trimMargin()
-            )
-        }
-
         outDir.resolve("com/nuvio/app/features/tmdb/TmdbConfig.kt").delete()
 
         outDir.resolve("com/nuvio/app/features/trakt").apply {
@@ -114,6 +98,21 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |    const val CLIENT_ID = "${props.getProperty("TRAKT_CLIENT_ID", "")}" 
                 |    const val CLIENT_SECRET = "${props.getProperty("TRAKT_CLIENT_SECRET", "")}" 
                 |    const val REDIRECT_URI = "${props.getProperty("TRAKT_REDIRECT_URI", "nuvio://auth/trakt")}" 
+                |}
+                """.trimMargin()
+            )
+        }
+
+        outDir.resolve("com/nuvio/app/features/simkl").apply {
+            mkdirs()
+            resolve("SimklConfig.kt").writeText(
+                """
+                |package com.nuvio.app.features.simkl
+                |
+                |object SimklConfig {
+                |    const val CLIENT_ID = "${props.getProperty("SIMKL_CLIENT_ID", "")}"
+                |    const val REDIRECT_URI = "${props.getProperty("SIMKL_REDIRECT_URI", "nuvio://auth/simkl")}"
+                |    const val APP_NAME = "${props.getProperty("SIMKL_APP_NAME", "nuvio")}"
                 |}
                 """.trimMargin()
             )
@@ -364,7 +363,6 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
             else -> "production"
         }
     )
-    realtimeSyncEnabled.set(runtimeConfigBoolean("NUVIO_REALTIME_SYNC_ENABLED", true))
 }
 
 val isMacHost = System.getProperty("os.name").contains("mac", ignoreCase = true)
@@ -760,6 +758,10 @@ kotlin {
                     defFile(project.file("src/nativeInterop/cinterop/commoncrypto.def"))
                     compilerOpts("-I${project.projectDir}/src/nativeInterop/cinterop")
                 }
+                create("appicon") {
+                    defFile(project.file("src/nativeInterop/cinterop/appicon.def"))
+                    compilerOpts("-I${project.projectDir}/src/nativeInterop/cinterop")
+                }
                 if (iosDistribution == "full") {
                     check(nuvioEngineSliceDirectory.resolve("libCNuvioEngine.a").isFile) {
                         "Build the local Nuvio Engine Apple XCFramework before compiling iOS Full."
@@ -866,6 +868,9 @@ kotlin {
             implementation("io.coil-kt.coil3:coil-network-ktor3:${libs.versions.coil.get()}") {
                 exclude(group = "org.jetbrains.skiko", module = "skiko")
             }
+            implementation("io.coil-kt.coil3:coil-network-cache-control:${libs.versions.coil.get()}") {
+                exclude(group = "org.jetbrains.skiko", module = "skiko")
+            }
             implementation("io.coil-kt.coil3:coil-svg:${libs.versions.coil.get()}") {
                 exclude(group = "org.jetbrains.skiko", module = "skiko")
             }
@@ -889,7 +894,6 @@ kotlin {
             implementation(libs.supabase.postgrest)
             implementation(libs.supabase.auth)
             implementation(libs.supabase.functions)
-            implementation(libs.supabase.realtime)
             implementation(libs.reorderable)
         }
         commonTest.dependencies {

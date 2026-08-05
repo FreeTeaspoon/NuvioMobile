@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.build.AppFeaturePolicy
+import com.nuvio.app.core.time.EpisodeReleaseDatePlatform
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.collection.CollectionSyncService
 import com.nuvio.app.features.home.HomeCatalogSettingsSyncService
@@ -11,12 +12,12 @@ import com.nuvio.app.features.library.LibrarySourceMode
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.plugins.PluginRepository
 import com.nuvio.app.features.profiles.ProfileRepository
-import com.nuvio.app.features.trakt.TraktAuthRepository
 import com.nuvio.app.features.trakt.TraktCredentialSync
-import com.nuvio.app.features.trakt.TraktPlatformClock
-import com.nuvio.app.features.trakt.TraktSettingsRepository
-import com.nuvio.app.features.trakt.effectiveLibrarySourceMode
-import com.nuvio.app.features.trakt.shouldUseTraktProgress
+import com.nuvio.app.features.tracking.TrackingProviderRegistry
+import com.nuvio.app.features.tracking.TrackingSettingsRepository
+import com.nuvio.app.features.tracking.WatchProgressSource
+import com.nuvio.app.features.tracking.effectiveLibrarySourceMode
+import com.nuvio.app.features.tracking.effectiveWatchProgressSource
 import com.nuvio.app.features.watchprogress.WatchProgressSourceCoordinator
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
@@ -62,6 +63,28 @@ internal data class ProfileSyncResult(
 ) {
     val succeeded: Boolean
         get() = failedSteps.isEmpty()
+}
+
+internal data class ProfilePullFreshness(
+    val profileId: Int? = null,
+    val completedAtEpochMs: Long = 0L,
+) {
+    fun isRecent(profileId: Int, nowEpochMs: Long, minIntervalMs: Long): Boolean =
+        this.profileId == profileId && nowEpochMs - completedAtEpochMs < minIntervalMs
+
+    fun recordIfSuccessful(
+        profileId: Int,
+        completedAtEpochMs: Long,
+        result: ProfileSyncResult,
+    ): ProfilePullFreshness =
+        if (result.succeeded) {
+            ProfilePullFreshness(
+                profileId = profileId,
+                completedAtEpochMs = completedAtEpochMs,
+            )
+        } else {
+            this
+        }
 }
 
 internal suspend fun runOrderedProfileSync(
@@ -129,21 +152,13 @@ internal enum class ProfileSyncRequestResult {
 }
 
 internal class ProfileSyncRequestGate {
-    private data class PendingRequest(
-        val scope: CoroutineScope,
-        val profileId: Int,
-        val block: suspend () -> Unit,
-    )
-
     private val lock = SynchronizedObject()
     private var activeProfileId: Int? = null
     private var activeJob: Job? = null
-    private var pendingRequest: PendingRequest? = null
 
     fun launch(
         scope: CoroutineScope,
         profileId: Int,
-        queueIfCoalesced: Boolean = false,
         block: suspend () -> Unit,
     ): ProfileSyncRequestResult {
         lateinit var newJob: Job
@@ -151,14 +166,10 @@ internal class ProfileSyncRequestGate {
         val result = synchronized(lock) {
             val active = activeJob?.takeUnless(Job::isCompleted)
             if (active != null && activeProfileId == profileId) {
-                if (queueIfCoalesced) {
-                    pendingRequest = PendingRequest(scope = scope, profileId = profileId, block = block)
-                }
                 return ProfileSyncRequestResult.Coalesced
             }
 
             previousJob = active
-            pendingRequest = null
             val requestResult = if (active == null) {
                 ProfileSyncRequestResult.Started
             } else {
@@ -171,22 +182,11 @@ internal class ProfileSyncRequestGate {
             activeProfileId = profileId
             activeJob = newJob
             newJob.invokeOnCompletion {
-                var pending: PendingRequest? = null
                 synchronized(lock) {
                     if (activeJob === newJob) {
                         activeJob = null
                         activeProfileId = null
-                        pending = pendingRequest
-                        pendingRequest = null
                     }
-                }
-                pending?.let { request ->
-                    launch(
-                        scope = request.scope,
-                        profileId = request.profileId,
-                        queueIfCoalesced = false,
-                        block = request.block,
-                    )
                 }
             }
             requestResult
@@ -202,7 +202,6 @@ internal class ProfileSyncRequestGate {
             activeJob.also {
                 activeJob = null
                 activeProfileId = null
-                pendingRequest = null
             }
         }
         job?.cancel()
@@ -220,8 +219,7 @@ object SyncManager {
     private var foregroundPullProfileId: Int? = null
     private var periodicNuvioSyncPullJob: Job? = null
     private var periodicNuvioSyncProfileId: Int? = null
-    private var lastFullPullAtMs: Long = 0L
-    private var lastFullPullProfileId: Int? = null
+    private var pullFreshness = ProfilePullFreshness()
 
     private val profileSyncOperations = ProfileSyncOperations(
         pullAddons = { profileId -> AddonRepository.pullFromServer(profileId) },
@@ -260,8 +258,7 @@ object SyncManager {
             foregroundPullJob.also {
                 foregroundPullJob = null
                 foregroundPullProfileId = null
-                lastFullPullAtMs = 0L
-                lastFullPullProfileId = null
+                pullFreshness = ProfilePullFreshness()
             }
         }
         foregroundJob?.cancel()
@@ -317,8 +314,11 @@ object SyncManager {
 
     private fun hasRecentFullPull(profileId: Int): Boolean =
         synchronized(pullStateLock) {
-            lastFullPullProfileId == profileId &&
-                TraktPlatformClock.nowEpochMs() - lastFullPullAtMs < FOREGROUND_PULL_MIN_INTERVAL_MS
+            pullFreshness.isRecent(
+                profileId = profileId,
+                nowEpochMs = EpisodeReleaseDatePlatform.nowEpochMs(),
+                minIntervalMs = FOREGROUND_PULL_MIN_INTERVAL_MS,
+            )
         }
 
     private suspend fun pullForegroundForProfile(profileId: Int) {
@@ -326,38 +326,24 @@ object SyncManager {
 
         runCatching { ProfileRepository.pullProfiles() }
             .onFailure { log.e(it) { "Foreground profiles pull failed" } }
-        runCatching { ProfileSettingsSync.pull(profileId) }
-            .onFailure { log.e(it) { "Foreground profile settings pull failed" } }
-        runCatching { TraktCredentialSync.pullFromRemoteOrThrow(profileId) }
-            .onFailure { log.e(it) { "Foreground Trakt credentials pull failed" } }
-
-        coroutineScope {
-            launch {
-                runCatching { AddonRepository.pullFromServer(profileId) }
-                    .onFailure { log.e(it) { "Foreground addons pull failed" } }
-            }
-            if (AppFeaturePolicy.pluginsEnabled) {
-                launch {
-                    runCatching { PluginRepository.pullFromServer(profileId) }
-                        .onFailure { log.e(it) { "Foreground plugins pull failed" } }
-                }
-            }
-            launch {
-                runCatching { LibraryRepository.pullFromServer(profileId) }
-                    .onFailure { log.e(it) { "Foreground library pull failed" } }
-            }
-            launch {
-                runCatching {
-                    WatchProgressSourceCoordinator.refreshActiveSource(profileId = profileId, force = true)
-                }.onFailure { log.e(it) { "Foreground active watch source pull failed" } }
-            }
-            launch {
-                runCatching { CollectionSyncService.pullFromServer(profileId) }
-                    .onFailure { log.e(it) { "Foreground collections pull failed" } }
-            }
-            launch {
-                runCatching { HomeCatalogSettingsSyncService.pullFromServer(profileId) }
-                    .onFailure { log.e(it) { "Foreground home catalog settings pull failed" } }
+        val syncResult = runOrderedProfileSync(
+            profileId = profileId,
+            pluginsEnabled = AppFeaturePolicy.pluginsEnabled,
+            operations = profileSyncOperations,
+            onFailure = { step, error ->
+                log.e(error) { "Foreground profile sync step failed profile=$profileId step=$step" }
+            },
+        )
+        synchronized(pullStateLock) {
+            pullFreshness = pullFreshness.recordIfSuccessful(
+                profileId = profileId,
+                completedAtEpochMs = EpisodeReleaseDatePlatform.nowEpochMs(),
+                result = syncResult,
+            )
+        }
+        if (!syncResult.succeeded) {
+            log.w {
+                "Foreground profile sync incomplete profile=$profileId failedSteps=${syncResult.failedSteps}"
             }
         }
 
@@ -367,7 +353,6 @@ object SyncManager {
     private fun startFullProfilePull(
         profileId: Int,
         reason: String,
-        queueIfCoalesced: Boolean = false,
     ) {
         val authState = AuthRepository.state.value
         if (authState !is AuthState.Authenticated || authState.isAnonymous) return
@@ -376,7 +361,6 @@ object SyncManager {
         val result = fullSyncRequestGate.launch(
             scope = accountScopeSnapshot(),
             profileId = profileId,
-            queueIfCoalesced = queueIfCoalesced,
         ) {
             val currentAuthState = AuthRepository.state.value
             if (currentAuthState !is AuthState.Authenticated || currentAuthState.isAnonymous) return@launch
@@ -396,12 +380,14 @@ object SyncManager {
             } finally {
                 WatchProgressSourceCoordinator.resumeAutomaticTransitions()
             }
-            if (syncResult.succeeded) {
-                synchronized(pullStateLock) {
-                    lastFullPullAtMs = TraktPlatformClock.nowEpochMs()
-                    lastFullPullProfileId = profileId
-                }
-            } else {
+            synchronized(pullStateLock) {
+                pullFreshness = pullFreshness.recordIfSuccessful(
+                    profileId = profileId,
+                    completedAtEpochMs = EpisodeReleaseDatePlatform.nowEpochMs(),
+                    result = syncResult,
+                )
+            }
+            if (!syncResult.succeeded) {
                 log.w {
                     "Full profile sync incomplete profile=$profileId reason=$reason " +
                         "failedSteps=${syncResult.failedSteps}"
@@ -443,19 +429,18 @@ object SyncManager {
                     continue
                 }
 
-                TraktAuthRepository.ensureLoaded(profileId)
-                TraktSettingsRepository.ensureLoaded()
+                TrackingProviderRegistry.ensureLoaded()
+                TrackingSettingsRepository.ensureLoaded()
 
-                val traktAuthenticated = TraktAuthRepository.isAuthenticated.value
-                val settings = TraktSettingsRepository.uiState.value
+                val settings = TrackingSettingsRepository.uiState.value
                 val shouldPullLibrary = effectiveLibrarySourceMode(
-                    isAuthenticated = traktAuthenticated,
-                    source = settings.librarySourceMode,
+                    requestedSource = settings.librarySourceMode,
+                    isProviderAuthenticated = TrackingProviderRegistry::isAuthenticated,
                 ) == LibrarySourceMode.LOCAL
-                val shouldPullWatchProgress = !shouldUseTraktProgress(
-                    isAuthenticated = traktAuthenticated,
-                    source = settings.watchProgressSource,
-                )
+                val shouldPullWatchProgress = effectiveWatchProgressSource(
+                    requestedSource = settings.watchProgressSource,
+                    isProviderAuthenticated = TrackingProviderRegistry::isAuthenticated,
+                ) == WatchProgressSource.NUVIO_SYNC
 
                 if (!shouldPullLibrary && !shouldPullWatchProgress) {
                     continue
