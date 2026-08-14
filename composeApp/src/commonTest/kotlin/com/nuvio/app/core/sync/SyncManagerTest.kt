@@ -14,6 +14,7 @@ class SyncManagerTest {
     fun `source prerequisites finish before source dependent pulls`() = runBlocking {
         val events = mutableListOf<String>()
         var profileSettingsApplied = false
+        var credentialsApplied = false
 
         runOrderedProfileSync(
             profileId = 7,
@@ -28,14 +29,22 @@ class SyncManagerTest {
                     events += "settings:end"
                 },
                 pullTraktCredentials = {
+                    assertTrue(profileSettingsApplied)
                     events += "trakt-credentials"
+                },
+                syncProviderCredentials = {
+                    assertTrue(profileSettingsApplied)
+                    credentialsApplied = true
+                    events += "credentials"
                 },
                 pullLibrary = {
                     assertTrue(profileSettingsApplied)
+                    assertTrue(credentialsApplied)
                     events += "library"
                 },
                 refreshActiveWatchSource = {
                     assertTrue(profileSettingsApplied)
+                    assertTrue(credentialsApplied)
                     events += "active-watch-source"
                 },
                 pullCollections = { events += "collections" },
@@ -47,6 +56,7 @@ class SyncManagerTest {
         val lastPrerequisite = maxOf(
             events.indexOf("settings:end"),
             events.indexOf("trakt-credentials"),
+            events.indexOf("credentials"),
         )
         assertTrue(events.indexOf("library") > lastPrerequisite)
         assertTrue(events.indexOf("active-watch-source") > lastPrerequisite)
@@ -66,6 +76,8 @@ class SyncManagerTest {
 
         assertTrue("plugins" !in events)
         assertTrue(events.indexOf("settings") < events.indexOf("library"))
+        assertTrue(events.indexOf("trakt-credentials") < events.indexOf("library"))
+        assertTrue(events.indexOf("credentials") < events.indexOf("library"))
         assertTrue(events.indexOf("settings") < events.indexOf("active-watch-source"))
     }
 
@@ -176,6 +188,7 @@ class SyncManagerTest {
             pullPlugins = { events += "plugins" },
             pullProfileSettings = { events += "settings" },
             pullTraktCredentials = { events += "trakt-credentials" },
+            syncProviderCredentials = { events += "credentials" },
             pullLibrary = { events += "library" },
             refreshActiveWatchSource = { events += "active-watch-source" },
             pullCollections = { events += "collections" },

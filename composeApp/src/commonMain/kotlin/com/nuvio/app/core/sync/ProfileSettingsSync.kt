@@ -111,6 +111,7 @@ object ProfileSettingsSync {
     fun startObserving() = synchronized(observeLock) {
         if (observeJob?.isActive == true) return@synchronized
         ensureRepositoriesLoaded()
+        ProviderCredentialSync.startObserving()
         observeLocalChangesAndPush()
     }
 
@@ -124,6 +125,7 @@ object ProfileSettingsSync {
         pendingLocalPush = null
         pendingPushRetryJob?.cancel()
         pendingPushRetryJob = null
+        ProviderCredentialSync.clearAccountState()
     }
 
     suspend fun pull(profileId: Int): Boolean {
@@ -483,11 +485,23 @@ object ProfileSettingsSync {
                 themeSettings = ThemeSettingsStorage.exportToSyncPayload(),
                 posterCardStyleSettingsPayload = PosterCardStyleStorage.loadPayload().orEmpty().trim(),
                 cardDepthStyleSettingsPayload = CardDepthStyleStorage.loadPayload().orEmpty().trim(),
-                playerSettings = PlayerSettingsStorage.exportToSyncPayload(),
+                playerSettings = withoutProfileCredentials(
+                    PROFILE_PLAYER_SETTINGS_FEATURE,
+                    PlayerSettingsStorage.exportToSyncPayload(),
+                ),
                 streamBadgeSettings = StreamBadgeSettingsStorage.exportToSyncPayload(),
-                debridSettings = DebridSettingsStorage.exportToSyncPayload(),
-                tmdbSettings = TmdbSettingsStorage.exportToSyncPayload(),
-                mdbListSettings = MdbListSettingsStorage.exportToSyncPayload(),
+                debridSettings = withoutProfileCredentials(
+                    PROFILE_DEBRID_SETTINGS_FEATURE,
+                    DebridSettingsStorage.exportToSyncPayload(),
+                ),
+                tmdbSettings = withoutProfileCredentials(
+                    PROFILE_TMDB_SETTINGS_FEATURE,
+                    TmdbSettingsStorage.exportToSyncPayload(),
+                ),
+                mdbListSettings = withoutProfileCredentials(
+                    PROFILE_MDBLIST_SETTINGS_FEATURE,
+                    MdbListSettingsStorage.exportToSyncPayload(),
+                ),
                 metaScreenSettingsPayload = MetaScreenSettingsStorage.loadPayload().orEmpty().trim(),
                 collectionMobileSettingsPayload = CollectionMobileSettingsStorage.loadPayload().orEmpty().trim(),
                 continueWatchingSettingsPayload = ContinueWatchingPreferencesStorage.loadPayload().orEmpty().trim(),
@@ -510,19 +524,46 @@ object ProfileSettingsSync {
         CardDepthStyleStorage.savePayload(blob.features.cardDepthStyleSettingsPayload)
         CardDepthStyleRepository.onProfileChanged()
 
-        PlayerSettingsStorage.replaceFromSyncPayload(blob.features.playerSettings)
+        val localPlayerSettings = PlayerSettingsStorage.exportToSyncPayload()
+        val localIntroDbApiKey = PlayerSettingsStorage.loadIntroDbApiKey()
+        PlayerSettingsStorage.replaceFromSyncPayload(
+            preservingLocalProfileCredentials(
+                PROFILE_PLAYER_SETTINGS_FEATURE,
+                blob.features.playerSettings,
+                localPlayerSettings,
+            ),
+        )
+        localIntroDbApiKey?.let(PlayerSettingsStorage::saveIntroDbApiKey)
         PlayerSettingsRepository.onProfileChanged()
 
         StreamBadgeSettingsStorage.replaceFromSyncPayload(blob.features.streamBadgeSettings)
         StreamBadgeSettingsRepository.onProfileChanged()
 
-        DebridSettingsStorage.replaceFromSyncPayload(blob.features.debridSettings)
+        DebridSettingsStorage.replaceFromSyncPayload(
+            preservingLocalProfileCredentials(
+                PROFILE_DEBRID_SETTINGS_FEATURE,
+                blob.features.debridSettings,
+                DebridSettingsStorage.exportToSyncPayload(),
+            ),
+        )
         DebridSettingsRepository.onProfileChanged()
 
-        TmdbSettingsStorage.replaceFromSyncPayload(blob.features.tmdbSettings)
+        TmdbSettingsStorage.replaceFromSyncPayload(
+            preservingLocalProfileCredentials(
+                PROFILE_TMDB_SETTINGS_FEATURE,
+                blob.features.tmdbSettings,
+                TmdbSettingsStorage.exportToSyncPayload(),
+            ),
+        )
         TmdbSettingsRepository.onProfileChanged()
 
-        MdbListSettingsStorage.replaceFromSyncPayload(blob.features.mdbListSettings)
+        MdbListSettingsStorage.replaceFromSyncPayload(
+            preservingLocalProfileCredentials(
+                PROFILE_MDBLIST_SETTINGS_FEATURE,
+                blob.features.mdbListSettings,
+                MdbListSettingsStorage.exportToSyncPayload(),
+            ),
+        )
         MdbListMetadataService.clearCache()
         MdbListSettingsRepository.onProfileChanged()
 
@@ -567,25 +608,7 @@ object ProfileSettingsSync {
     private fun defaultSignature(): String =
         buildSignature(MobileProfileSettingsBlob())
 
-    private fun currentObservedStateSignature(): String = listOf(
-        "theme=${ThemeSettingsRepository.selectedTheme.value.name}",
-        "amoled=${ThemeSettingsRepository.amoledEnabled.value}",
-        "liquid_glass_tab_bar=${ThemeSettingsRepository.liquidGlassNativeTabBarEnabled.value}",
-        "nav_bar_style=${ThemeSettingsRepository.navBarStyle.value.key}",
-        "poster_card_style=${PosterCardStyleRepository.uiState.value}",
-        "card_depth_style=${CardDepthStyleRepository.uiState.value}",
-        "player=${PlayerSettingsRepository.uiState.value}",
-        "stream_badges=${StreamBadgeSettingsRepository.uiState.value}",
-        "debrid=${DebridSettingsRepository.uiState.value}",
-        "tmdb=${TmdbSettingsRepository.uiState.value}",
-        "mdblist=${MdbListSettingsRepository.uiState.value}",
-        "meta=${MetaScreenSettingsRepository.uiState.value}",
-        "collection_mobile_settings=${CollectionMobileSettingsRepository.uiState.value}",
-        "continue=${ContinueWatchingPreferencesRepository.uiState.value}",
-        "trakt_settings=${TrackingSettingsRepository.uiState.value}",
-        "trakt_comments=${TraktCommentsSettings.enabled.value}",
-        "episode_release_alerts=${EpisodeReleaseNotificationsRepository.uiState.value.isEnabled}",
-    ).joinToString(separator = "||")
+    private fun currentObservedStateSignature(): String = buildSignature(exportSettingsBlob())
 
     private fun currentCloudAccountId(): String? =
         (AuthRepository.state.value as? AuthState.Authenticated)
