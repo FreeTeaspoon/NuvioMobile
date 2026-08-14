@@ -41,6 +41,7 @@ internal enum class ProfileSyncStep {
     Plugins,
     ProfileSettings,
     TraktCredentials,
+    ProviderCredentials,
     Library,
     ActiveWatchSource,
     Collections,
@@ -52,6 +53,7 @@ internal data class ProfileSyncOperations(
     val pullPlugins: suspend (Int) -> Unit,
     val pullProfileSettings: suspend (Int) -> Unit,
     val pullTraktCredentials: suspend (Int) -> Unit,
+    val syncProviderCredentials: suspend (Int) -> Unit,
     val pullLibrary: suspend (Int) -> Unit,
     val refreshActiveWatchSource: suspend (Int) -> Unit,
     val pullCollections: suspend (Int) -> Unit,
@@ -117,12 +119,13 @@ internal suspend fun runOrderedProfileSync(
         runStep(ProfileSyncStep.Plugins, operations.pullPlugins)
     }
 
+    runStep(ProfileSyncStep.ProfileSettings, operations.pullProfileSettings)
     coroutineScope {
         launch {
-            runStep(ProfileSyncStep.ProfileSettings, operations.pullProfileSettings)
+            runStep(ProfileSyncStep.TraktCredentials, operations.pullTraktCredentials)
         }
         launch {
-            runStep(ProfileSyncStep.TraktCredentials, operations.pullTraktCredentials)
+            runStep(ProfileSyncStep.ProviderCredentials, operations.syncProviderCredentials)
         }
     }
 
@@ -229,6 +232,7 @@ object SyncManager {
             TraktCredentialSync.pullFromRemoteOrThrow(profileId)
             Unit
         },
+        syncProviderCredentials = { profileId -> ProviderCredentialSync.syncFromRemote(profileId) },
         pullLibrary = { profileId -> LibraryRepository.pullFromServer(profileId) },
         refreshActiveWatchSource = { profileId ->
             val result = WatchProgressSourceCoordinator.refreshActiveSource(profileId = profileId, force = true)
@@ -500,6 +504,8 @@ object SyncManager {
                         .onFailure { log.e(it) { "Realtime profile settings pull failed" } }
                     runCatching { TraktCredentialSync.pullFromRemoteOrThrow(profileId) }
                         .onFailure { log.e(it) { "Realtime Trakt credentials pull failed" } }
+                    runCatching { ProviderCredentialSync.syncFromRemote(profileId) }
+                        .onFailure { log.e(it) { "Realtime provider credentials pull failed" } }
                 }
                 "collections" -> {
                     runCatching { CollectionSyncService.pullFromServer(profileId) }
