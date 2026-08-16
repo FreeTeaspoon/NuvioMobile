@@ -108,6 +108,8 @@ internal fun PlayerScreenRuntime.resetIdentityStateIfNeeded() {
         initialLoadCompleted = false
         speedBoostRestoreSpeed = null
         isHoldToSpeedGestureActive = false
+        liveGestureFeedback = null
+        liveHorizontalSeekTargetMs = null
         initialSeekApplied = activeInitialPositionMs <= 0L &&
             (activeInitialProgressFraction == null || activeInitialProgressFraction!! <= 0f)
         lastProgressPersistEpochMs = 0L
@@ -122,6 +124,8 @@ internal fun PlayerScreenRuntime.resetIdentityStateIfNeeded() {
     val videoIdentity = "$identity:$activeVideoId:$activeSeasonNumber:$activeEpisodeNumber"
     if (lastResetVideoIdentity != videoIdentity) {
         lastResetVideoIdentity = videoIdentity
+        liveGestureFeedback = null
+        liveHorizontalSeekTargetMs = null
         hasRequestedScrobbleStartForCurrentItem = false
         scrobbleStartRequestGeneration = 0L
         pendingSeekScrobbleRestart = false

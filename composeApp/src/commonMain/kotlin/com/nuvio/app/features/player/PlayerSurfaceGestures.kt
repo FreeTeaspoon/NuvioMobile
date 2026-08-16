@@ -84,6 +84,10 @@ internal fun Modifier.playerSurfaceDragGestures(
                 down.position.x > width * PlayerRightGestureBoundary -> PlayerSideGesture.Volume
                 else -> null
             }
+            val horizontalSeekInDeadZone = isHorizontalSeekInDeadZone(
+                positionX = down.position.x,
+                width = width,
+            )
 
             val initialBrightness = if (region == PlayerSideGesture.Brightness) {
                 controller?.currentBrightness()
@@ -120,6 +124,7 @@ internal fun Modifier.playerSurfaceDragGestures(
                     )
                     val horizontalDominant =
                         !holdToSpeedActive &&
+                            !horizontalSeekInDeadZone &&
                             abs(totalDx) > viewConfiguration.touchSlop &&
                             abs(totalDx) > abs(totalDy)
                     val verticalDominant =
@@ -169,7 +174,7 @@ internal fun Modifier.playerSurfaceDragGestures(
                             ?: unclampedPreviewMs.coerceAtLeast(0L)
                         showHorizontalSeekPreviewState.value(
                             horizontalSeekPreviewMs,
-                            horizontalSeekBaselineMs,
+                            currentPositionMsState.value.coerceAtLeast(0L),
                         )
                     }
 

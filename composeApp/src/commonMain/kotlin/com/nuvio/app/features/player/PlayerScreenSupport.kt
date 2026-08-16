@@ -23,6 +23,14 @@ internal const val P2pInitialPlayerStageStart = 0.75f
 internal const val P2pInitialLoadingMaximum = 0.95f
 internal const val NEXT_EPISODE_HARD_TIMEOUT_MS = 120_000L
 
+internal fun isHorizontalSeekInDeadZone(
+    positionX: Float,
+    width: Float,
+): Boolean =
+    width <= 0f ||
+        positionX < width * PlayerLeftGestureBoundary ||
+        positionX > width * PlayerRightGestureBoundary
+
 internal fun p2pInitialLoadingProgress(
     bufferedAheadMs: Long,
     downloadedBytes: Long,
