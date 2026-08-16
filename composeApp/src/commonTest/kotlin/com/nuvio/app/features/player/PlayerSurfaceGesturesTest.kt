@@ -6,14 +6,15 @@ import kotlin.test.assertTrue
 
 class PlayerSurfaceGesturesTest {
     @Test
-    fun horizontalSeekUsesCenterRegionAndLeavesSideZonesDead() {
+    fun horizontalSeekUsesMiddleEightyPercentAndLeavesOuterEdgesDead() {
         val width = 100f
 
         assertTrue(isHorizontalSeekInDeadZone(positionX = 0f, width = width))
-        assertTrue(isHorizontalSeekInDeadZone(positionX = 39f, width = width))
-        assertFalse(isHorizontalSeekInDeadZone(positionX = 40f, width = width))
-        assertFalse(isHorizontalSeekInDeadZone(positionX = 60f, width = width))
-        assertTrue(isHorizontalSeekInDeadZone(positionX = 61f, width = width))
+        assertTrue(isHorizontalSeekInDeadZone(positionX = 9f, width = width))
+        assertFalse(isHorizontalSeekInDeadZone(positionX = 10f, width = width))
+        assertFalse(isHorizontalSeekInDeadZone(positionX = 50f, width = width))
+        assertFalse(isHorizontalSeekInDeadZone(positionX = 90f, width = width))
+        assertTrue(isHorizontalSeekInDeadZone(positionX = 91f, width = width))
         assertTrue(isHorizontalSeekInDeadZone(positionX = 100f, width = width))
     }
 
