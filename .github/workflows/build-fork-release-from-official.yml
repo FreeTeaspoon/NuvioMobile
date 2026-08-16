@@ -76,6 +76,7 @@ jobs:
           body_file="${RUNNER_TEMP}/release-body.md"
           official_notes_file="${RUNNER_TEMP}/official-release-notes.md"
           fork_notes_file="${RUNNER_TEMP}/fork-release-notes.md"
+          fork_notes_source_file="${RUNNER_TEMP}/fork-release-notes-source.txt"
           upstream_version="${upstream_tag#v}"
           if ! [[ "${upstream_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Official release tag must resolve to x.x.x, got ${upstream_tag}."
@@ -100,40 +101,13 @@ jobs:
           fi
           jq -r '.body // ""' <<<"${release_json}" > "${official_notes_file}"
 
-          extract_changelog_section() {
-            local version="$1"
-            local output="$2"
-
-            [ -f CHANGELOG.md ] || return 1
-            awk -v version="${version}" '
-              /^##[[:space:]]+/ {
-                heading = $0
-                sub(/^##[[:space:]]+/, "", heading)
-                sub(/^\[/, "", heading)
-                sub(/\].*$/, "", heading)
-                sub(/[[:space:]].*$/, "", heading)
-                if (heading == version) {
-                  found = 1
-                  next
-                }
-                if (found) exit
-              }
-              found { print }
-              END { if (!found) exit 1 }
-            ' CHANGELOG.md > "${output}" &&
-              awk 'NF && $0 !~ /^###[[:space:]]+/ { has_content = 1 } END { exit has_content ? 0 : 1 }' "${output}"
-          }
-
-          if extract_changelog_section "${fork_tag}" "${fork_notes_file}"; then
-            fork_notes_source="CHANGELOG.md ${fork_tag}"
-          elif extract_changelog_section "${upstream_version}" "${fork_notes_file}"; then
-            fork_notes_source="CHANGELOG.md ${upstream_version}"
-          elif extract_changelog_section "Unreleased" "${fork_notes_file}"; then
-            fork_notes_source="CHANGELOG.md Unreleased"
-          else
-            fork_notes_source="none"
-            echo "- No fork-specific changelog entries were found for this build." > "${fork_notes_file}"
-          fi
+          bash ./scripts/generate-fork-release-notes.sh \
+            --tag "${fork_tag}" \
+            --to "${GITHUB_SHA}" \
+            --repository "${GITHUB_REPOSITORY}" \
+            --source-file "${fork_notes_source_file}" \
+            > "${fork_notes_file}"
+          fork_notes_source="$(cat "${fork_notes_source_file}")"
 
           {
             echo "## Fork changes"
