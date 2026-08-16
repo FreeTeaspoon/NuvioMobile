@@ -163,7 +163,7 @@ jobs:
           echo "app_version=${app_version}" >> "${GITHUB_OUTPUT}"
           echo "base_version=${base_version}" >> "${GITHUB_OUTPUT}"
           echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
-          echo "apk_name=nuvio-freeteaspoon-full-${tag}.apk" >> "${GITHUB_OUTPUT}"
+          echo "apk_name=nuvio-freeteaspoon-full-${tag}-arm64-v8a.apk" >> "${GITHUB_OUTPUT}"
           echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
           echo "notes_file=${notes_file}" >> "${GITHUB_OUTPUT}"
 
@@ -256,9 +256,9 @@ jobs:
           set -euo pipefail
 
           mkdir -p dist
-          apk="$(find androidApp/build/outputs/apk/full/release -maxdepth 1 -name '*release*.apk' ! -name '*unsigned.apk' | head -n 1)"
+          apk="$(find androidApp/build/outputs/apk/full/release -maxdepth 1 -type f -name '*arm64-v8a*release*.apk' ! -name '*unsigned.apk' | head -n 1)"
           if [ -z "${apk}" ]; then
-            echo "::error::No signed full release APK was produced."
+            echo "::error::No signed arm64-v8a full release APK was produced."
             exit 1
           fi
 
