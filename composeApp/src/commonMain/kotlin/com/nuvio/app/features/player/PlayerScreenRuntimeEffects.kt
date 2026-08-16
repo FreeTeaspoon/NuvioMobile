@@ -32,6 +32,14 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         }
     }
 
+    LaunchedEffect(liveHorizontalSeekTargetMs, playbackSnapshot.positionMs) {
+        val targetPositionMs = liveHorizontalSeekTargetMs ?: return@LaunchedEffect
+        showHorizontalSeekPreview(
+            previewPositionMs = targetPositionMs,
+            currentPositionMs = playbackSnapshot.positionMs.coerceAtLeast(0L),
+        )
+    }
+
     LaunchedEffect(parentMetaType, parentMetaId) {
         playerMetaVideos = MetaDetailsRepository.peek(parentMetaType, parentMetaId)?.videos ?: emptyList()
         if (playerMetaVideos.isEmpty()) {
@@ -69,6 +77,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         isScrubbingTimeline = false
         scrubbingPositionMs = null
         liveGestureFeedback = null
+        liveHorizontalSeekTargetMs = null
         renderedGestureFeedback = null
         lockedOverlayVisible = false
         credentialRefreshJob?.cancel()
@@ -124,6 +133,8 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         playerController = null
         playerControllerSourceUrl = null
         playbackSnapshot = PlayerPlaybackSnapshot()
+        liveGestureFeedback = null
+        liveHorizontalSeekTargetMs = null
         initialLoadCompleted = false
 
         try {

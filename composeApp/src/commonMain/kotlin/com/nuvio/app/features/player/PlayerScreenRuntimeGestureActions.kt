@@ -45,6 +45,7 @@ internal fun PlayerScreenRuntime.showGestureMessage(message: String) {
 
 internal fun PlayerScreenRuntime.clearLiveGestureFeedback() {
     liveGestureFeedback = null
+    liveHorizontalSeekTargetMs = null
 }
 
 internal fun PlayerScreenRuntime.revealLockedOverlay() {
@@ -62,6 +63,7 @@ internal fun PlayerScreenRuntime.lockPlayerControls() {
     gestureMessageJob?.cancel()
     gestureFeedback = null
     liveGestureFeedback = null
+    liveHorizontalSeekTargetMs = null
     renderedGestureFeedback = null
     showAudioModal = false
     showSubtitleModal = false
@@ -99,9 +101,16 @@ internal fun PlayerScreenRuntime.showSeekFeedback(direction: PlayerSeekDirection
     )
 }
 
-internal fun PlayerScreenRuntime.showHorizontalSeekPreview(previewPositionMs: Long, baselinePositionMs: Long) {
-    val deltaMs = previewPositionMs - baselinePositionMs
-    val direction = if (deltaMs < 0L) PlayerSeekDirection.Backward else PlayerSeekDirection.Forward
+internal fun PlayerScreenRuntime.showHorizontalSeekPreview(
+    previewPositionMs: Long,
+    currentPositionMs: Long,
+) {
+    liveHorizontalSeekTargetMs = previewPositionMs
+    val deltaSeconds = calculateHorizontalSeekDeltaSeconds(
+        targetPositionMs = previewPositionMs,
+        currentPositionMs = currentPositionMs.coerceAtLeast(0L),
+    )
+    val direction = if (deltaSeconds < 0) PlayerSeekDirection.Backward else PlayerSeekDirection.Forward
     liveGestureFeedback = GestureFeedbackState(
         message = formatPlaybackTime(previewPositionMs),
         icon = if (direction == PlayerSeekDirection.Forward) {
@@ -109,12 +118,12 @@ internal fun PlayerScreenRuntime.showHorizontalSeekPreview(previewPositionMs: Lo
         } else {
             GestureFeedbackIcon.SeekBackward
         },
-        secondaryMessageRes = if (deltaMs >= 0L) {
+        secondaryMessageRes = if (deltaSeconds >= 0) {
             Res.string.compose_player_seek_delta_forward
         } else {
             Res.string.compose_player_seek_delta_backward
         },
-        secondaryMessageArgs = listOf((abs(deltaMs) / 1000f).roundToInt()),
+        secondaryMessageArgs = listOf(abs(deltaSeconds)),
         secondaryMessageColor = if (direction == PlayerSeekDirection.Forward) {
             Color(0xFF6EE7A8)
         } else {

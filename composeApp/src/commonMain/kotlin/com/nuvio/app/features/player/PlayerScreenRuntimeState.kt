@@ -140,6 +140,7 @@ internal class PlayerScreenRuntime(
     var pausedOverlayVisible by mutableStateOf(false)
     var gestureFeedback by mutableStateOf<GestureFeedbackState?>(null)
     var liveGestureFeedback by mutableStateOf<GestureFeedbackState?>(null)
+    var liveHorizontalSeekTargetMs by mutableStateOf<Long?>(null)
     var renderedGestureFeedback by mutableStateOf<GestureFeedbackState?>(null)
     var lockedOverlayVisible by mutableStateOf(false)
     var gestureMessageJob by mutableStateOf<Job?>(null)
