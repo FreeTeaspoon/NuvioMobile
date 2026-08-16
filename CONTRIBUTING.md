@@ -209,7 +209,7 @@ Keep the summary imperative and specific. Avoid vague messages such as `update`,
 
 User-facing release notes live in `CHANGELOG.md`. When a PR changes behavior that users may notice, fill in the PR template's **User-facing changes** section and add the entry under `Unreleased` in `CHANGELOG.md`.
 
-During release, move relevant `Unreleased` entries under a version heading that matches `MARKETING_VERSION` in `iosApp/Configuration/Version.xcconfig`. The release workflow uses that matching changelog section for GitHub release notes when an upstream release body is not available.
+During release, move relevant `Unreleased` entries under a version heading that matches `MARKETING_VERSION` in `iosApp/Configuration/Version.xcconfig`. The release workflow uses that exact versioned section when it exists. If it is missing, automation generates notes only from commits since the previous fork release; it never consumes the persistent `Unreleased` section as a fallback, so old entries cannot silently be repeated in later releases.
 
 ---
 

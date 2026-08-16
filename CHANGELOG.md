@@ -10,6 +10,28 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ### Fixed
 
+## 0.4.5.4
+
+### Changed
+
+- Horizontal player seeking now works across the middle 80% of the video surface, while the outer 10% on each side remains a safety dead zone.
+
+## 0.4.5.3
+
+### Changed
+
+- The full release APK is now published explicitly for 64-bit ARM devices as `arm64-v8a`.
+
+## 0.4.5.2
+
+### Fixed
+
+- Horizontal seek feedback now stays synchronized with playback and keeps the correct +/- seconds value while a swipe remains active.
+
+## 0.4.5.1
+
+### Fixed
+
 - Downloads made before signing in no longer disappear from the Downloads screen after logging out or switching account state, and existing local files are recovered after updating.
 - Recovered episode downloads now return to Shows with season and episode sorting instead of appearing as Movies.
 

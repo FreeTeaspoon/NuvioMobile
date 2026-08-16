@@ -70,32 +70,9 @@ jobs:
           official_release_json="$(gh api "repos/${UPSTREAM_REPO}/releases/tags/${upstream_tag}" 2>/dev/null || gh api "repos/${UPSTREAM_REPO}/releases/tags/v${upstream_tag}" 2>/dev/null || true)"
           official_notes_file="${RUNNER_TEMP}/official-release-notes.md"
           fork_notes_file="${RUNNER_TEMP}/fork-release-notes.md"
+          fork_notes_source_file="${RUNNER_TEMP}/fork-release-notes-source.txt"
           official_url=""
           prerelease="false"
-
-          extract_changelog_section() {
-            local version="$1"
-            local output="$2"
-
-            [ -f CHANGELOG.md ] || return 1
-            awk -v version="${version}" '
-              /^##[[:space:]]+/ {
-                heading = $0
-                sub(/^##[[:space:]]+/, "", heading)
-                sub(/^\[/, "", heading)
-                sub(/\].*$/, "", heading)
-                sub(/[[:space:]].*$/, "", heading)
-                if (heading == version) {
-                  found = 1
-                  next
-                }
-                if (found) exit
-              }
-              found { print }
-              END { if (!found) exit 1 }
-            ' CHANGELOG.md > "${output}" &&
-              awk 'NF && $0 !~ /^###[[:space:]]+/ { has_content = 1 } END { exit has_content ? 0 : 1 }' "${output}"
-          }
 
           if [ -n "${official_release_json}" ] && jq -e '.tag_name' <<<"${official_release_json}" >/dev/null 2>&1; then
             upstream_tag="$(jq -r '.tag_name' <<<"${official_release_json}")"
@@ -104,33 +81,13 @@ jobs:
             jq -r '.body // ""' <<<"${official_release_json}" > "${official_notes_file}"
           fi
 
-          if extract_changelog_section "${tag}" "${fork_notes_file}"; then
-            fork_notes_source="CHANGELOG.md ${tag}"
-          elif extract_changelog_section "${base_version}" "${fork_notes_file}"; then
-            fork_notes_source="CHANGELOG.md ${base_version}"
-          elif extract_changelog_section "Unreleased" "${fork_notes_file}"; then
-            fork_notes_source="CHANGELOG.md Unreleased"
-          else
-            fork_notes_source="commit summary"
-            previous_fork="${base_version}.$((next_suffix - 1))"
-            previous_tag="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
-            if [ "${next_suffix}" -gt 1 ] && git rev-parse -q --verify "refs/tags/${previous_fork}" >/dev/null; then
-              commit_range="${previous_fork}..${GITHUB_SHA}"
-            elif [ -n "${previous_tag}" ]; then
-              commit_range="${previous_tag}..${GITHUB_SHA}"
-            else
-              commit_range=""
-            fi
-
-            if [ -n "${commit_range}" ]; then
-              git log --no-merges --pretty=format:'- %s (%h)' "${commit_range}" 2>/dev/null > "${fork_notes_file}" || true
-            else
-              git log --no-merges --pretty=format:'- %s (%h)' -n 20 "${GITHUB_SHA}" 2>/dev/null > "${fork_notes_file}" || true
-            fi
-            if [ ! -s "${fork_notes_file}" ]; then
-              echo "- No commit summary was available for this build." > "${fork_notes_file}"
-            fi
-          fi
+          bash ./scripts/generate-fork-release-notes.sh \
+            --tag "${tag}" \
+            --to "${GITHUB_SHA}" \
+            --repository "${GITHUB_REPOSITORY}" \
+            --source-file "${fork_notes_source_file}" \
+            > "${fork_notes_file}"
+          fork_notes_source="$(cat "${fork_notes_source_file}")"
 
           {
             echo "## Fork changes"
