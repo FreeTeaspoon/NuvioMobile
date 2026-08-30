@@ -33,6 +33,9 @@ fi
 printf '%s\n' '--- upstream shared UI changes to review ---'
 upstream_ui_paths=(
   "composeApp/src/commonMain/kotlin/com/nuvio/app/App.kt"
+  "composeApp/src/commonMain/kotlin/com/nuvio/app/MainAppContent.kt"
+  "composeApp/src/commonMain/kotlin/com/nuvio/app/MainTabsDestination.kt"
+  "composeApp/src/commonMain/kotlin/com/nuvio/app/AppShellComponents.kt"
   "composeApp/src/commonMain/kotlin/com/nuvio/app/core/ui/LoadingIndicator.kt"
   "composeApp/src/commonMain/kotlin/com/nuvio/app/core/ui/PosterZoomActionOverlay.kt"
   "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/PlayerControls.kt"
@@ -94,13 +97,20 @@ done
 printf '%s\n' '--- upstream UI host wiring ---'
 check_contract \
   "long-press overlay component" \
-  'fun NuvioPosterZoomActionOverlay|NuvioPosterZoomActionOverlay' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/core/ui/PosterZoomActionOverlay.kt \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/App.kt
+  'fun NuvioPosterZoomActionOverlay' \
+  composeApp/src/commonMain/kotlin/com/nuvio/app/core/ui/PosterZoomActionOverlay.kt
+check_contract \
+  "long-press overlay host" \
+  'NuvioPosterZoomActionOverlay\(' \
+  composeApp/src/commonMain/kotlin/com/nuvio/app/App.kt \
+  composeApp/src/commonMain/kotlin/com/nuvio/app/MainAppContent.kt
 check_contract \
   "long-press host callbacks" \
   'onPosterLongClick' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/App.kt
+  composeApp/src/commonMain/kotlin/com/nuvio/app/App.kt \
+  composeApp/src/commonMain/kotlin/com/nuvio/app/MainAppContent.kt \
+  composeApp/src/commonMain/kotlin/com/nuvio/app/CatalogDestination.kt \
+  composeApp/src/commonMain/kotlin/com/nuvio/app/AppShellComponents.kt
 check_contract \
   "upstream loading indicator" \
   'NuvioLoadingIndicator' \
@@ -144,6 +154,8 @@ check_contract \
   'buildP2pMagnetUri|torrentMagnetUri|magnetUri' \
   composeApp/src/commonMain/kotlin/com/nuvio/app/features/p2p \
   composeApp/src/commonMain/kotlin/com/nuvio/app/App.kt \
+  composeApp/src/commonMain/kotlin/com/nuvio/app/StreamDestination.kt \
+  composeApp/src/commonMain/kotlin/com/nuvio/app/PlayerDestination.kt \
   composeApp/src/androidMain/kotlin/com/nuvio/app/features/p2p \
   composeApp/src/iosFull/kotlin/com/nuvio/app/features/p2p
 check_contract \

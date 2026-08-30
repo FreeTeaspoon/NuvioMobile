@@ -56,15 +56,34 @@ private data class SupabaseHomeCatalogSettingsBlob(
 private data class RemoteHomeCatalogSettings(
     val platform: String,
     val payload: SyncHomeCatalogPayload,
+    val settingsJson: JsonObject,
     val updatedAt: String?,
     val hasShowCatalogType: Boolean,
     val hasHideUnreleasedContent: Boolean,
+)
+
+private data class BestRemoteHomeCatalogSettings(
+    val selected: RemoteHomeCatalogSettings?,
+    val sharedSettingsJson: JsonObject?,
 )
 
 private data class PullToken(
     val userId: String,
     val profileId: Int,
 )
+
+private data class CachedSharedSettings(
+    val token: PullToken,
+    val settingsJson: JsonObject,
+)
+
+internal fun mergeHomeCatalogSettingsJson(
+    remoteJson: JsonObject?,
+    localJson: JsonObject,
+): JsonObject = buildJsonObject {
+    remoteJson?.forEach { (key, value) -> put(key, value) }
+    localJson.forEach { (key, value) -> put(key, value) }
+}
 
 object HomeCatalogSettingsSyncService {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -85,19 +104,25 @@ object HomeCatalogSettingsSyncService {
     @Volatile
     private var completedInitialPull: PullToken? = null
 
+    @Volatile
+    private var cachedSharedSettings: CachedSharedSettings? = null
+
     suspend fun pullFromServer(profileId: Int) {
         runCatching {
             val pullToken = currentPullToken(profileId) ?: return
             val localPayload = HomeCatalogSettingsRepository.exportToSyncPayload()
             val remote = fetchBestRemotePayload(profileId, localPayload)
+            cachedSharedSettings = CachedSharedSettings(
+                token = pullToken,
+                settingsJson = remote.sharedSettingsJson ?: buildJsonObject { },
+            )
+            val remotePayload = remote.selected?.payload
 
-            if (remote == null) {
+            if (remotePayload == null) {
                 log.i { "pullFromServer — no remote home catalog settings found; preserving local" }
                 markInitialPullComplete(pullToken)
                 return
             }
-
-            val remotePayload = remote.payload
 
             if (remotePayload.items.isEmpty()) {
                 log.i { "pullFromServer — remote has empty items, preserving local catalog order" }
@@ -126,29 +151,33 @@ object HomeCatalogSettingsSyncService {
             delay(500)
             if (isSyncingFromRemote) return@launch
             if (currentPullToken() != requestedToken) return@launch
-            pushToRemote(requestedToken.profileId)
+            pushToRemote(requestedToken)
         }
     }
 
     suspend fun pushProfileToRemote(profileId: Int) {
+        val token = currentPullToken(profileId) ?: return
         ProfileScopedKey.scopedToSuspend(profileId) {
             HomeCatalogSettingsRepository.onProfileChanged()
-            pushToRemote(profileId)
+            if (currentPullToken(profileId) == token) {
+                pushToRemote(token)
+            }
         }
     }
 
-    private suspend fun pushToRemote(profileId: Int) {
+    private suspend fun pushToRemote(token: PullToken) {
         runCatching {
             val payload = HomeCatalogSettingsRepository.exportToSyncPayload()
-            val jsonElement = mergedSharedPayloadJson(profileId, payload)
+            val jsonElement = mergedSharedPayloadJson(token, payload)
 
             val params = buildJsonObject {
-                put("p_profile_id", profileId)
+                put("p_profile_id", token.profileId)
                 put("p_platform", HOME_CATALOG_SHARED_SYNC_PLATFORM)
                 put("p_settings_json", jsonElement)
                 putSyncOriginClientId()
             }
             SupabaseProvider.client.postgrest.rpc("sync_push_home_catalog_settings", params)
+            cachedSharedSettings = CachedSharedSettings(token = token, settingsJson = jsonElement)
             log.d { "pushToRemote — success" }
         }.onFailure { e ->
             log.e(e) { "pushToRemote — FAILED" }
@@ -185,20 +214,19 @@ object HomeCatalogSettingsSyncService {
     private suspend fun fetchBestRemotePayload(
         profileId: Int,
         localPayload: SyncHomeCatalogPayload,
-    ): RemoteHomeCatalogSettings? {
+    ): BestRemoteHomeCatalogSettings {
         val shared = fetchRemotePayload(
             profileId = profileId,
             platform = HOME_CATALOG_SHARED_SYNC_PLATFORM,
             localPayload = localPayload,
         )
-        val legacyRows = HOME_CATALOG_LEGACY_SYNC_PLATFORMS
-            .mapNotNull { platform ->
-                fetchRemotePayload(
-                    profileId = profileId,
-                    platform = platform,
-                    localPayload = localPayload,
-                )
-            }
+        val legacyRows = HOME_CATALOG_LEGACY_SYNC_PLATFORMS.mapNotNull { platform ->
+            fetchRemotePayload(
+                profileId = profileId,
+                platform = platform,
+                localPayload = localPayload,
+            )
+        }
         val rows = listOfNotNull(shared) + legacyRows
         val selected = rows
             .filter { it.payload.items.isNotEmpty() }
@@ -206,7 +234,10 @@ object HomeCatalogSettingsSyncService {
             ?: shared
             ?: legacyRows.maxByOrNull { it.updatedAt.orEmpty() }
 
-        return selected?.withNewestStandaloneSettings(rows)
+        return BestRemoteHomeCatalogSettings(
+            selected = selected?.withNewestStandaloneSettings(rows),
+            sharedSettingsJson = shared?.settingsJson,
+        )
     }
 
     private suspend fun fetchRemotePayload(
@@ -223,6 +254,7 @@ object HomeCatalogSettingsSyncService {
         return RemoteHomeCatalogSettings(
             platform = platform,
             payload = payload,
+            settingsJson = blob.settingsJson,
             updatedAt = blob.updatedAt,
             hasShowCatalogType = blob.settingsJson.containsKey(SHOW_CATALOG_TYPE_KEY),
             hasHideUnreleasedContent = blob.settingsJson.containsKey(HIDE_UNRELEASED_CONTENT_KEY),
@@ -280,15 +312,14 @@ object HomeCatalogSettingsSyncService {
         )
     }.getOrNull()
 
-    private suspend fun mergedSharedPayloadJson(
-        profileId: Int,
+    private fun mergedSharedPayloadJson(
+        token: PullToken,
         payload: SyncHomeCatalogPayload,
     ): JsonObject {
         val localJson = json.encodeToJsonElement(SyncHomeCatalogPayload.serializer(), payload).jsonObject
-        val remoteJson = fetchRemoteBlob(profileId, HOME_CATALOG_SHARED_SYNC_PLATFORM)?.settingsJson
-        return buildJsonObject {
-            remoteJson?.forEach { (key, value) -> put(key, value) }
-            localJson.forEach { (key, value) -> put(key, value) }
-        }
+        val remoteJson = cachedSharedSettings
+            ?.takeIf { cached -> cached.token == token }
+            ?.settingsJson
+        return mergeHomeCatalogSettingsJson(remoteJson = remoteJson, localJson = localJson)
     }
 }

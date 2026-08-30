@@ -58,6 +58,8 @@ class SyncManagerTest {
             events.indexOf("trakt-credentials"),
             events.indexOf("credentials"),
         )
+        assertTrue(events.indexOf("addons") > lastPrerequisite)
+        assertTrue(events.indexOf("plugins") > lastPrerequisite)
         assertTrue(events.indexOf("library") > lastPrerequisite)
         assertTrue(events.indexOf("active-watch-source") > lastPrerequisite)
         assertEquals(1, events.count { it == "active-watch-source" })
@@ -133,6 +135,59 @@ class SyncManagerTest {
         firstCancelled.await()
         secondCompleted.await()
         gate.cancel()
+    }
+
+    @Test
+    fun `full request replaces activity request for the same profile`() = runBlocking {
+        val gate = ProfileSyncRequestGate()
+        val activityStarted = CompletableDeferred<Unit>()
+        val activityCancelled = CompletableDeferred<Unit>()
+        val fullCompleted = CompletableDeferred<Unit>()
+
+        gate.launch(this, profileId = 1, kind = ProfileSyncRequestKind.Activity) {
+            activityStarted.complete(Unit)
+            try {
+                CompletableDeferred<Unit>().await()
+            } finally {
+                activityCancelled.complete(Unit)
+            }
+        }
+        activityStarted.await()
+
+        val replacement = gate.launch(this, profileId = 1, kind = ProfileSyncRequestKind.Full) {
+            fullCompleted.complete(Unit)
+        }
+
+        assertEquals(ProfileSyncRequestResult.Replaced, replacement)
+        activityCancelled.await()
+        fullCompleted.await()
+        gate.cancel()
+    }
+
+    @Test
+    fun `activity sync runs only requested domains`() = runBlocking {
+        val events = mutableListOf<String>()
+        val operations = ProfileActivitySyncOperations(
+            pullLibrary = { events += "library" },
+            pullWatchActivity = { events += "watch" },
+        )
+
+        val libraryOnly = runActivityProfileSync(
+            profileId = 1,
+            pullLibrary = true,
+            pullWatchActivity = false,
+            operations = operations,
+        )
+        val watchOnly = runActivityProfileSync(
+            profileId = 1,
+            pullLibrary = false,
+            pullWatchActivity = true,
+            operations = operations,
+        )
+
+        assertTrue(libraryOnly.succeeded)
+        assertTrue(watchOnly.succeeded)
+        assertEquals(listOf("library", "watch"), events)
     }
 
     @Test
