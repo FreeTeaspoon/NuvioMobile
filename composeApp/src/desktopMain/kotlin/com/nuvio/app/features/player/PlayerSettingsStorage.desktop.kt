@@ -20,7 +20,6 @@ internal actual object PlayerSettingsStorage {
     private const val showLoadingOverlayKey = "show_loading_overlay"
     private const val resizeModeKey = "resize_mode"
     private const val videoZoomKey = "video_zoom"
-    private const val playerEngineKey = "player_engine"
     private const val holdToSpeedEnabledKey = "hold_to_speed_enabled"
     private const val holdToSpeedValueKey = "hold_to_speed_value"
     private const val touchGesturesEnabledKey = "touch_gestures_enabled"
@@ -89,7 +88,6 @@ internal actual object PlayerSettingsStorage {
         showLoadingOverlayKey,
         resizeModeKey,
         videoZoomKey,
-        playerEngineKey,
         holdToSpeedEnabledKey,
         holdToSpeedValueKey,
         touchGesturesEnabledKey,
@@ -161,8 +159,6 @@ internal actual object PlayerSettingsStorage {
     actual fun saveResizeMode(mode: String) = saveString(resizeModeKey, mode)
     actual fun loadVideoZoom(): Float? = loadFloat(videoZoomKey)
     actual fun saveVideoZoom(zoom: Float) = saveFloat(videoZoomKey, clampPlayerVideoZoom(zoom))
-    actual fun loadPlayerEngine(): String? = loadString(playerEngineKey)
-    actual fun savePlayerEngine(engine: String) = saveString(playerEngineKey, engine)
     actual fun loadHoldToSpeedEnabled(): Boolean? = loadBoolean(holdToSpeedEnabledKey)
     actual fun saveHoldToSpeedEnabled(enabled: Boolean) = saveBoolean(holdToSpeedEnabledKey, enabled)
     actual fun loadHoldToSpeedValue(): Float? = loadFloat(holdToSpeedValueKey)
@@ -309,7 +305,6 @@ internal actual object PlayerSettingsStorage {
         loadShowLoadingOverlay()?.let { put(showLoadingOverlayKey, encodeSyncBoolean(it)) }
         loadResizeMode()?.let { put(resizeModeKey, encodeSyncString(it)) }
         loadVideoZoom()?.let { put(videoZoomKey, encodeSyncFloat(it)) }
-        loadPlayerEngine()?.let { put(playerEngineKey, encodeSyncString(it)) }
         loadHoldToSpeedEnabled()?.let { put(holdToSpeedEnabledKey, encodeSyncBoolean(it)) }
         loadHoldToSpeedValue()?.let { put(holdToSpeedValueKey, encodeSyncFloat(it)) }
         loadTouchGesturesEnabled()?.let { put(touchGesturesEnabledKey, encodeSyncBoolean(it)) }
@@ -379,7 +374,6 @@ internal actual object PlayerSettingsStorage {
         payload.decodeSyncBoolean(showLoadingOverlayKey)?.let(::saveShowLoadingOverlay)
         payload.decodeSyncString(resizeModeKey)?.let(::saveResizeMode)
         payload.decodeSyncFloat(videoZoomKey)?.let(::saveVideoZoom)
-        payload.decodeSyncString(playerEngineKey)?.let(::savePlayerEngine)
         payload.decodeSyncBoolean(holdToSpeedEnabledKey)?.let(::saveHoldToSpeedEnabled)
         payload.decodeSyncFloat(holdToSpeedValueKey)?.let(::saveHoldToSpeedValue)
         payload.decodeSyncBoolean(touchGesturesEnabledKey)?.let(::saveTouchGesturesEnabled)

@@ -102,8 +102,6 @@ internal fun PlatformMedia3PlayerSurface(
     sourceResponseHeaders: Map<String, String>,
     externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle>,
     streamType: String?,
-    sourceFilename: String?,
-    sourceVideoSize: Long?,
     useYoutubeChunkedPlayback: Boolean,
     modifier: Modifier,
     playWhenReady: Boolean,
@@ -126,8 +124,6 @@ internal fun PlatformMedia3PlayerSurface(
         sanitizePlaybackHeaders(sourceHeaders),
         sanitizePlaybackResponseHeaders(sourceResponseHeaders),
         normalizeStreamType(streamType).orEmpty(),
-        sourceFilename.orEmpty(),
-        sourceVideoSize ?: 0L,
         useYoutubeChunkedPlayback,
         initialPositionRequestKey.orEmpty(),
     )
@@ -143,8 +139,6 @@ internal fun PlatformMedia3PlayerSurface(
             sourceResponseHeaders = sourceResponseHeaders,
             externalSubtitles = externalSubtitles,
             streamType = streamType,
-            sourceFilename = sourceFilename,
-            sourceVideoSize = sourceVideoSize,
             useYoutubeChunkedPlayback = useYoutubeChunkedPlayback,
             modifier = modifier,
             playWhenReady = playWhenReady,
@@ -214,8 +208,6 @@ internal fun ExoPlayerSurface(
     sourceResponseHeaders: Map<String, String>,
     externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle>,
     streamType: String?,
-    sourceFilename: String?,
-    sourceVideoSize: Long?,
     useYoutubeChunkedPlayback: Boolean,
     modifier: Modifier,
     playWhenReady: Boolean,
@@ -260,8 +252,6 @@ internal fun ExoPlayerSurface(
         sanitizedSourceHeaders,
         sanitizedSourceResponseHeaders,
         normalizedStreamType.orEmpty(),
-        sourceFilename.orEmpty(),
-        sourceVideoSize ?: 0L,
         useYoutubeChunkedPlayback,
         initialPositionRequestKey.orEmpty(),
     )
@@ -291,7 +281,6 @@ internal fun ExoPlayerSurface(
             url = sourceUrl,
             responseHeaders = sanitizedSourceResponseHeaders,
             streamType = normalizedStreamType,
-            sourceFilename = sourceFilename,
         ).buildUpon()
             .setMediaId(sourceUrl)
             .apply {
@@ -352,8 +341,6 @@ internal fun ExoPlayerSurface(
         sanitizedSourceHeaders,
         sanitizedSourceResponseHeaders,
         normalizedStreamType,
-        sourceFilename,
-        sourceVideoSize,
         useYoutubeChunkedPlayback,
         effectiveDecoderPriority,
         initialPositionRequestKey,

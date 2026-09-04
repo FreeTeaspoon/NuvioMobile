@@ -1479,9 +1479,6 @@
     <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>
     <string name="downloads_delete_confirm_title">Delete download?</string>
     <string name="compose_player_playback_speed">Playback speed</string>
-    <string name="settings_playback_player_engine">Player Engine</string>
-    <string name="settings_playback_player_engine_media3">Media3</string>
-    <string name="settings_playback_player_engine_mpv">MPV</string>
     <string name="collections_editor_tmdb_genres_movie_placeholder">28,12</string>
     <string name="collections_editor_tmdb_genres_series_placeholder">18,35</string>
     <string name="collections_editor_tmdb_date_from_placeholder">2020-01-01</string>

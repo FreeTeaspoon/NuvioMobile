@@ -121,12 +121,7 @@ android {
             pickFirsts += listOf(
                 "lib/*/libc++_shared.so",
                 "lib/*/libavcodec.so",
-                "lib/*/libavdevice.so",
-                "lib/*/libavfilter.so",
-                "lib/*/libavformat.so",
                 "lib/*/libavutil.so",
-                "lib/*/libmpv.so",
-                "lib/*/libplayer.so",
                 "lib/*/libswscale.so",
                 "lib/*/libswresample.so"
             )

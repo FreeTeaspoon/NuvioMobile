@@ -30,8 +30,6 @@ data class PlayerLaunch(
     val sourceResponseHeaders: Map<String, String> = emptyMap(),
     val externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle> = emptyList(),
     val streamType: String? = null,
-    val sourceFilename: String? = null,
-    val sourceVideoSize: Long? = null,
     val logo: String? = null,
     val poster: String? = null,
     val background: String? = null,
@@ -52,7 +50,6 @@ data class PlayerLaunch(
     val torrentInfoHash: String? = null,
     val torrentFileIdx: Int? = null,
     val torrentFilename: String? = null,
-    val torrentMagnetUri: String? = null,
     val torrentTrackers: List<String> = emptyList(),
     val initialPositionMs: Long = 0L,
     val initialProgressFraction: Float? = null,
@@ -279,11 +276,6 @@ data class PlayerVideoZoomState(
 internal const val PlayerVideoZoomMin = -2f
 internal const val PlayerVideoZoomMax = 2f
 internal const val PlayerVideoZoomStep = 0.05f
-
-enum class PlayerEngineType {
-    MEDIA3,
-    MPV,
-}
 
 enum class IosAudioOutputMode(
     val mpvValue: String,

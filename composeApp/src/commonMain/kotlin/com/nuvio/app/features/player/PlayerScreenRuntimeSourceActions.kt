@@ -119,7 +119,6 @@ internal fun PlayerScreenRuntime.stopActiveP2pStream() {
     activeTorrentInfoHash = null
     activeTorrentFileIdx = null
     activeTorrentFilename = null
-    activeTorrentMagnetUri = null
     activeTorrentTrackers = emptyList()
     p2pResolvedSourceUrl = null
 }
@@ -147,12 +146,11 @@ internal fun PlayerScreenRuntime.saveP2pStreamForReuse(
         addonId = stream.addonId,
         requestHeaders = emptyMap(),
         responseHeaders = emptyMap(),
-        filename = stream.p2pFilename,
+        filename = stream.behaviorHints.filename,
         videoSize = stream.behaviorHints.videoSize,
         infoHash = infoHash,
         fileIdx = stream.p2pFileIdx,
-        magnetUri = stream.torrentMagnetUri,
-        sources = stream.p2pSourceHints,
+        sources = stream.sources,
         bingeGroup = stream.behaviorHints.bingeGroup,
     )
 }
@@ -179,12 +177,9 @@ internal fun PlayerScreenRuntime.switchToP2pSourceStream(stream: StreamItem) {
     activeSourceResponseHeaders = emptyMap()
     activeStreamType = null
     activeExternalSubtitles = emptyList()
-    activeSourceFilename = stream.p2pFilename
-    activeSourceVideoSize = stream.behaviorHints.videoSize
     activeTorrentInfoHash = infoHash
     activeTorrentFileIdx = stream.p2pFileIdx
-    activeTorrentFilename = stream.p2pFilename
-    activeTorrentMagnetUri = stream.torrentMagnetUri
+    activeTorrentFilename = stream.behaviorHints.filename
     activeTorrentTrackers = stream.p2pTrackers
     activeSourceIdentityKey = stream.playerSourceIdentityKey()
     activeStreamTitle = stream.streamLabel
@@ -226,12 +221,9 @@ internal fun PlayerScreenRuntime.switchToP2pEpisodeStream(
     activeSourceResponseHeaders = emptyMap()
     activeStreamType = null
     activeExternalSubtitles = emptyList()
-    activeSourceFilename = stream.p2pFilename
-    activeSourceVideoSize = stream.behaviorHints.videoSize
     activeTorrentInfoHash = infoHash
     activeTorrentFileIdx = stream.p2pFileIdx
-    activeTorrentFilename = stream.p2pFilename
-    activeTorrentMagnetUri = stream.torrentMagnetUri
+    activeTorrentFilename = stream.behaviorHints.filename
     activeTorrentTrackers = stream.p2pTrackers
     applyEpisodeStreamMetadata(stream, episode, resume)
 }
@@ -281,8 +273,6 @@ internal fun PlayerScreenRuntime.switchToSource(stream: StreamItem) {
     activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
     activeStreamType = stream.streamType
     activeExternalSubtitles = stream.externalSubtitles
-    activeSourceFilename = stream.playbackFilenameHint
-    activeSourceVideoSize = stream.behaviorHints.videoSize
     activeSourceIdentityKey = sourceIdentityKey
     activeStreamTitle = stream.streamLabel
     activeStreamSubtitle = stream.streamSubtitle
@@ -366,8 +356,6 @@ internal fun PlayerScreenRuntime.switchToDownloadedEpisode(downloadItem: Downloa
     activeSourceResponseHeaders = emptyMap()
     activeStreamType = null
     activeExternalSubtitles = emptyList()
-    activeSourceFilename = downloadItem.fileName
-    activeSourceVideoSize = downloadItem.totalBytes
     activeSourceIdentityKey = null
     activeStreamTitle = downloadItem.streamTitle.ifBlank {
         episode.title.ifBlank { title }
@@ -481,8 +469,6 @@ private fun PlayerScreenRuntime.applyEpisodeStreamMetadata(
 ) {
     val isP2p = activeTorrentInfoHash != null
     activeExternalSubtitles = if (isP2p) emptyList() else stream.externalSubtitles
-    activeSourceFilename = if (isP2p) stream.p2pFilename else stream.playbackFilenameHint
-    activeSourceVideoSize = stream.behaviorHints.videoSize
     activeSourceIdentityKey = stream.playerSourceIdentityKey()
     activeStreamTitle = stream.streamLabel
     activeStreamSubtitle = stream.streamSubtitle
@@ -521,7 +507,7 @@ private fun PlayerScreenRuntime.saveDirectStreamForReuse(
         addonId = stream.addonId,
         requestHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request),
         responseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response),
-        filename = stream.playbackFilenameHint,
+        filename = stream.behaviorHints.filename,
         videoSize = stream.behaviorHints.videoSize,
         bingeGroup = stream.behaviorHints.bingeGroup,
         streamType = stream.streamType,

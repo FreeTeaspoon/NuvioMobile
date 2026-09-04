@@ -234,9 +234,6 @@ actual object PlayerSettingsStorage {
         NSUserDefaults.standardUserDefaults.setFloat(clampPlayerVideoZoom(zoom), forKey = ProfileScopedKey.of(videoZoomKey))
     }
 
-    actual fun loadPlayerEngine(): String? = null
-
-    actual fun savePlayerEngine(engine: String) {}
 
     actual fun loadHoldToSpeedEnabled(): Boolean? {
         val defaults = NSUserDefaults.standardUserDefaults
