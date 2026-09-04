@@ -72,8 +72,6 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         activeSourceAudioUrl,
         activeSourceHeaders,
         activeSourceResponseHeaders,
-        activeSourceFilename,
-        activeSourceVideoSize,
         activeExternalSubtitles,
     ) {
         errorMessage = null
@@ -119,7 +117,6 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         activeTorrentInfoHash,
         activeTorrentFileIdx,
         activeTorrentFilename,
-        activeTorrentMagnetUri,
         activeTorrentTrackers,
         p2pSettingsUiState.p2pEnabled,
     ) {
@@ -138,7 +135,6 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         p2pResolvedSourceUrl = null
         val requestedFileIdx = activeTorrentFileIdx
         val requestedFilename = activeTorrentFilename
-        val requestedMagnetUri = activeTorrentMagnetUri
         val requestedTrackers = activeTorrentTrackers
         errorMessage = null
         playerController = null
@@ -154,15 +150,10 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
                     infoHash = infoHash,
                     fileIdx = requestedFileIdx,
                     filename = requestedFilename,
-                    magnetUri = requestedMagnetUri,
                     trackers = requestedTrackers,
                 ),
             )
-            if (
-                activeTorrentInfoHash == infoHash &&
-                activeTorrentFileIdx == requestedFileIdx &&
-                activeTorrentMagnetUri == requestedMagnetUri
-            ) {
+            if (activeTorrentInfoHash == infoHash && activeTorrentFileIdx == requestedFileIdx) {
                 activeSourceAudioUrl = null
                 activeSourceHeaders = emptyMap()
                 activeSourceResponseHeaders = emptyMap()
@@ -744,8 +735,6 @@ internal fun PlayerScreenRuntime.tryRefreshCredentialedSourceAfterError(message:
         activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
         activeStreamType = stream.streamType
         activeExternalSubtitles = stream.externalSubtitles
-        activeSourceFilename = stream.playbackFilenameHint
-        activeSourceVideoSize = stream.behaviorHints.videoSize
         activeStreamTitle = stream.streamLabel
         activeStreamSubtitle = stream.streamSubtitle
         activeProviderName = stream.addonName

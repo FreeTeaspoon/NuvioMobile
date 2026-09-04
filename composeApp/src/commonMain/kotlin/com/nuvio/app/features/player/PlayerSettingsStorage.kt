@@ -11,8 +11,6 @@ internal expect object PlayerSettingsStorage {
     fun saveResizeMode(mode: String)
     fun loadVideoZoom(): Float?
     fun saveVideoZoom(zoom: Float)
-    fun loadPlayerEngine(): String?
-    fun savePlayerEngine(engine: String)
     fun loadHoldToSpeedEnabled(): Boolean?
     fun saveHoldToSpeedEnabled(enabled: Boolean)
     fun loadHoldToSpeedValue(): Float?

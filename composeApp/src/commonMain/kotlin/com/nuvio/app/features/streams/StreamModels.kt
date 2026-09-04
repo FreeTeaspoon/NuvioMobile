@@ -63,7 +63,7 @@ data class StreamItem(
             externalOpenUrl != null
 
     val torrentMagnetUri: String?
-        get() = listOfNotNull(url, externalUrl, clientResolve?.magnetUri)
+        get() = listOfNotNull(url, externalUrl)
             .firstOrNull { it.isMagnetLink() }
 
     val torrentSchemeUri: String?
@@ -82,8 +82,7 @@ data class StreamItem(
             url.isMagnetLink() ||
             externalUrl.isMagnetLink() ||
             url.isTorrentSchemeUrl() ||
-            externalUrl.isTorrentSchemeUrl() ||
-            clientResolve?.magnetUri.isMagnetLink()
+            externalUrl.isTorrentSchemeUrl()
         )
 
     val isCachedDebridTorrentStream: Boolean
@@ -95,18 +94,14 @@ data class StreamItem(
     val p2pInfoHash: String?
         get() = infoHash.normalizedInfoHash()
             ?: clientResolve?.infoHash.normalizedInfoHash()
-            ?: clientResolve?.magnetUri.extractBtihInfoHash()
             ?: torrentMagnetUri.extractBtihInfoHash()
             ?: torrentSchemeUri.extractTorrentSchemeInfoHash()
 
     val p2pFileIdx: Int?
-        get() = fileIdx ?: clientResolve?.fileIdx ?: torrentSchemeUri.extractTorrentSchemeFileIdx()
-
-    val p2pFilename: String?
-        get() = behaviorHints.filename ?: clientResolve?.filename
+        get() = fileIdx ?: torrentSchemeUri.extractTorrentSchemeFileIdx()
 
     val p2pTrackers: List<String>
-        get() = p2pSourceHints
+        get() = sources
             .asSequence()
             .filter { it.startsWith("tracker:") }
             .map { it.removePrefix("tracker:").trim() }
@@ -114,20 +109,11 @@ data class StreamItem(
             .distinct()
             .toList()
 
-    val p2pSourceHints: List<String>
-        get() = (sources + clientResolve?.sources.orEmpty())
-            .distinct()
-
     val isAddonDebridCandidate: Boolean
         get() = isInstalledAddonStream && (needsLocalDebridResolve || isDirectDebridStream)
 
     val hasPlayableSource: Boolean
         get() = url != null || infoHash != null || externalUrl != null || clientResolve != null
-
-    val playbackFilenameHint: String?
-        get() = behaviorHints.filename
-            ?: listOfNotNull(name, description, url, externalUrl)
-                .firstNotNullOfOrNull(::extractPlaybackFilenameHint)
 }
 
 data class StreamBadge(
@@ -295,16 +281,6 @@ data class AddonStreamGroup(
     val isLoading: Boolean = false,
     val error: String? = null,
 )
-
-private val playbackFilenamePattern =
-    Regex("""(?i)([^/\\|]+\.(mkv|mk3d|webm|mp4|m4v|mov|avi|ts|m2ts|mts|mpg|mpeg|flv|m3u8|mpd))""")
-
-private fun extractPlaybackFilenameHint(value: String): String? =
-    playbackFilenamePattern.find(value)
-        ?.value
-        ?.trim()
-        ?.trim('"', '\'', ' ', '\t', '\r', '\n')
-        ?.takeIf { it.isNotBlank() }
 
 enum class StreamsEmptyStateReason {
     NoAddonsInstalled,

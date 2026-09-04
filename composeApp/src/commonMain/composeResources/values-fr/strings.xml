@@ -1985,9 +1985,6 @@
     <string name="compose_player_set_as_default">Set as default</string>
     <string name="compose_player_zoom_decrease">Decrease video zoom</string>
     <string name="compose_player_zoom_increase">Increase video zoom</string>
-    <string name="settings_playback_player_engine">Player Engine</string>
-    <string name="settings_playback_player_engine_media3">Media3</string>
-    <string name="settings_playback_player_engine_mpv">MPV</string>
     <string name="settings_reset_confirm_message">This will restore these settings to their default values.</string>
     <string name="settings_reset_confirm_title">Reset to default?</string>
     <string name="backup_title">Backup</string>

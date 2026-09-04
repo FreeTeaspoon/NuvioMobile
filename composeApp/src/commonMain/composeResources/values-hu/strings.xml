@@ -1991,9 +1991,6 @@
     <string name="compose_player_playback_speed">Playback speed</string>
     <string name="settings_reset_confirm_message">This will restore these settings to their default values.</string>
     <string name="settings_reset_confirm_title">Reset to default?</string>
-    <string name="settings_playback_player_engine">Player Engine</string>
-    <string name="settings_playback_player_engine_media3">Media3</string>
-    <string name="settings_playback_player_engine_mpv">MPV</string>
     <string name="settings_debrid_sort_default">Default</string>
     <string name="backup_title">Backup</string>
     <string name="backup_export">Export backup</string>

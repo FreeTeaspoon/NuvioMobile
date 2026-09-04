@@ -35,7 +35,6 @@ data class PlayerSettingsUiState(
     val showLoadingOverlay: Boolean = true,
     val showParentalGuide: Boolean = true,
     val resizeMode: PlayerResizeMode = PlayerResizeMode.Fit,
-    val playerEngine: PlayerEngineType = PlayerEngineType.MEDIA3,
     val holdToSpeedEnabled: Boolean = true,
     val holdToSpeedValue: Float = 2f,
     val touchGesturesEnabled: Boolean = true,
@@ -102,7 +101,6 @@ object PlayerSettingsRepository {
     private var showLoadingOverlay = true
     private var showParentalGuide = true
     private var resizeMode = PlayerResizeMode.Fit
-    private var playerEngine = PlayerEngineType.MEDIA3
     private var holdToSpeedEnabled = true
     private var holdToSpeedValue = 2f
     private var touchGesturesEnabled = true
@@ -180,7 +178,6 @@ object PlayerSettingsRepository {
         showLoadingOverlay = true
         showParentalGuide = true
         resizeMode = PlayerResizeMode.Fit
-        playerEngine = PlayerEngineType.MEDIA3
         holdToSpeedEnabled = true
         holdToSpeedValue = 2f
         touchGesturesEnabled = true
@@ -247,11 +244,6 @@ object PlayerSettingsRepository {
         resizeMode = PlayerSettingsStorage.loadResizeMode()
             ?.let { runCatching { PlayerResizeMode.valueOf(it) }.getOrNull() }
             ?: PlayerResizeMode.Fit
-        val legacyPlayerEngine = PlayerSettingsStorage.loadPlayerEngine()
-        playerEngine = resolvePlayerEngine(
-            rawEngine = legacyPlayerEngine,
-            mpvSelectable = AppFeaturePolicy.mpvPlaybackEngineSelectable,
-        )
         holdToSpeedEnabled = PlayerSettingsStorage.loadHoldToSpeedEnabled() ?: true
         holdToSpeedValue = PlayerSettingsStorage.loadHoldToSpeedValue() ?: 2f
         touchGesturesEnabled = PlayerSettingsStorage.loadTouchGesturesEnabled() ?: true
@@ -298,13 +290,7 @@ object PlayerSettingsRepository {
         streamReuseLastLinkCacheHours = PlayerSettingsStorage.loadStreamReuseLastLinkCacheHours() ?: 24
         androidPlaybackEngine = PlayerSettingsStorage.loadAndroidPlaybackEngine()
             ?.let { runCatching { AndroidPlaybackEngine.valueOf(it) }.getOrNull() }
-            ?: if (legacyPlayerEngine == null) {
-                AndroidPlaybackEngine.Auto
-            } else if (playerEngine == PlayerEngineType.MPV) {
-                AndroidPlaybackEngine.Libmpv
-            } else {
-                AndroidPlaybackEngine.ExoPlayer
-            }
+            ?: AndroidPlaybackEngine.Auto
         androidLibmpvVideoOutput = PlayerSettingsStorage.loadAndroidLibmpvVideoOutput()
             ?.let { runCatching { AndroidLibmpvVideoOutput.valueOf(it) }.getOrNull() }
             ?: AndroidLibmpvVideoOutput.GpuNext
@@ -408,22 +394,6 @@ object PlayerSettingsRepository {
         resizeMode = mode
         publish()
         PlayerSettingsStorage.saveResizeMode(mode.name)
-    }
-
-    fun setPlayerEngine(engine: PlayerEngineType) {
-        ensureLoaded()
-        val normalized = resolvePlayerEngine(engine.name, AppFeaturePolicy.mpvPlaybackEngineSelectable)
-        val resolvedAndroidEngine = if (normalized == PlayerEngineType.MPV) {
-            AndroidPlaybackEngine.Libmpv
-        } else {
-            AndroidPlaybackEngine.ExoPlayer
-        }
-        if (playerEngine == normalized && androidPlaybackEngine == resolvedAndroidEngine) return
-        playerEngine = normalized
-        androidPlaybackEngine = resolvedAndroidEngine
-        publish()
-        PlayerSettingsStorage.savePlayerEngine(engine.name)
-        PlayerSettingsStorage.saveAndroidPlaybackEngine(resolvedAndroidEngine.name)
     }
 
     fun setHoldToSpeedEnabled(enabled: Boolean) {
@@ -951,10 +921,6 @@ object PlayerSettingsRepository {
             showLoadingOverlay = showLoadingOverlay,
             showParentalGuide = showParentalGuide,
             resizeMode = resizeMode,
-            playerEngine = resolvePlayerEngine(
-                rawEngine = playerEngine.name,
-                mpvSelectable = AppFeaturePolicy.mpvPlaybackEngineSelectable,
-            ),
             holdToSpeedEnabled = holdToSpeedEnabled,
             holdToSpeedValue = holdToSpeedValue,
             touchGesturesEnabled = touchGesturesEnabled,
@@ -1020,16 +986,5 @@ object PlayerSettingsRepository {
         } else {
             source
         }
-    }
-}
-
-internal fun resolvePlayerEngine(rawEngine: String?, mpvSelectable: Boolean): PlayerEngineType {
-    val parsed = rawEngine
-        ?.let { runCatching { PlayerEngineType.valueOf(it) }.getOrNull() }
-        ?: PlayerEngineType.MEDIA3
-    return if (parsed == PlayerEngineType.MPV && !mpvSelectable) {
-        PlayerEngineType.MEDIA3
-    } else {
-        parsed
     }
 }

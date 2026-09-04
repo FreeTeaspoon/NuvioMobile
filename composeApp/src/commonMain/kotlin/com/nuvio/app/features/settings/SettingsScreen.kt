@@ -73,7 +73,7 @@ import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepositor
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsUiState
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.AndroidLibmpvVideoOutput
-import com.nuvio.app.features.player.PlayerEngineType
+import com.nuvio.app.features.player.AndroidPlaybackEngine
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.simkl.SimklAuthRepository
@@ -377,7 +377,7 @@ fun SettingsScreen(
                 onNavigateBack = ::navigateBack,
                 showInternalHeader = showInternalHeader,
                 showLoadingOverlay = playerSettingsUiState.showLoadingOverlay,
-                playerEngine = playerSettingsUiState.playerEngine,
+                androidPlaybackEngine = playerSettingsUiState.androidPlaybackEngine,
                 holdToSpeedEnabled = playerSettingsUiState.holdToSpeedEnabled,
                 holdToSpeedValue = playerSettingsUiState.holdToSpeedValue,
                 touchGesturesEnabled = playerSettingsUiState.touchGesturesEnabled,
@@ -445,7 +445,7 @@ fun SettingsScreen(
                 onNavigateBack = ::navigateBack,
                 showInternalHeader = showInternalHeader,
                 showLoadingOverlay = playerSettingsUiState.showLoadingOverlay,
-                playerEngine = playerSettingsUiState.playerEngine,
+                androidPlaybackEngine = playerSettingsUiState.androidPlaybackEngine,
                 holdToSpeedEnabled = playerSettingsUiState.holdToSpeedEnabled,
                 holdToSpeedValue = playerSettingsUiState.holdToSpeedValue,
                 touchGesturesEnabled = playerSettingsUiState.touchGesturesEnabled,
@@ -523,7 +523,7 @@ private fun MobileSettingsScreen(
     onNavigateBack: () -> Unit,
     showInternalHeader: Boolean,
     showLoadingOverlay: Boolean,
-    playerEngine: PlayerEngineType,
+    androidPlaybackEngine: AndroidPlaybackEngine,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     touchGesturesEnabled: Boolean,
@@ -723,7 +723,7 @@ private fun MobileSettingsScreen(
                 SettingsPage.Playback -> playbackSettingsContent(
                     isTablet = false,
                     showLoadingOverlay = showLoadingOverlay,
-                    playerEngine = playerEngine,
+                    androidPlaybackEngine = androidPlaybackEngine,
                     holdToSpeedEnabled = holdToSpeedEnabled,
                     holdToSpeedValue = holdToSpeedValue,
                     touchGesturesEnabled = touchGesturesEnabled,
@@ -905,7 +905,7 @@ private fun TabletSettingsScreen(
     onNavigateBack: () -> Unit,
     showInternalHeader: Boolean,
     showLoadingOverlay: Boolean,
-    playerEngine: PlayerEngineType,
+    androidPlaybackEngine: AndroidPlaybackEngine,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     touchGesturesEnabled: Boolean,
@@ -1167,7 +1167,7 @@ private fun TabletSettingsScreen(
                     SettingsPage.Playback -> playbackSettingsContent(
                         isTablet = true,
                         showLoadingOverlay = showLoadingOverlay,
-                        playerEngine = playerEngine,
+                        androidPlaybackEngine = androidPlaybackEngine,
                         holdToSpeedEnabled = holdToSpeedEnabled,
                         holdToSpeedValue = holdToSpeedValue,
                         touchGesturesEnabled = touchGesturesEnabled,

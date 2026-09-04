@@ -81,8 +81,6 @@ check_contract() {
 printf '%s\n' '--- fork feature files ---'
 required_paths=(
   "FORK_FEATURES.md"
-  "composeApp/full-libs/libmpv-release.aar"
-  "composeApp/src/androidFull/kotlin/com/nuvio/app/features/player/AndroidMpvPlayerSurface.kt"
   "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/VideoZoomModal.kt"
   "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/RememberedVideoZoom.kt"
   "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/RememberedAudioSelection.kt"
@@ -140,24 +138,17 @@ check_contract \
 check_contract \
   "MPV backward-seek cache" \
   'demuxer-max-back-bytes|cache-secs|demuxer-seekable-cache' \
-  composeApp/src/androidFull/kotlin/com/nuvio/app/features/player
-check_contract \
-  "source metadata propagation" \
-  'sourceFilename|sourceVideoSize|playbackFilenameHint' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app composeApp/src/androidMain/kotlin/com/nuvio/app/features/player
+  composeApp/src/androidMain/kotlin/com/nuvio/app/features/player
 check_contract \
   "external subtitle propagation" \
   'activeExternalSubtitles|externalSubtitles' \
   composeApp/src/commonMain/kotlin/com/nuvio/app/features/player
 check_contract \
-  "P2P magnet/cache propagation" \
-  'buildP2pMagnetUri|torrentMagnetUri|magnetUri' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/features/p2p \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/App.kt \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/StreamDestination.kt \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/PlayerDestination.kt \
-  composeApp/src/androidMain/kotlin/com/nuvio/app/features/p2p \
-  composeApp/src/iosFull/kotlin/com/nuvio/app/features/p2p
+  "upstream Android playback engine" \
+  'AndroidPlaybackEngine|LibmpvPlayerSurface|setAndroidPlaybackEngine' \
+  composeApp/src/commonMain/kotlin/com/nuvio/app/features/player \
+  composeApp/src/androidMain/kotlin/com/nuvio/app/features/player \
+  composeApp/src/commonMain/kotlin/com/nuvio/app/features/settings
 check_contract \
   "foreground/recovered downloads" \
   'DownloadsForegroundService|DownloadProgressUpdateTracker|recovered' \

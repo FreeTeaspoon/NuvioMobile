@@ -23,7 +23,6 @@ actual object PlayerSettingsStorage {
     private const val showParentalGuideKey = "show_parental_guide"
     private const val resizeModeKey = "resize_mode"
     private const val videoZoomKey = "video_zoom"
-    private const val playerEngineKey = "player_engine"
     private const val holdToSpeedEnabledKey = "hold_to_speed_enabled"
     private const val holdToSpeedValueKey = "hold_to_speed_value"
     private const val touchGesturesEnabledKey = "touch_gestures_enabled"
@@ -97,7 +96,6 @@ actual object PlayerSettingsStorage {
         showLoadingOverlayKey,
         showParentalGuideKey,
         resizeModeKey,
-        playerEngineKey,
         holdToSpeedEnabledKey,
         holdToSpeedValueKey,
         touchGesturesEnabledKey,
@@ -230,16 +228,6 @@ actual object PlayerSettingsStorage {
         preferences
             ?.edit()
             ?.putFloat(ProfileScopedKey.of(videoZoomKey), clampPlayerVideoZoom(zoom))
-            ?.apply()
-    }
-
-    actual fun loadPlayerEngine(): String? =
-        preferences?.getString(ProfileScopedKey.of(playerEngineKey), null)
-
-    actual fun savePlayerEngine(engine: String) {
-        preferences
-            ?.edit()
-            ?.putString(ProfileScopedKey.of(playerEngineKey), engine)
             ?.apply()
     }
 
@@ -1167,7 +1155,6 @@ actual object PlayerSettingsStorage {
         loadShowLoadingOverlay()?.let { put(showLoadingOverlayKey, encodeSyncBoolean(it)) }
         loadShowParentalGuide()?.let { put(showParentalGuideKey, encodeSyncBoolean(it)) }
         loadResizeMode()?.let { put(resizeModeKey, encodeSyncString(it)) }
-        loadPlayerEngine()?.let { put(playerEngineKey, encodeSyncString(it)) }
         loadHoldToSpeedEnabled()?.let { put(holdToSpeedEnabledKey, encodeSyncBoolean(it)) }
         loadHoldToSpeedValue()?.let { put(holdToSpeedValueKey, encodeSyncFloat(it)) }
         loadTouchGesturesEnabled()?.let { put(touchGesturesEnabledKey, encodeSyncBoolean(it)) }
@@ -1246,7 +1233,6 @@ actual object PlayerSettingsStorage {
         payload.decodeSyncBoolean(showLoadingOverlayKey)?.let(::saveShowLoadingOverlay)
         payload.decodeSyncBoolean(showParentalGuideKey)?.let(::saveShowParentalGuide)
         payload.decodeSyncString(resizeModeKey)?.let(::saveResizeMode)
-        payload.decodeSyncString(playerEngineKey)?.let(::savePlayerEngine)
         payload.decodeSyncBoolean(holdToSpeedEnabledKey)?.let(::saveHoldToSpeedEnabled)
         payload.decodeSyncFloat(holdToSpeedValueKey)?.let(::saveHoldToSpeedValue)
         payload.decodeSyncBoolean(touchGesturesEnabledKey)?.let(::saveTouchGesturesEnabled)
