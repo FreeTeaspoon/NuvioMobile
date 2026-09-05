@@ -154,6 +154,18 @@ check_contract \
   'DownloadsForegroundService|DownloadProgressUpdateTracker|recovered' \
   composeApp/src
 check_contract \
+  "scheduled download WebDAV authentication" \
+  'authenticator\(DownloadWebDavAuthenticator\)' \
+  composeApp/src/androidMain/kotlin/com/nuvio/app/features/downloads/AndroidDownloadTransfer.kt
+check_contract \
+  "scheduled download progress pacing" \
+  'DownloadProgressUpdateTracker' \
+  composeApp/src/androidMain/kotlin/com/nuvio/app/features/downloads/AndroidDownloadScheduler.kt
+check_contract \
+  "managed foreground download adapter" \
+  'DownloadsForegroundService.transferForegroundInfo' \
+  composeApp/src/androidMain/kotlin/com/nuvio/app/features/downloads/DownloadsTransferWorker.kt
+check_contract \
   "player system/launch storage" \
   'PlayerSystemMediaControls|PlayerTrackPreferenceStorage|PlayerLaunchStorage' \
   composeApp/src

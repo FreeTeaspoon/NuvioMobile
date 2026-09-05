@@ -10,6 +10,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.work.ForegroundInfo
 import androidx.core.content.ContextCompat
 import com.nuvio.app.core.deeplink.buildDownloadsDeepLinkUrl
 import kotlinx.coroutines.runBlocking
@@ -44,6 +45,15 @@ class DownloadsForegroundService : Service() {
     companion object {
         private const val ServiceNotificationId = 42_018
         private const val ChannelId = "downloads_live_status"
+
+        internal fun transferForegroundInfo(context: Context, item: DownloadItem): ForegroundInfo =
+            ForegroundInfo(
+                DownloadsLiveStatusPlatform.notificationId(item.id),
+                DownloadsLiveStatusPlatform.buildNotification(context, item),
+                if (Build.VERSION.SDK_INT >= 29) {
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                } else 0,
+            )
 
         fun start(context: Context) {
             val appContext = context.applicationContext

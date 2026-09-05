@@ -162,7 +162,7 @@ object DownloadsRepository {
             episodeTitle = episodeTitle,
             fallbackTitle = stream.streamLabel,
             sourceUrl = sourceUrl,
-            nowEpochMs = now,
+            downloadId = downloadId,
         )
 
         val item = DownloadItem(
@@ -252,6 +252,16 @@ object DownloadsRepository {
         resumeDownload(downloadId)
     }
 
+    internal fun reattachBackgroundDownload(downloadId: String) {
+        if (!hasLoaded) return
+        val item = _uiState.value.items.firstOrNull { it.id == downloadId } ?: return
+        activeHandles.remove(downloadId)?.cancel()
+        val restored = DownloadsPlatformDownloader.restoreItem(item)
+        replaceItem(restored)
+        persist()
+        if (restored.status == DownloadStatus.Downloading) startDownload(restored)
+    }
+
     fun cancelDownload(downloadId: String) {
         ensureLoaded()
         val item = _uiState.value.items.firstOrNull { it.id == downloadId } ?: return
@@ -277,14 +287,7 @@ object DownloadsRepository {
         }
         val normalized = decoded
             .map { item ->
-                val statusNormalized = if (item.status == DownloadStatus.Downloading) {
-                    item.copy(
-                        status = DownloadStatus.Paused,
-                        errorMessage = null,
-                    )
-                } else {
-                    item
-                }
+                val statusNormalized = DownloadsPlatformDownloader.restoreItem(item)
 
                 val recoveredMetadataNormalized = normalizeRecoveredEpisodeMetadata(statusNormalized)
                 val localUriNormalized = normalizeCompletedLocalFileUri(recoveredMetadataNormalized)
@@ -304,14 +307,12 @@ object DownloadsRepository {
         if (shouldPersistNormalized || recovered.isNotEmpty()) {
             persist()
         }
+        normalized.filter { it.status == DownloadStatus.Downloading && it.id !in activeHandles }
+            .forEach(::startDownload)
     }
 
     private fun startDownload(item: DownloadItem) {
-        val request = DownloadPlatformRequest(
-            sourceUrl = item.sourceUrl,
-            sourceHeaders = item.sourceHeaders,
-            destinationFileName = item.fileName,
-        )
+        val request = DownloadPlatformRequest(item)
         val progressTracker = DownloadProgressUpdateTracker()
 
         val handle = DownloadsPlatformDownloader.start(
@@ -340,6 +341,7 @@ object DownloadsRepository {
             onSuccess = { localFileUri, totalBytes ->
                 activeHandles.remove(item.id)
                 mutateItem(item.id) { current ->
+                    if (current.status != DownloadStatus.Downloading) return@mutateItem current
                     current.copy(
                         status = DownloadStatus.Completed,
                         localFileUri = localFileUri,
@@ -366,6 +368,13 @@ object DownloadsRepository {
                             updatedAtEpochMs = DownloadsClock.nowEpochMs(),
                         )
                     }
+                }
+            },
+            onPaused = {
+                activeHandles.remove(item.id)
+                mutateItem(item.id) { current ->
+                    if (current.status != DownloadStatus.Downloading) return@mutateItem current
+                    current.copy(status = DownloadStatus.Paused, errorMessage = null)
                 }
             },
         )
@@ -676,7 +685,7 @@ private fun buildFileName(
     episodeTitle: String?,
     fallbackTitle: String,
     sourceUrl: String,
-    nowEpochMs: Long,
+    downloadId: String,
 ): String {
     val baseTitle = if (seasonNumber != null && episodeNumber != null) {
         buildString {
@@ -698,7 +707,7 @@ private fun buildFileName(
     return buildString {
         append(baseTitle.sanitizeFileName().ifBlank { "download" }.take(92))
         append('_')
-        append(nowEpochMs.toString(36))
+        append(downloadId)
         append('.')
         append(extension)
     }
@@ -734,9 +743,9 @@ private fun String.recoveredDownloadMetadata(): RecoveredDownloadMetadata {
 
 private val episodeCodeRegex = Regex("""(?i)\bS(\d{1,2})E(\d{1,3})\b""")
 
-private fun String.recoveredDisplayNameFromFileName(): String {
+internal fun String.recoveredDisplayNameFromFileName(): String {
     val withoutExtension = substringBeforeLast('.', missingDelimiterValue = this)
-    val withoutGeneratedSuffix = withoutExtension.replace(Regex("_[0-9a-z]{6,}$"), "")
+    val withoutGeneratedSuffix = withoutExtension.replace(Regex("_[0-9a-z]{6,}(?:_[0-9a-z]+)?$"), "")
     return withoutGeneratedSuffix
         .replace('_', ' ')
         .trim()

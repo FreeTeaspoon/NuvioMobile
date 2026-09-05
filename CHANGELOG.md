@@ -10,6 +10,19 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ### Fixed
 
+## 0.4.14.1
+
+### Changed
+
+- Updated to upstream 0.4.14, including player controls, original-audio selection, subtitle picker fixes, and autoplay source loading.
+- Android downloads now use persistent system scheduling while retaining WebDAV authentication, live speeds, and local file recovery.
+
+### Fixed
+
+- Remembered audio and subtitle choices remain selected when original-language metadata arrives during playback.
+- Returning from playback refreshes the resume position, including after seeking backward.
+- Recovered download titles recognize the new filename format.
+
 ## 0.4.5.4
 
 ### Changed

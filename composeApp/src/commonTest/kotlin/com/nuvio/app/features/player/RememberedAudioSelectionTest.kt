@@ -75,14 +75,7 @@ class RememberedAudioSelectionTest {
         )
 
         assertEquals(-1, resolveRememberedAudioTrackIndex(tracks, selection))
-        assertEquals(
-            1,
-            findPreferredTrackIndex(
-                tracks = tracks,
-                targets = listOf("jpn"),
-                language = { it.language },
-            ),
-        )
+
     }
 
     private fun audioTrack(

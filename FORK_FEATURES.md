@@ -29,6 +29,22 @@ engine selector, and native desktop player bridge are intentionally back to
 upstream behavior. Subtitle remembering remains because it supports the
 remembered-choice behavior selected above.
 
+## Android download scheduling
+
+Android 14 and newer use upstream's persisted user-initiated transfer jobs.
+Older Android versions use WorkManager foreground execution, with notification
+configuration supplied by `DownloadsForegroundService.transferForegroundInfo`.
+The scheduler owns cancellation, retry and transfer state across process restarts.
+The former standalone foreground-service launch is replaced by that managed
+lifecycle, so transfer work and foreground protection have the same lifetime.
+
+Keep WebDAV Basic/Digest authentication in `DownloadWebDavAuthentication.kt`
+and the buffered writer in `AndroidDownloadTransfer.kt`. The scheduler uses
+`DownloadProgressUpdateTracker` to publish UI progress every 100 ms, throttle
+notifications separately and persist progress every second. Terminal state
+changes remain durable. Repository recovery must recognize both legacy
+filename timestamps and the newer timestamp-plus-ordinal download IDs.
+
 ## Upstream-shaped shared files
 
 Keep these files close to upstream and port fork behavior around the upstream

@@ -31,11 +31,17 @@ internal actual object DownloadsPlatformDownloader {
     private val downloadsDir: File
         get() = File(DesktopStorage.rootDir.resolve("downloads").also { it.createDirectories() }.toUri())
 
+    actual fun restoreItem(item: DownloadItem): DownloadItem =
+        if (item.status == DownloadStatus.Downloading) {
+            item.copy(status = DownloadStatus.Paused, errorMessage = null)
+        } else item
+
     actual fun start(
         request: DownloadPlatformRequest,
         onProgress: (downloadedBytes: Long, totalBytes: Long?) -> Unit,
         onSuccess: (localFileUri: String, totalBytes: Long?) -> Unit,
         onFailure: (message: String) -> Unit,
+        onPaused: () -> Unit,
     ): DownloadsTaskHandle {
         val job = SupervisorJob()
         val scope = CoroutineScope(job + Dispatchers.IO)

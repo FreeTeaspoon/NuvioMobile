@@ -93,6 +93,7 @@ import com.nuvio.app.features.debrid.toastMessage
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.watchprogress.progressForPlaybackTarget
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
+import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watched.WatchedRepository
 import com.nuvio.app.features.watched.watchedItemKeys
 import com.nuvio.app.navigation.LocalUseNativeNavigation
@@ -171,7 +172,7 @@ fun StreamsScreen(
     var preferredFilterApplied by remember(videoId) { mutableStateOf(false) }
     var autoPlayOverlayLogoLoadError by remember(logo) { mutableStateOf(false) }
     val autoPlayOverlayLogoUrl = logo?.takeIf { it.isNotBlank() }
-    val episodeProgress = watchProgressUiState.progressForVideo(
+    val episodeProgress = watchProgressUiState.entries.progressForPlaybackTarget(
         videoId = videoId,
         parentMetaId = parentMetaId,
         seasonNumber = seasonNumber,
@@ -180,21 +181,16 @@ fun StreamsScreen(
     val storedProgress = if (startFromBeginning) {
         null
     } else {
-        watchProgressUiState.entries.progressForPlaybackTarget(
-            videoId = videoId,
-            parentMetaId = parentMetaId,
-            seasonNumber = seasonNumber,
-            episodeNumber = episodeNumber,
-        )
+        episodeProgress
     }
-    val effectiveResume = resolveEffectiveStreamResume(
-        requestedPositionMs = resumePositionMs,
-        requestedProgressFraction = resumeProgressFraction,
-        storedProgress = storedProgress,
+    val resumeState = resolveStreamResumeState(
+        progress = episodeProgress,
+        initialPositionMs = resumePositionMs,
+        initialProgressFraction = resumeProgressFraction,
         startFromBeginning = startFromBeginning,
     )
-    val effectiveResumePositionMs = effectiveResume.positionMs
-    val effectiveResumeProgressFraction = effectiveResume.progressFraction
+    val effectiveResumePositionMs = resumeState.positionMs
+    val effectiveResumeProgressFraction = resumeState.progressFraction
 
     LaunchedEffect(type, videoId, seasonNumber, episodeNumber, manualSelection) {
         StreamsRepository.load(
@@ -574,6 +570,29 @@ private fun MobileStreamsLayout(
             }
         }
     }
+}
+
+internal data class StreamResumeState(
+    val positionMs: Long? = null,
+    val progressFraction: Float? = null,
+)
+
+internal fun resolveStreamResumeState(
+    progress: WatchProgressEntry?,
+    initialPositionMs: Long?,
+    initialProgressFraction: Float?,
+    startFromBeginning: Boolean,
+): StreamResumeState {
+    if (startFromBeginning || progress?.isResumable == false) return StreamResumeState()
+    // Refresh from current storage after playback, retaining the fork's preference
+    // for an exact position over a percentage when both are available.
+    val resume = resolveEffectiveStreamResume(
+        requestedPositionMs = initialPositionMs.takeIf { progress == null },
+        requestedProgressFraction = initialProgressFraction.takeIf { progress == null },
+        storedProgress = progress,
+        startFromBeginning = startFromBeginning,
+    )
+    return StreamResumeState(positionMs = resume.positionMs, progressFraction = resume.progressFraction)
 }
 
 @Composable
