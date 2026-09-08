@@ -24,21 +24,6 @@ class P2pMagnetTest {
     }
 
     @Test
-    fun suppliedMagnetPassthroughParametersAndTrackersAreRetained() {
-        val hash = "ABCDEF0123456789ABCDEF0123456789ABCDEF01"
-        val magnet = buildP2pMagnetUri(
-            infoHash = hash,
-            trackers = listOf("udp://new.example:80/announce"),
-            magnetUri = "magnet:?xt=urn:btih:ignored&dn=Example%20Title&tr=udp%3A%2F%2Fold.example%3A80%2Fannounce",
-        )
-
-        assertTrue(magnet.startsWith("magnet:?xt=urn:btih:${hash.lowercase()}"))
-        assertTrue(magnet.contains("&dn=Example%20Title"))
-        assertTrue(magnet.contains("&tr=udp%3A%2F%2Fold.example%3A80%2Fannounce"))
-        assertTrue(magnet.contains("&tr=udp%3A%2F%2Fnew.example%3A80%2Fannounce"))
-    }
-
-    @Test
     fun invalidHashIsRejectedBeforeNativeWork() {
         assertFailsWith<IllegalArgumentException> {
             buildP2pMagnetUri("not-a-hash", emptyList())

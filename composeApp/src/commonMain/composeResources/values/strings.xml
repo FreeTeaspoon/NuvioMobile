@@ -1331,6 +1331,23 @@
     <string name="theme_rose">Rose</string>
     <string name="theme_violet">Violet</string>
     <string name="theme_white">White</string>
+    <string name="theme_custom">Custom</string>
+    <string name="custom_theme_title">Your custom gradient</string>
+    <string name="custom_theme_subtitle">Choose three colors for your theme. Select a color to edit it.</string>
+    <string name="custom_theme_edit">Edit custom theme</string>
+    <string name="custom_theme_solid_title">Your custom color</string>
+    <string name="custom_theme_solid_subtitle">Choose a color for your theme.</string>
+    <string name="custom_theme_mode_gradient">Gradient</string>
+    <string name="custom_theme_mode_solid">Single color</string>
+    <string name="custom_theme_color_number">Color %1$d</string>
+    <string name="custom_theme_hue">Hue</string>
+    <string name="custom_theme_saturation">Saturation</string>
+    <string name="custom_theme_brightness">Brightness</string>
+    <string name="custom_theme_hex_title">Hex color</string>
+    <string name="custom_theme_hex_error">Enter six characters (0–9, A–F), with or without #.</string>
+    <string name="custom_theme_save">Save theme</string>
+    <string name="custom_theme_preview">Preview</string>
+    <string name="custom_theme_preview_accent">Your accent</string>
     <string name="player_next_episode">Next Episode</string>
     <string name="player_next_episode_finding_source">Finding source…</string>
     <string name="player_next_episode_playing_via_countdown">Playing via %1$s in %2$d…</string>
@@ -2245,14 +2262,11 @@
         <item quantity="one">%d title</item>
         <item quantity="other">%d titles</item>
     </plurals>
-    <string name="settings_homescreen_hide_catalog_underline">Hide Catalog Underline</string>
-    <string name="settings_homescreen_hide_catalog_underline_description">Remove the accent line under catalog and collection titles throughout the app.</string>
     <string name="action_confirm">Confirm</string>
     <string name="watched_confirm_mark_title_unwatched">Mark %1$s as unwatched</string>
     <string name="watched_confirm_mark_title_watched">Mark %1$s as watched</string>
     <string name="watched_confirm_message">This will update watched status.</string>
     <string name="compose_player_video_zoom">Video Zoom</string>
-    <string name="compose_player_pan_and_zoom">Pan &amp; Zoom</string>
     <string name="compose_player_set_as_default">Set as default</string>
     <string name="compose_player_zoom_decrease">Decrease video zoom</string>
     <string name="compose_player_zoom_increase">Increase video zoom</string>
@@ -2263,7 +2277,6 @@
     <string name="compose_player_playback_speed">Playback speed</string>
     <string name="settings_reset_confirm_message">This will restore these settings to their default values.</string>
     <string name="settings_reset_confirm_title">Reset to default?</string>
-    <string name="settings_debrid_sort_default">Default</string>
     <string name="backup_title">Backup</string>
     <string name="backup_export">Export backup</string>
     <string name="backup_import">Import backup</string>
@@ -2275,13 +2288,8 @@
     <string name="backup_import_replace_confirm">This will replace current local app data. Downloaded files and caches are not included.</string>
     <string name="backup_export_success">Backup exported.</string>
     <string name="backup_import_success">Backup imported.</string>
-    <string name="backup_error_invalid_file">Invalid backup file.</string>
-    <string name="backup_error_wrong_password_or_corrupt">Wrong password or corrupted backup.</string>
     <string name="backup_error_export_failed">Backup export failed</string>
     <string name="backup_error_import_failed">Backup import failed</string>
-    <string name="compose_about_based_on_version_format">Based on Nuvio %1$s</string>
-    <string name="settings_appearance_desktop_navigation">Desktop Navigation</string>
-    <string name="settings_appearance_desktop_navigation_sheet_title">Choose Desktop Navigation</string>
-    <string name="settings_appearance_desktop_navigation_sidebar">Sidebar</string>
-    <string name="settings_appearance_desktop_navigation_top_bar">Top Bar</string>
+
+    <!-- Fallbacks for strings not yet translated in this locale. -->
 </resources>

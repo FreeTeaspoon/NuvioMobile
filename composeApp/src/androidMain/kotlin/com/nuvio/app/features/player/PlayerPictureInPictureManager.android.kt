@@ -37,7 +37,6 @@ internal object PlayerPictureInPictureManager {
     private var wasInPictureInPictureMode = false
     private var pendingPictureInPictureExitCheck: Runnable? = null
     private var pausePlaybackCallback: (() -> Unit)? = null
-    private var pictureInPictureExitCallback: ((Activity) -> Unit)? = null
     private var togglePlaybackCallback: (() -> Unit)? = null
 
     fun updateSession(
@@ -68,10 +67,6 @@ internal object PlayerPictureInPictureManager {
         }
     }
 
-    fun registerPictureInPictureExitCallback(callback: ((Activity) -> Unit)?) {
-        pictureInPictureExitCallback = callback
-    }
-
     fun registerTogglePlaybackCallback(callback: (() -> Unit)?) {
         togglePlaybackCallback = callback
     }
@@ -94,7 +89,6 @@ internal object PlayerPictureInPictureManager {
         clearPendingPictureInPictureExitCheck()
 
         if (!wasInPictureInPicture || isInPictureInPictureMode) return
-        pictureInPictureExitCallback?.invoke(activity)
 
         val exitCheck = Runnable {
             val returnedToForeground = activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)

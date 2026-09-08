@@ -1,10 +1,11 @@
 package com.nuvio.app
 
+import com.nuvio.app.features.backup.AppRestartPlatform
+import com.nuvio.app.features.backup.BackupFilePlatform
 import android.content.Intent
-import android.content.pm.ActivityInfo
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Bundle
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.SystemBarStyle
@@ -16,8 +17,6 @@ import com.nuvio.app.core.diagnostics.SentryInitializer
 import com.nuvio.app.core.deeplink.handleAppUrl
 import com.nuvio.app.core.storage.PlatformLocalAccountDataCleaner
 import com.nuvio.app.core.sync.SyncClientIdentityStorage
-import com.nuvio.app.features.backup.AppRestartPlatform
-import com.nuvio.app.features.backup.BackupFilePlatform
 import com.nuvio.app.features.addons.AddonHttpClientProvider
 import com.nuvio.app.features.addons.AddonStorage
 import com.nuvio.app.features.collection.CollectionMobileSettingsStorage
@@ -34,7 +33,6 @@ import com.nuvio.app.features.home.HomeCatalogSettingsStorage
 import com.nuvio.app.features.mdblist.MdbListSettingsStorage
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationPlatform
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsStorage
-import com.nuvio.app.features.player.PlayerLaunchStorage
 import com.nuvio.app.features.player.PlayerSettingsStorage
 import com.nuvio.app.features.player.PlayerTrackPreferenceStorage
 import com.nuvio.app.features.player.ExternalPlayerPlatform
@@ -64,7 +62,6 @@ import com.nuvio.app.features.updater.AndroidAppUpdaterPlatform
 import com.nuvio.app.core.ui.CardDepthStyleStorage
 import com.nuvio.app.core.ui.PosterCardStyleStorage
 import com.nuvio.app.features.watched.WatchedStorage
-import com.nuvio.app.features.streams.StreamLaunchStorage
 import com.nuvio.app.features.streams.StreamLinkCacheStorage
 import com.nuvio.app.features.streams.StreamBadgeSettingsStorage
 import com.nuvio.app.features.streams.BingeGroupCacheStorage
@@ -88,7 +85,6 @@ open class MainActivity : AppCompatActivity() {
         SentrySettingsStorage.initialize(applicationContext)
         SentryInitializer.start(application)
         super.onCreate(savedInstanceState)
-        applyDefaultOrientation()
         window.setBackgroundDrawableResource(R.color.nuvio_background)
         pipRemoteActionReceiver = PipRemoteActionReceiver.register(this)
         SyncClientIdentityStorage.initialize(applicationContext)
@@ -101,7 +97,7 @@ open class MainActivity : AppCompatActivity() {
         MetaScreenSettingsStorage.initialize(applicationContext)
         HomeCatalogSettingsStorage.initialize(applicationContext)
         PlayerSettingsStorage.initialize(applicationContext)
-        PlayerLaunchStorage.initialize(applicationContext)
+        com.nuvio.app.features.player.VideoZoomStorage.initialize(applicationContext)
         PlayerTrackPreferenceStorage.initialize(applicationContext)
         P2pSettingsStorage.initialize(applicationContext)
         P2pStreamingEngine.initialize(applicationContext)
@@ -131,7 +127,6 @@ open class MainActivity : AppCompatActivity() {
         ContinueWatchingEnrichmentStorage.initialize(applicationContext)
         EpisodeReleaseNotificationsStorage.initialize(applicationContext)
         WatchProgressStorage.initialize(applicationContext)
-        StreamLaunchStorage.initialize(applicationContext)
         StreamLinkCacheStorage.initialize(applicationContext)
         StreamBadgeSettingsStorage.initialize(applicationContext)
         BingeGroupCacheStorage.initialize(applicationContext)
@@ -184,11 +179,9 @@ open class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
-    @Deprecated("Deprecated in Android framework; kept for simple document picker interop.")
+    @Deprecated("Deprecated in Android framework; used for document picker interop.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (BackupFilePlatform.handleActivityResult(requestCode, resultCode, data)) {
-            return
-        }
+        if (BackupFilePlatform.handleActivityResult(requestCode, resultCode, data)) return
         super.onActivityResult(requestCode, resultCode, data)
     }
 
@@ -207,11 +200,5 @@ open class MainActivity : AppCompatActivity() {
         val appUrl = intent?.dataString?.trim().orEmpty()
         if (appUrl.isBlank()) return
         handleAppUrl(appUrl)
-    }
-
-    private fun applyDefaultOrientation() {
-        if (resources.configuration.smallestScreenWidthDp >= 600) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode) return
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
     }
 }

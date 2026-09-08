@@ -19,7 +19,6 @@ interface PlayerEngineController {
     fun setSubtitleUri(url: String)
     fun clearExternalSubtitle()
     fun clearExternalSubtitleAndSelect(trackIndex: Int)
-    fun setVideoZoom(state: PlayerVideoZoomState) {}
     fun applySubtitleStyle(style: SubtitleStyleState) {}
     fun applySubtitlePreferences(
         preferredLanguage: String,
@@ -83,14 +82,4 @@ expect fun PlatformPlayerSurface(
     onControllerReady: (PlayerEngineController) -> Unit,
     onSnapshot: (PlayerPlaybackSnapshot) -> Unit,
     onError: (String?) -> Unit,
-)
-
-@Composable
-expect fun PlatformSystemMediaControls(
-    title: String?,
-    subtitle: String?,
-    artworkUrl: String?,
-    controller: PlayerEngineController?,
-    snapshot: PlayerPlaybackSnapshot,
-    enabled: Boolean,
 )

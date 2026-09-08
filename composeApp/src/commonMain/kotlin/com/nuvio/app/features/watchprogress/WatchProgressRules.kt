@@ -116,26 +116,6 @@ internal fun List<WatchProgressEntry>.resumeEntryForSeries(metaId: String): Watc
     }
 }
 
-internal fun List<WatchProgressEntry>.progressForPlaybackTarget(
-    videoId: String,
-    parentMetaId: String? = null,
-    seasonNumber: Int? = null,
-    episodeNumber: Int? = null,
-): WatchProgressEntry? {
-    firstOrNull { entry -> entry.videoId == videoId }?.let { return it }
-
-    val normalizedParentMetaId = parentMetaId?.trim().orEmpty()
-    if (normalizedParentMetaId.isBlank() || seasonNumber == null || episodeNumber == null) {
-        return null
-    }
-
-    return firstOrNull { entry ->
-        entry.parentMetaId == normalizedParentMetaId &&
-            entry.seasonNumber == seasonNumber &&
-            entry.episodeNumber == episodeNumber
-    }
-}
-
 internal fun List<WatchProgressEntry>.continueWatchingEntries(
     limit: Int = ContinueWatchingLimit,
 ): List<WatchProgressEntry> {

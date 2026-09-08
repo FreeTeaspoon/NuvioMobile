@@ -77,7 +77,6 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         activeSourceAudioUrl,
         activeSourceHeaders,
         activeSourceResponseHeaders,
-        activeExternalSubtitles,
     ) {
         errorMessage = null
         playerController = null
@@ -747,7 +746,6 @@ internal fun PlayerScreenRuntime.tryRefreshCredentialedSourceAfterError(message:
         activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
         activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
         activeStreamType = stream.streamType
-        activeExternalSubtitles = stream.externalSubtitles
         activeStreamTitle = stream.streamLabel
         activeStreamSubtitle = stream.streamSubtitle
         activeProviderName = stream.addonName

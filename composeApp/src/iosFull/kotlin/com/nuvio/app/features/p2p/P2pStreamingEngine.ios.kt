@@ -130,10 +130,6 @@ actual object P2pStreamingEngine {
     private var generation = 0L
     private val knownTorrentIds = mutableSetOf<String>()
 
-    actual fun warmup() = Unit
-
-    actual fun cooldownWarmup() = Unit
-
     actual suspend fun startStream(request: P2pStreamRequest): String = lifecycleMutex.withLock {
         stopLocked(shutdownEngine = false)
         generation += 1
@@ -146,7 +142,6 @@ actual object P2pStreamingEngine {
             val magnet = buildP2pMagnetUri(
                 request.infoHash,
                 (DefaultTrackers + request.trackers).distinct(),
-                request.magnetUri,
             )
             phase = "ensure_engine"
             val activeEngine = ensureEngine()

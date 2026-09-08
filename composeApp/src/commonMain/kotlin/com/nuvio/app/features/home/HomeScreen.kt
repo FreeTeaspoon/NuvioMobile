@@ -1,5 +1,7 @@
 package com.nuvio.app.features.home
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -22,7 +24,6 @@ import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
-import com.nuvio.app.core.ui.LocalNuvioBottomOverlayScrollPadding
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioNetworkOfflineCard
@@ -858,7 +859,6 @@ fun HomeScreen(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val homeSectionPadding = homeSectionHorizontalPaddingForWidth(maxWidth.value)
         val continueWatchingLayout = rememberContinueWatchingLayout(maxWidth.value)
-        val floatingBottomNavigationScrollClearance = LocalNuvioBottomOverlayScrollPadding.current
         val posterCardStyle = rememberPosterCardStyleUiState()
         val nativeBottomNavigationOverlayHeight =
             if (LocalNuvioBottomNavigationOverlayPadding.current > 0.dp) {
@@ -866,8 +866,6 @@ fun HomeScreen(
             } else {
                 0.dp
             }
-        val bottomNavigationOverlayHeight =
-            nativeBottomNavigationOverlayHeight + floatingBottomNavigationScrollClearance
         val mobileHeroBelowSectionHeightHint = remember(
             maxWidth.value,
             continueWatchingPreferences.isVisible,
@@ -906,29 +904,35 @@ fun HomeScreen(
             listState = homeListState,
         ) {
             if (showHeroSlot) {
-                item {
-                    when {
-                        showHeroSkeleton -> HomeSkeletonHero(
-                            modifier = Modifier,
-                            viewportHeight = maxHeight,
-                            mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
-                        )
+                item(key = "home_hero", contentType = "hero") {
+                    Crossfade(
+                        targetState = showHeroSkeleton,
+                        animationSpec = tween(320),
+                        label = "HomeHeroLoading",
+                    ) { isLoading ->
+                        when {
+                            isLoading -> HomeSkeletonHero(
+                                modifier = Modifier,
+                                viewportHeight = maxHeight,
+                                mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
+                            )
 
-                        homeUiState.heroItems.isNotEmpty() -> HomeHeroSection(
-                            items = homeUiState.heroItems,
-                            modifier = Modifier,
-                            viewportHeight = maxHeight,
-                            mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
-                            listState = homeListState,
-                            stretchPx = { heroStretchState.stretchPx },
-                            onItemClick = onPosterClick,
-                        )
+                            homeUiState.heroItems.isNotEmpty() -> HomeHeroSection(
+                                items = homeUiState.heroItems,
+                                modifier = Modifier,
+                                viewportHeight = maxHeight,
+                                mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
+                                listState = homeListState,
+                                stretchPx = { heroStretchState.stretchPx },
+                                onItemClick = onPosterClick,
+                            )
 
-                        else -> HomeHeroReservedSpace(
-                            modifier = Modifier,
-                            viewportHeight = maxHeight,
-                            mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
-                        )
+                            else -> HomeHeroReservedSpace(
+                                modifier = Modifier,
+                                viewportHeight = maxHeight,
+                                mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
+                            )
+                        }
                     }
                 }
             }
@@ -948,9 +952,13 @@ fun HomeScreen(
                         onItemLongPress = onContinueWatchingLongPress,
                         disintegrationRequest = continueWatchingDisintegrationRequest,
                     )
-                    items(3) {
+                    items(
+                        count = 3,
+                        key = { "home_skeleton_$it" },
+                        contentType = { "skeleton" },
+                    ) {
                         HomeSkeletonRow(
-                            modifier = Modifier.padding(horizontal = 16.dp),
+                            horizontalPadding = homeSectionPadding,
                         )
                     }
                 }
@@ -969,7 +977,7 @@ fun HomeScreen(
                         onItemLongPress = onContinueWatchingLongPress,
                         disintegrationRequest = continueWatchingDisintegrationRequest,
                     )
-                    item {
+                    item(key = "home_empty", contentType = "empty") {
                         when {
                             networkStatusUiState.isOfflineLike && addonManifestErrorMessage != null -> {
                                 NuvioNetworkOfflineCard(
@@ -1009,7 +1017,7 @@ fun HomeScreen(
                 homeUiState.sections.isEmpty() && homeUiState.heroItems.isEmpty() &&
                     (!continueWatchingPreferences.isVisible || !hasContinueWatchingRows) &&
                     !hasRenderableCollectionRows -> {
-                    item {
+                    item(key = "home_empty", contentType = "empty") {
                         val loadFailed = !homeUiState.errorMessage.isNullOrBlank()
                         if (networkStatusUiState.isOfflineLike && loadFailed) {
                             NuvioNetworkOfflineCard(
@@ -1066,7 +1074,7 @@ fun HomeScreen(
                         if (settingsItem.isCollection) {
                             val collection = collectionsMap[settingsItem.key]
                             if (collection != null) {
-                                item(key = keyedSettingsItem.lazyKey) {
+                                item(key = keyedSettingsItem.lazyKey, contentType = "collection") {
                                     HomeCollectionRowSection(
                                         collection = collection,
                                         modifier = Modifier.padding(bottom = 12.dp),
@@ -1079,7 +1087,7 @@ fun HomeScreen(
                         } else {
                             val section = sectionsMap[settingsItem.key]
                             if (section != null && section.items.isNotEmpty()) {
-                                item(key = keyedSettingsItem.lazyKey) {
+                                item(key = keyedSettingsItem.lazyKey, contentType = "catalog") {
                                     HomeCatalogRowSection(
                                         section = section,
                                         entries = section.items.take(HOME_CATALOG_PREVIEW_LIMIT),
@@ -1121,7 +1129,7 @@ private fun LazyListScope.homeContinueWatchingSections(
     if (!preferences.isVisible) return
 
     if (continueWatchingItems.isNotEmpty()) {
-        item(key = HOME_CONTINUE_WATCHING_SECTION_KEY) {
+        item(key = HOME_CONTINUE_WATCHING_SECTION_KEY, contentType = "continue_watching") {
             HomeContinueWatchingSection(
                 items = continueWatchingItems,
                 dataSourceKey = dataSourceKey,
@@ -1140,7 +1148,7 @@ private fun LazyListScope.homeContinueWatchingSections(
     }
 
     if (upcomingItems.isNotEmpty()) {
-        item(key = HOME_UPCOMING_SECTION_KEY) {
+        item(key = HOME_UPCOMING_SECTION_KEY, contentType = "continue_watching") {
             HomeContinueWatchingSection(
                 items = upcomingItems,
                 dataSourceKey = dataSourceKey,
@@ -1873,11 +1881,7 @@ private fun ContinueWatchingItem.withFallbackMetadata(
         videoId = if (preserveFallbackPlaybackIdentity) {
             fallback?.videoId?.takeIf { it.isNotBlank() } ?: videoId
         } else {
-            // The freshly resolved playback id is authoritative; only use the
-            // cached id when the live item does not provide one.
-            videoId.takeIf { it.isNotBlank() }
-                ?: fallback?.videoId?.takeIf { it.isNotBlank() }
-                ?: videoId
+            videoId
         },
         episodeTitle = episodeTitle.orNonBlank(fallback?.episodeTitle),
         episodeThumbnail = episodeThumbnail.orNonBlank(fallback?.episodeThumbnail),

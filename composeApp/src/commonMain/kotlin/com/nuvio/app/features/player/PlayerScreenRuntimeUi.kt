@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import com.nuvio.app.features.p2p.P2pStreamingState
@@ -21,9 +20,7 @@ import nuvio.composeapp.generated.resources.*
 @Composable
 internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
     val runtime = this
-    LaunchedEffect(playerController, videoZoomState) {
-        playerController?.setVideoZoom(videoZoomState)
-    }
+    BindVideoZoom()
     PlatformSystemMediaControls(
         title = title,
         subtitle = buildString {
@@ -173,7 +170,7 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
                 sourceAudioUrl = activeSourceAudioUrl,
                 sourceHeaders = activeSourceHeaders,
                 sourceResponseHeaders = activeSourceResponseHeaders,
-                externalSubtitles = activeExternalSubtitles,
+                externalSubtitles = externalSubtitles,
                 streamType = activeStreamType,
                 modifier = Modifier.fillMaxSize(),
                 playWhenReady = shouldPlay,

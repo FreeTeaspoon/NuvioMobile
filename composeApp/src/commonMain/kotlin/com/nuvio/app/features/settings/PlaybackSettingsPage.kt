@@ -96,7 +96,6 @@ import kotlin.math.roundToInt
 internal fun LazyListScope.playbackSettingsContent(
     isTablet: Boolean,
     showLoadingOverlay: Boolean,
-    androidPlaybackEngine: AndroidPlaybackEngine,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     touchGesturesEnabled: Boolean,
@@ -106,6 +105,7 @@ internal fun LazyListScope.playbackSettingsContent(
     secondaryPreferredSubtitleLanguage: String?,
     streamReuseLastLinkEnabled: Boolean,
     streamReuseLastLinkCacheHours: Int,
+    androidPlaybackEngine: AndroidPlaybackEngine,
     androidLibmpvVideoOutput: AndroidLibmpvVideoOutput,
     androidLibmpvHardwareDecodingEnabled: Boolean,
     androidLibmpvYuv420pEnabled: Boolean,
@@ -121,7 +121,6 @@ internal fun LazyListScope.playbackSettingsContent(
         PlaybackSettingsSection(
             isTablet = isTablet,
             showLoadingOverlay = showLoadingOverlay,
-            androidPlaybackEngine = androidPlaybackEngine,
             holdToSpeedEnabled = holdToSpeedEnabled,
             holdToSpeedValue = holdToSpeedValue,
             touchGesturesEnabled = touchGesturesEnabled,
@@ -131,6 +130,7 @@ internal fun LazyListScope.playbackSettingsContent(
             secondaryPreferredSubtitleLanguage = secondaryPreferredSubtitleLanguage,
             streamReuseLastLinkEnabled = streamReuseLastLinkEnabled,
             streamReuseLastLinkCacheHours = streamReuseLastLinkCacheHours,
+            androidPlaybackEngine = androidPlaybackEngine,
             androidLibmpvVideoOutput = androidLibmpvVideoOutput,
             androidLibmpvHardwareDecodingEnabled = androidLibmpvHardwareDecodingEnabled,
             androidLibmpvYuv420pEnabled = androidLibmpvYuv420pEnabled,
@@ -276,7 +276,6 @@ private fun subtitleColorLabel(color: Color): String {
 private fun PlaybackSettingsSection(
     isTablet: Boolean,
     showLoadingOverlay: Boolean,
-    androidPlaybackEngine: AndroidPlaybackEngine,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     touchGesturesEnabled: Boolean,
@@ -286,6 +285,7 @@ private fun PlaybackSettingsSection(
     secondaryPreferredSubtitleLanguage: String?,
     streamReuseLastLinkEnabled: Boolean,
     streamReuseLastLinkCacheHours: Int,
+    androidPlaybackEngine: AndroidPlaybackEngine,
     androidLibmpvVideoOutput: AndroidLibmpvVideoOutput,
     androidLibmpvHardwareDecodingEnabled: Boolean,
     androidLibmpvYuv420pEnabled: Boolean,
@@ -301,14 +301,13 @@ private fun PlaybackSettingsSection(
     var showSecondaryAudioDialog by remember { mutableStateOf(false) }
     var showPreferredSubtitleDialog by remember { mutableStateOf(false) }
     var showSecondarySubtitleDialog by remember { mutableStateOf(false) }
-    var showPlaybackEngineDialog by remember { mutableStateOf(false) }
-    var showAddonSubtitleStartupModeDialog by remember { mutableStateOf(false) }
     var showSubtitleTextColorDialog by remember { mutableStateOf(false) }
     var showSubtitleBackgroundColorDialog by remember { mutableStateOf(false) }
     var showSubtitleOutlineColorDialog by remember { mutableStateOf(false) }
     var showExternalPlayerDialog by remember { mutableStateOf(false) }
     var showExternalPlayerAppDialog by remember { mutableStateOf(false) }
     var showReuseCacheDurationDialog by remember { mutableStateOf(false) }
+    var showPlaybackEngineDialog by remember { mutableStateOf(false) }
     var showLibmpvVideoOutputDialog by remember { mutableStateOf(false) }
     var showDecoderPriorityDialog by remember { mutableStateOf(false) }
     var showHoldToSpeedValueDialog by remember { mutableStateOf(false) }
@@ -1465,16 +1464,6 @@ private fun PlaybackSettingsSection(
             onDismiss = { showP2pConsentDialog = false },
         )
     }
-    if (showPlaybackEngineDialog) {
-        PlaybackEngineDialog(
-            selectedEngine = androidPlaybackEngine,
-            onEngineSelected = { engine ->
-                PlayerSettingsRepository.setAndroidPlaybackEngine(engine)
-                showPlaybackEngineDialog = false
-            },
-            onDismiss = { showPlaybackEngineDialog = false },
-        )
-    }
 
     if (showDecoderPriorityDialog) {
         DecoderPriorityDialog(
@@ -1484,6 +1473,17 @@ private fun PlaybackSettingsSection(
                 showDecoderPriorityDialog = false
             },
             onDismiss = { showDecoderPriorityDialog = false },
+        )
+    }
+
+    if (showPlaybackEngineDialog) {
+        PlaybackEngineDialog(
+            selectedEngine = androidPlaybackEngine,
+            onEngineSelected = { engine ->
+                PlayerSettingsRepository.setAndroidPlaybackEngine(engine)
+                showPlaybackEngineDialog = false
+            },
+            onDismiss = { showPlaybackEngineDialog = false },
         )
     }
 

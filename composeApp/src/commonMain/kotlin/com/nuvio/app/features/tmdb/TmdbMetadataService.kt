@@ -11,7 +11,6 @@ import com.nuvio.app.features.details.MoreLikeThisSource
 import com.nuvio.app.features.details.PersonDetail
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.PosterShape
-import com.nuvio.app.features.streams.sanitizeEpisodeImdbId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -30,7 +29,6 @@ object TmdbMetadataService {
 
     private val enrichmentCache = mutableMapOf<String, TmdbEnrichment>()
     private val episodeCache = mutableMapOf<String, Map<Pair<Int, Int>, TmdbEpisodeEnrichment>>()
-    private val episodeImdbIdCache = mutableMapOf<String, String?>()
     private val moreLikeThisCache = mutableMapOf<String, List<MetaPreview>>()
     private val collectionCache = mutableMapOf<String, Pair<String?, List<MetaPreview>>>()
     private val trailerCache = mutableMapOf<String, List<MetaTrailer>>()
@@ -693,32 +691,6 @@ object TmdbMetadataService {
         )
     }
 
-    internal suspend fun resolveEpisodeImdbId(
-        parentMetaId: String,
-        parentMetaType: String,
-        seasonNumber: Int,
-        episodeNumber: Int,
-    ): String? = withContext(Dispatchers.Default) {
-        val settings = TmdbSettingsRepository.snapshot()
-        if (!settings.enabled || !settings.hasApiKey) return@withContext null
-        if (normalizeMetaType(parentMetaType) != "tv") return@withContext null
-
-        val tmdbId = TmdbService.ensureTmdbId(parentMetaId, "tv") ?: return@withContext null
-        val cacheKey = "$tmdbId:$seasonNumber:$episodeNumber"
-        if (episodeImdbIdCache.containsKey(cacheKey)) {
-            return@withContext episodeImdbIdCache[cacheKey]
-        }
-
-        val imdbId = fetch<TmdbEpisodeExternalIdsResponse>(
-            endpoint = "tv/$tmdbId/season/$seasonNumber/episode/$episodeNumber/external_ids",
-        )
-            ?.imdbId
-            ?.let(::sanitizeEpisodeImdbId)
-
-        episodeImdbIdCache[cacheKey] = imdbId
-        imdbId
-    }
-
     suspend fun fetchStandaloneMeta(
         type: String,
         id: String,
@@ -884,14 +856,6 @@ object TmdbMetadataService {
                                 enrichmentForEpisode.runtimeMinutes ?: video.runtime
                             } else {
                                 video.runtime
-                            },
-                            rating = if (settings.useEpisodes && video.rating.isNullOrBlank()) {
-                                enrichmentForEpisode.rating
-                                    ?.takeIf { it > 0.0 }
-                                    ?.formatRating()
-                                    ?: video.rating
-                            } else {
-                                video.rating
                             },
                         )
                     }
@@ -1177,7 +1141,6 @@ object TmdbMetadataService {
                                 seasonPoster = buildImageUrl(details.posterPath, "w500"),
                                 airDate = episode.airDate?.trim()?.takeIf(String::isNotBlank),
                                 runtimeMinutes = episode.runtime,
-                                rating = episode.voteAverage,
                             )
                         }
                         .toMap()
@@ -1477,7 +1440,6 @@ internal data class TmdbEpisodeEnrichment(
     val seasonPoster: String? = null,
     val airDate: String?,
     val runtimeMinutes: Int?,
-    val rating: Double? = null,
 )
 
 private fun normalizeMetaType(type: String): String =
@@ -2128,13 +2090,7 @@ private data class TmdbEpisodeResponse(
     @SerialName("still_path") val stillPath: String? = null,
     @SerialName("air_date") val airDate: String? = null,
     val runtime: Int? = null,
-    @SerialName("vote_average") val voteAverage: Double? = null,
     @SerialName("episode_number") val episodeNumber: Int? = null,
-)
-
-@Serializable
-private data class TmdbEpisodeExternalIdsResponse(
-    @SerialName("imdb_id") val imdbId: String? = null,
 )
 
 // ─── Person Detail Models ───

@@ -132,16 +132,6 @@ object StreamBadgeSettingsRepository {
         saveStreamBadgeRules()
     }
 
-    fun renameStreamBadgeRulesSource(sourceUrl: String, displayName: String) {
-        ensureLoaded()
-        val currentRules = streamBadgeRules.normalized()
-        val nextRules = currentRules.setSourceName(sourceUrl, displayName)
-        if (nextRules == currentRules) return
-        streamBadgeRules = nextRules
-        publish()
-        saveStreamBadgeRules()
-    }
-
     fun setShowFileSizeBadges(enabled: Boolean) {
         ensureLoaded()
         if (showFileSizeBadges == enabled) return

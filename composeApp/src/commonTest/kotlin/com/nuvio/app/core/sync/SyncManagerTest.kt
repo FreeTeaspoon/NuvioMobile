@@ -28,10 +28,6 @@ class SyncManagerTest {
                     profileSettingsApplied = true
                     events += "settings:end"
                 },
-                pullTraktCredentials = {
-                    assertTrue(profileSettingsApplied)
-                    events += "trakt-credentials"
-                },
                 syncProviderCredentials = {
                     assertTrue(profileSettingsApplied)
                     credentialsApplied = true
@@ -53,13 +49,10 @@ class SyncManagerTest {
             onFailure = { _, error -> throw error },
         )
 
-        val lastPrerequisite = maxOf(
-            events.indexOf("settings:end"),
-            events.indexOf("trakt-credentials"),
-            events.indexOf("credentials"),
-        )
+        val lastPrerequisite = events.indexOf("settings:end")
         assertTrue(events.indexOf("addons") > lastPrerequisite)
         assertTrue(events.indexOf("plugins") > lastPrerequisite)
+        assertTrue(events.indexOf("credentials") > lastPrerequisite)
         assertTrue(events.indexOf("library") > lastPrerequisite)
         assertTrue(events.indexOf("active-watch-source") > lastPrerequisite)
         assertEquals(1, events.count { it == "active-watch-source" })
@@ -78,7 +71,6 @@ class SyncManagerTest {
 
         assertTrue("plugins" !in events)
         assertTrue(events.indexOf("settings") < events.indexOf("library"))
-        assertTrue(events.indexOf("trakt-credentials") < events.indexOf("library"))
         assertTrue(events.indexOf("credentials") < events.indexOf("library"))
         assertTrue(events.indexOf("settings") < events.indexOf("active-watch-source"))
     }
@@ -242,7 +234,6 @@ class SyncManagerTest {
             pullAddons = { events += "addons" },
             pullPlugins = { events += "plugins" },
             pullProfileSettings = { events += "settings" },
-            pullTraktCredentials = { events += "trakt-credentials" },
             syncProviderCredentials = { events += "credentials" },
             pullLibrary = { events += "library" },
             refreshActiveWatchSource = { events += "active-watch-source" },

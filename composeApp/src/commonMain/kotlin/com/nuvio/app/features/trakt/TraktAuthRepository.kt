@@ -113,26 +113,6 @@ object TraktAuthRepository : TrackingAuthProvider {
         return _uiState.value
     }
 
-    internal fun currentStateForSync(profileId: Int = ProfileRepository.activeProfileId): TraktAuthState? {
-        if (ProfileRepository.activeProfileId != profileId) return null
-        ensureLoaded(profileId)
-        return authState
-    }
-
-    internal fun replaceStateFromSync(profileId: Int, state: TraktAuthState): Boolean {
-        if (ProfileRepository.activeProfileId != profileId) return false
-        ensureLoaded(profileId)
-        val syncedState = state.copy(
-            pendingAuthorizationState = null,
-            pendingAuthorizationStartedAtMillis = null,
-        )
-        if (authState.syncSignature() == syncedState.syncSignature()) return false
-        authState = syncedState
-        persist(profileId)
-        publish(statusMessage = null, errorMessage = null)
-        return true
-    }
-
     fun hasRequiredCredentials(): Boolean =
         TraktConfig.CLIENT_ID.isNotBlank() && TraktConfig.CLIENT_SECRET.isNotBlank()
 
@@ -359,7 +339,6 @@ object TraktAuthRepository : TrackingAuthProvider {
         )
         persist(profileId)
         refreshUserSettings(profileId)
-        TraktCredentialSync.pushCurrentToRemote(profileId)
         publish(
             isLoading = false,
             statusMessage = localizedString(Res.string.trakt_connected_status),
@@ -431,12 +410,7 @@ object TraktAuthRepository : TrackingAuthProvider {
         }.onFailure { error ->
             if (error is CancellationException) throw error
             log.w { "Trakt token refresh transport failure: ${error.message}" }
-        }.getOrNull()
-
-        if (response == null) {
-            if (recoverFromRemoteCredentials(refreshToken, profileId)) return@withLock true
-            return@withLock false
-        }
+        }.getOrNull() ?: return@withLock false
 
         if (ProfileRepository.activeProfileId != profileId || authState.refreshToken != refreshToken) {
             return@withLock false
@@ -444,14 +418,12 @@ object TraktAuthRepository : TrackingAuthProvider {
 
         when (traktTokenRefreshResponseAction(response.status)) {
             TraktTokenRefreshResponseAction.INVALIDATE -> {
-                if (recoverFromRemoteCredentials(refreshToken, profileId)) return@withLock true
                 log.w { "Trakt rejected the refresh token with HTTP 400; clearing local credentials" }
                 invalidateCredentials(profileId)
                 return@withLock false
             }
 
             TraktTokenRefreshResponseAction.TRANSIENT_FAILURE -> {
-                if (recoverFromRemoteCredentials(refreshToken, profileId)) return@withLock true
                 log.w { "Trakt token refresh failed with HTTP ${response.status}" }
                 return@withLock false
             }
@@ -461,12 +433,7 @@ object TraktAuthRepository : TrackingAuthProvider {
 
         val parsed = runCatching {
             json.decodeFromString<TraktTokenResponse>(response.body)
-        }.getOrNull()
-
-        if (parsed == null) {
-            if (recoverFromRemoteCredentials(refreshToken, profileId)) return@withLock true
-            return@withLock false
-        }
+        }.getOrNull() ?: return@withLock false
 
         authState = authState.copy(
             accessToken = parsed.accessToken,
@@ -476,7 +443,6 @@ object TraktAuthRepository : TrackingAuthProvider {
             expiresIn = parsed.expiresIn,
         )
         persist(profileId)
-        TraktCredentialSync.pushCurrentToRemote(profileId)
         publish()
         true
     }
@@ -571,28 +537,6 @@ object TraktAuthRepository : TrackingAuthProvider {
         val nowSeconds = TraktPlatformClock.nowEpochMs() / 1_000L
         return nowSeconds >= (expiresAtSeconds - 60)
     }
-
-    private suspend fun recoverFromRemoteCredentials(
-        staleRefreshToken: String,
-        profileId: Int,
-    ): Boolean {
-        val pulled = TraktCredentialSync.pullFromRemote(profileId)
-        if (!pulled) return false
-        if (ProfileRepository.activeProfileId != profileId) return false
-        ensureLoaded(profileId)
-        return authState.isAuthenticated && authState.refreshToken != staleRefreshToken
-    }
-
-    private fun TraktAuthState.syncSignature(): String =
-        listOf(
-            accessToken.orEmpty(),
-            refreshToken.orEmpty(),
-            tokenType.orEmpty(),
-            createdAt?.toString().orEmpty(),
-            expiresIn?.toString().orEmpty(),
-            username.orEmpty(),
-            userSlug.orEmpty(),
-        ).joinToString("|")
 
     private fun localizedString(resource: StringResource): String = runBlocking { getString(resource) }
 }

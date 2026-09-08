@@ -40,11 +40,6 @@ object MetaDetailsRepository {
         val metaScreenSettingsFingerprint: String? = null,
     )
 
-    private data class MetaScreenEnrichmentResult(
-        val meta: MetaDetails,
-        val completed: Boolean,
-    )
-
     private val log = Logger.withTag("MetaDetailsRepo")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val _uiState = MutableStateFlow(MetaDetailsUiState())
@@ -63,22 +58,14 @@ object MetaDetailsRepository {
             cachedEntry.metaScreenMeta
                 ?.takeIf { cachedEntry.metaScreenSettingsFingerprint == metaScreenSettingsFingerprint }
                 ?.let { cachedMeta ->
-                    _uiState.value = MetaDetailsUiState(
-                        meta = cachedMeta.withUnreleasedFilter(),
-                        requestType = type,
-                        requestId = id,
-                    )
+                    _uiState.value = MetaDetailsUiState(meta = cachedMeta.withUnreleasedFilter())
                     activeRequestKey = requestKey
                     return
-            }
+                }
 
             val cachedBaseMeta = cachedEntry.baseMeta
             if (!shouldEnrichForMetaScreen(cachedBaseMeta, id, mdbListSettings)) {
-                _uiState.value = MetaDetailsUiState(
-                    meta = cachedBaseMeta.withUnreleasedFilter(),
-                    requestType = type,
-                    requestId = id,
-                )
+                _uiState.value = MetaDetailsUiState(meta = cachedBaseMeta.withUnreleasedFilter())
                 activeRequestKey = requestKey
                 return
             }
@@ -92,30 +79,20 @@ object MetaDetailsRepository {
             _uiState.value = MetaDetailsUiState(
                 isLoading = true,
                 meta = cachedBaseMeta,
-                requestType = type,
-                requestId = id,
             )
 
             scope.launch {
-                val enrichmentResult = withContext(Dispatchers.Default) {
+                val enrichedMeta = withContext(Dispatchers.Default) {
                     enrichForMetaScreen(
+                        requestKey = requestKey,
                         meta = cachedBaseMeta,
                         fallbackItemId = id,
                         fallbackItemType = type,
                         settings = mdbListSettings,
+                        settingsFingerprint = metaScreenSettingsFingerprint,
                     )
                 }
-                if (enrichmentResult.completed) {
-                    cachedMetaByRequestKey[requestKey] = cachedEntry.copy(
-                        metaScreenMeta = enrichmentResult.meta,
-                        metaScreenSettingsFingerprint = metaScreenSettingsFingerprint,
-                    )
-                }
-                _uiState.value = MetaDetailsUiState(
-                    meta = enrichmentResult.meta.withUnreleasedFilter(),
-                    requestType = type,
-                    requestId = id,
-                )
+                _uiState.value = MetaDetailsUiState(meta = enrichedMeta.withUnreleasedFilter())
                 activeRequestKey = requestKey
             }
             return
@@ -133,11 +110,7 @@ object MetaDetailsRepository {
         }
 
         activeRequestKey = requestKey
-        _uiState.value = MetaDetailsUiState(
-            isLoading = true,
-            requestType = type,
-            requestId = id,
-        )
+        _uiState.value = MetaDetailsUiState(isLoading = true)
 
         scope.launch {
             val metaLookupId = resolveMetaLookupId(itemId = id, itemType = type)
@@ -160,8 +133,6 @@ object MetaDetailsRepository {
                 log.w { "No addon provides meta for type=$type id=$id" }
                 _uiState.value = MetaDetailsUiState(
                     errorMessage = getString(Res.string.details_no_addon_meta),
-                    requestType = type,
-                    requestId = id,
                 )
                 activeRequestKey = null
                 return@launch
@@ -199,8 +170,6 @@ object MetaDetailsRepository {
 
             _uiState.value = MetaDetailsUiState(
                 errorMessage = getString(Res.string.details_load_failed_all_addons),
-                requestType = type,
-                requestId = id,
             )
             activeRequestKey = null
         }
@@ -372,16 +341,11 @@ object MetaDetailsRepository {
         mdbListSettings: com.nuvio.app.features.mdblist.MdbListSettings,
         metaScreenSettingsFingerprint: String,
     ) {
-        val (requestType, requestId) = splitRequestKey(requestKey)
         val cachedEntry = CachedMetaEntry(baseMeta = meta)
         cachedMetaByRequestKey[requestKey] = cachedEntry
 
         if (!shouldEnrichForMetaScreen(meta, fallbackItemId, mdbListSettings)) {
-            _uiState.value = MetaDetailsUiState(
-                meta = meta.withUnreleasedFilter(),
-                requestType = requestType,
-                requestId = requestId,
-            )
+            _uiState.value = MetaDetailsUiState(meta = meta.withUnreleasedFilter())
             activeRequestKey = requestKey
             return
         }
@@ -389,66 +353,58 @@ object MetaDetailsRepository {
         _uiState.value = MetaDetailsUiState(
             isLoading = true,
             meta = meta,
-            requestType = requestType,
-            requestId = requestId,
         )
-        val enrichmentResult = withContext(Dispatchers.Default) {
+        val enrichedMeta = withContext(Dispatchers.Default) {
             enrichForMetaScreen(
+                requestKey = requestKey,
                 meta = meta,
                 fallbackItemId = fallbackItemId,
                 fallbackItemType = fallbackItemType,
                 settings = mdbListSettings,
+                settingsFingerprint = metaScreenSettingsFingerprint,
             )
         }
-        if (enrichmentResult.completed) {
-            cachedMetaByRequestKey[requestKey] = cachedEntry.copy(
-                metaScreenMeta = enrichmentResult.meta,
-                metaScreenSettingsFingerprint = metaScreenSettingsFingerprint,
-            )
-        }
-        _uiState.value = MetaDetailsUiState(
-            meta = enrichmentResult.meta.withUnreleasedFilter(),
-            requestType = requestType,
-            requestId = requestId,
+        cachedMetaByRequestKey[requestKey] = cachedEntry.copy(
+            metaScreenMeta = enrichedMeta,
+            metaScreenSettingsFingerprint = metaScreenSettingsFingerprint,
         )
+        _uiState.value = MetaDetailsUiState(meta = enrichedMeta.withUnreleasedFilter())
         activeRequestKey = requestKey
     }
 
-    private fun splitRequestKey(requestKey: String): Pair<String?, String?> =
-        requestKey.substringBefore(':', missingDelimiterValue = "")
-            .takeIf { it.isNotBlank() } to
-            requestKey.substringAfter(':', missingDelimiterValue = "")
-                .takeIf { it.isNotBlank() }
-
     private suspend fun enrichForMetaScreen(
+        requestKey: String,
         meta: MetaDetails,
         fallbackItemId: String,
         fallbackItemType: String,
         settings: com.nuvio.app.features.mdblist.MdbListSettings,
-    ): MetaScreenEnrichmentResult {
-        val shouldFetchMdbList = shouldFetchMdbListOnMetaScreen(
-            meta = meta,
-            fallbackItemId = fallbackItemId,
-            settings = settings,
-        )
-        val mdbListResult = withTimeoutOrNull(MDBLIST_ENRICH_TIMEOUT_MS) {
+        settingsFingerprint: String,
+    ): MetaDetails {
+        val mdbListEnrichedMeta = withTimeoutOrNull(MDBLIST_ENRICH_TIMEOUT_MS) {
             MdbListMetadataService.enrichMeta(
                 meta = meta,
                 fallbackItemId = fallbackItemId,
                 settings = settings,
             )
-        }
-        val mdbListEnrichedMeta = mdbListResult ?: meta
+        } ?: meta
         val enrichedMeta = applyMoreLikeThisSource(
             meta = mdbListEnrichedMeta,
             fallbackItemId = fallbackItemId,
             fallbackItemType = fallbackItemType,
         )
 
-        return MetaScreenEnrichmentResult(
-            meta = enrichedMeta,
-            completed = !shouldFetchMdbList || mdbListResult != null,
-        )
+        cachedMetaByRequestKey[requestKey] = cachedMetaByRequestKey[requestKey]
+            ?.copy(
+                metaScreenMeta = enrichedMeta,
+                metaScreenSettingsFingerprint = settingsFingerprint,
+            )
+            ?: CachedMetaEntry(
+                baseMeta = meta,
+                metaScreenMeta = enrichedMeta,
+                metaScreenSettingsFingerprint = settingsFingerprint,
+            )
+
+        return enrichedMeta
     }
 
     private suspend fun applyMoreLikeThisSource(
@@ -564,6 +520,8 @@ object MetaDetailsRepository {
             collectionItems = collectionItems.filterReleasedItems(todayIsoDate),
         )
     }
+
+   
     fun findEmbeddedStreams(videoId: String): List<com.nuvio.app.features.streams.StreamItem> {
         val meta = _uiState.value.meta ?: return emptyList()
         val videosWithStreams = meta.videos.filter { it.streams.isNotEmpty() }

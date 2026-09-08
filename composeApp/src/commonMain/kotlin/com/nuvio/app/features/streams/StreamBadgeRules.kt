@@ -26,10 +26,7 @@ data class StreamBadgeRules(
         imports.forEach { import ->
             val normalizedUrl = import.sourceUrl.trim()
             if (normalizedUrl.isBlank() || import.filters.isEmpty()) return@forEach
-            val normalizedImport = import.copy(
-                sourceUrl = normalizedUrl,
-                displayName = import.displayName.trim(),
-            )
+            val normalizedImport = import.copy(sourceUrl = normalizedUrl)
             val existingIndex = normalizedImports.indexOfFirst { it.sourceUrl.equals(normalizedUrl, ignoreCase = true) }
             if (existingIndex >= 0) {
                 normalizedImports[existingIndex] = normalizedImport
@@ -49,16 +46,12 @@ data class StreamBadgeRules(
     fun upsert(import: StreamBadgeImport, activate: Boolean = true): StreamBadgeRules {
         val normalizedUrl = import.sourceUrl.trim()
         if (normalizedUrl.isBlank()) return normalized()
-        val existingImport = imports.firstOrNull { it.sourceUrl.equals(normalizedUrl, ignoreCase = true) }
-        val normalizedImport = import.copy(
-            sourceUrl = normalizedUrl,
-            displayName = import.displayName.trim().ifBlank { existingImport?.displayName.orEmpty() },
-            isActive = activate,
-        )
-        val nextImports = if (existingImport != null) {
-            imports.map { existing ->
-                if (existing.sourceUrl.equals(normalizedUrl, ignoreCase = true)) normalizedImport else existing
-            }
+        val normalizedImport = import.copy(sourceUrl = normalizedUrl, isActive = activate)
+        val replaced = imports.map { existing ->
+            if (existing.sourceUrl.equals(normalizedUrl, ignoreCase = true)) normalizedImport else existing
+        }
+        val nextImports = if (imports.any { it.sourceUrl.equals(normalizedUrl, ignoreCase = true) }) {
+            replaced
         } else {
             imports + normalizedImport
         }
@@ -84,23 +77,6 @@ data class StreamBadgeRules(
         ).normalized()
     }
 
-    fun setSourceName(sourceUrl: String, displayName: String): StreamBadgeRules {
-        val normalizedUrl = sourceUrl.trim()
-        if (normalizedUrl.isBlank() || imports.none { it.sourceUrl.equals(normalizedUrl, ignoreCase = true) }) {
-            return normalized()
-        }
-        val normalizedName = displayName.trim()
-        return copy(
-            imports = imports.map { import ->
-                if (import.sourceUrl.equals(normalizedUrl, ignoreCase = true)) {
-                    import.copy(displayName = normalizedName)
-                } else {
-                    import
-                }
-            },
-        ).normalized()
-    }
-
     fun removeSource(sourceUrl: String): StreamBadgeRules =
         copy(imports = imports.filterNot { it.sourceUrl.equals(sourceUrl.trim(), ignoreCase = true) }).normalized()
 
@@ -111,7 +87,6 @@ data class StreamBadgeRules(
 @Serializable
 data class StreamBadgeImport(
     val sourceUrl: String = "",
-    val displayName: String = "",
     val filters: List<StreamBadgeFilter> = emptyList(),
     val groups: List<StreamBadgeGroup> = emptyList(),
     val isActive: Boolean = true,
@@ -120,7 +95,7 @@ data class StreamBadgeImport(
         get() = filters.count { it.isEnabled }
 
     override fun toString(): String =
-        "StreamBadgeImport(sourceUrl=$sourceUrl, displayName=$displayName, filters=${filters.size}, groups=${groups.size}, isActive=$isActive)"
+        "StreamBadgeImport(sourceUrl=$sourceUrl, filters=${filters.size}, groups=${groups.size}, isActive=$isActive)"
 }
 
 @Serializable
@@ -157,7 +132,7 @@ internal object StreamBadgeRulesParser {
         explicitNulls = false
     }
 
-    fun parse(sourceUrl: String, payload: String, displayName: String = ""): StreamBadgeImport {
+    fun parse(sourceUrl: String, payload: String): StreamBadgeImport {
         val decoded = try {
             json.decodeFromString<StreamBadgePayload>(payload)
         } catch (error: SerializationException) {
@@ -202,7 +177,6 @@ internal object StreamBadgeRulesParser {
 
         return StreamBadgeImport(
             sourceUrl = sourceUrl.trim(),
-            displayName = displayName.trim(),
             filters = filters,
             groups = groups,
         )

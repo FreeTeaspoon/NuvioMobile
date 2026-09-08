@@ -37,10 +37,4 @@ enum class CatalogTargetKind {
     ADDON,
     LIBRARY,
     COLLECTION_SOURCE,
-    ;
-
-    companion object {
-        fun fromRouteValue(value: String): CatalogTargetKind? =
-            entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
-    }
 }

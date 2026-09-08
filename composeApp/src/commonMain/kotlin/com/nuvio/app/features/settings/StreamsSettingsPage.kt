@@ -13,12 +13,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.BasicAlertDialog
@@ -43,9 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -253,7 +249,6 @@ private fun BadgeUrlManagerDialog(
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var isImporting by rememberSaveable { mutableStateOf(false) }
     var previewImport by remember { mutableStateOf<StreamBadgeImport?>(null) }
-    val clipboardManager = LocalClipboardManager.current
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         SettingsDialogSurface(title = stringResource(Res.string.settings_stream_badge_urls_title)) {
@@ -359,9 +354,6 @@ private fun BadgeUrlManagerDialog(
                                 StreamBadgeSettingsRepository.setActiveStreamBadgeRulesSource(import.sourceUrl)
                             },
                             onPreview = { previewImport = import },
-                            onCopy = {
-                                clipboardManager.setText(AnnotatedString(import.sourceUrl))
-                            },
                             onDelete = {
                                 StreamBadgeSettingsRepository.deleteStreamBadgeRulesSource(import.sourceUrl)
                                 if (previewImport?.sourceUrl.equals(import.sourceUrl, ignoreCase = true)) {
@@ -396,14 +388,12 @@ private fun BadgeUrlManagerDialog(
 }
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 private fun BadgeUrlRow(
     import: StreamBadgeImport,
     showActiveChoice: Boolean,
     enabled: Boolean,
     onActivate: () -> Unit,
     onPreview: () -> Unit,
-    onCopy: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
@@ -465,12 +455,6 @@ private fun BadgeUrlRow(
                     color = tokens.colors.textMuted,
                     modifier = Modifier.weight(1f),
                 )
-            }
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap, Alignment.End),
-                verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s4),
-            ) {
                 TextButton(
                     enabled = enabled,
                     onClick = onPreview,
@@ -482,18 +466,6 @@ private fun BadgeUrlRow(
                     )
                     Spacer(modifier = Modifier.width(NuvioTokens.Space.s4))
                     Text(text = stringResource(Res.string.settings_fusion_badge_preview_action), maxLines = 1)
-                }
-                TextButton(
-                    enabled = enabled,
-                    onClick = onCopy,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.ContentCopy,
-                        contentDescription = null,
-                        modifier = Modifier.size(tokens.icons.sm),
-                    )
-                    Spacer(modifier = Modifier.width(NuvioTokens.Space.s4))
-                    Text(text = "Copy", maxLines = 1)
                 }
                 IconButton(
                     enabled = enabled,
@@ -599,9 +571,7 @@ private fun SettingsDialogSurface(
 ) {
     val tokens = MaterialTheme.nuvio
     Surface(
-        modifier = Modifier
-            .widthIn(max = 560.dp)
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         shape = tokens.shapes.dialog,
         color = tokens.colors.surfaceDialog,
     ) {

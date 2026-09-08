@@ -27,7 +27,6 @@ import com.nuvio.app.core.ui.PlatformBackHandler
 import com.nuvio.app.core.ui.rememberNuvioNavBarScrollState
 import com.nuvio.app.features.profiles.NuvioProfile
 import com.nuvio.app.features.profiles.ProfileSwitcherTab
-import com.nuvio.app.features.settings.DesktopNavigationLayout
 import com.nuvio.app.features.settings.NavBarStyle
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import dev.chrisbanes.haze.hazeSource
@@ -71,14 +70,7 @@ internal fun MainTabsDestination(
         val tabsRouteActive = rootRouteActive
         val navBarScrollState = rememberNuvioNavBarScrollState()
         val navBarHazeState = rememberHazeState()
-        val desktopNavigationLayoutSetting by remember {
-            ThemeSettingsRepository.desktopNavigationLayout
-        }.collectAsStateWithLifecycle()
         val navBarStyleSetting by remember { ThemeSettingsRepository.navBarStyle }.collectAsStateWithLifecycle()
-        val useDesktopSidebar = isDesktop &&
-            isTabletLayout &&
-            !useNativeBottomTabs &&
-            desktopNavigationLayoutSetting == DesktopNavigationLayout.Sidebar
 
         Scaffold(
             modifier = Modifier
@@ -136,19 +128,11 @@ internal fun MainTabsDestination(
                             .fillMaxSize()
                             .then(if (navBarStyleSetting != NavBarStyle.CLASSIC) Modifier.hazeSource(state = navBarHazeState) else Modifier)
                             .then(if (navBarStyleSetting == NavBarStyle.ADAPTIVE) Modifier.nestedScroll(navBarScrollState.nestedScrollConnection) else Modifier)
-                            .padding(start = if (useDesktopSidebar) DesktopSidebarCollapsedWidth else 0.dp)
                             .padding(innerPadding),
                     )
                 }
 
-                if (useDesktopSidebar) {
-                    DesktopHoverSidebar(
-                        selectedTab = selectedTab,
-                        onTabSelected = onTabSelected,
-                        onProfileSelected = onProfileSelected,
-                        onAddProfileRequested = onAddProfileRequested,
-                    )
-                } else if (isTabletLayout && !useNativeBottomTabs) {
+                if (isTabletLayout && !useNativeBottomTabs) {
                     TabletFloatingTopBar(
                         selectedTab = selectedTab,
                         onTabSelected = onTabSelected,

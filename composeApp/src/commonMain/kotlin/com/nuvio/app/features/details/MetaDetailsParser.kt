@@ -4,8 +4,6 @@ import com.nuvio.app.features.streams.StreamBehaviorHints
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamProxyHeaders
 import com.nuvio.app.features.streams.normalizeStreamType
-import com.nuvio.app.features.streams.sanitizeEpisodeImdbId
-import com.nuvio.app.features.streams.sanitizeEpisodeRating
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -250,10 +248,7 @@ internal object MetaDetailsParser {
                 episode = video.int("episode"),
                 overview = video.string("overview") ?: video.string("description"),
                 runtime = video.int("runtime"),
-                rating = sanitizeEpisodeRating(
-                    video.string("imdbRating") ?: video.string("rating"),
-                ),
-                imdbId = video.episodeImdbId(id),
+                rating = video.string("rating")?.trim()?.toDoubleOrNull()?.takeIf { it > 0.0 },
                 streams = video.embeddedStreams(),
             )
         }
@@ -368,16 +363,6 @@ internal object MetaDetailsParser {
 
     private fun JsonObject.long(name: String): Long? =
         this[name]?.jsonPrimitive?.longOrNull
-
-    private fun JsonObject.episodeImdbId(videoId: String): String? =
-        sequenceOf(
-            string("imdbId"),
-            string("imdb_id"),
-            string("imdb"),
-            videoId,
-        )
-            .mapNotNull(::sanitizeEpisodeImdbId)
-            .firstOrNull()
 }
 
 private fun JsonElement?.asJsonObjectOrNull(): JsonObject? = this as? JsonObject

@@ -101,7 +101,6 @@ android {
     productFlavors {
         create("full") {
             dimension = "distribution"
-            minSdk = maxOf(libs.versions.android.minSdk.get().toInt(), 26)
         }
         create("playstore") {
             dimension = "distribution"

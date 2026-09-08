@@ -4,8 +4,6 @@ import co.touchlab.kermit.Logger
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.network.SupabaseProvider
-import com.nuvio.app.core.storage.ProfileScopedKey
-import com.nuvio.app.core.sync.HOME_CATALOG_LEGACY_SYNC_PLATFORMS
 import com.nuvio.app.core.sync.HOME_CATALOG_SHARED_SYNC_PLATFORM
 import com.nuvio.app.core.sync.putSyncOriginClientId
 import com.nuvio.app.features.profiles.ProfileRepository
@@ -50,21 +48,6 @@ data class SyncHomeCatalogPayload(
 private data class SupabaseHomeCatalogSettingsBlob(
     @SerialName("profile_id") val profileId: Int = 1,
     @SerialName("settings_json") val settingsJson: JsonObject = buildJsonObject { },
-    @SerialName("updated_at") val updatedAt: String? = null,
-)
-
-private data class RemoteHomeCatalogSettings(
-    val platform: String,
-    val payload: SyncHomeCatalogPayload,
-    val settingsJson: JsonObject,
-    val updatedAt: String?,
-    val hasShowCatalogType: Boolean,
-    val hasHideUnreleasedContent: Boolean,
-)
-
-private data class BestRemoteHomeCatalogSettings(
-    val selected: RemoteHomeCatalogSettings?,
-    val sharedSettingsJson: JsonObject?,
 )
 
 private data class PullToken(
@@ -111,15 +94,23 @@ object HomeCatalogSettingsSyncService {
         runCatching {
             val pullToken = currentPullToken(profileId) ?: return
             val localPayload = HomeCatalogSettingsRepository.exportToSyncPayload()
-            val remote = fetchBestRemotePayload(profileId, localPayload)
+            val remoteBlob = fetchRemoteBlob(profileId)
             cachedSharedSettings = CachedSharedSettings(
                 token = pullToken,
-                settingsJson = remote.sharedSettingsJson ?: buildJsonObject { },
+                settingsJson = remoteBlob?.settingsJson ?: buildJsonObject { },
             )
-            val remotePayload = remote.selected?.payload
+            val remotePayload = remoteBlob?.let { blob ->
+                decodePayloadPreservingLocalDefaults(blob.settingsJson, localPayload)
+            }
+
+            if (remoteBlob == null) {
+                log.i { "pullFromServer — no remote home catalog settings found; preserving local" }
+                markInitialPullComplete(pullToken)
+                return
+            }
 
             if (remotePayload == null) {
-                log.i { "pullFromServer — no remote home catalog settings found; preserving local" }
+                log.w { "pullFromServer — failed to parse remote home catalog settings" }
                 markInitialPullComplete(pullToken)
                 return
             }
@@ -152,16 +143,6 @@ object HomeCatalogSettingsSyncService {
             if (isSyncingFromRemote) return@launch
             if (currentPullToken() != requestedToken) return@launch
             pushToRemote(requestedToken)
-        }
-    }
-
-    suspend fun pushProfileToRemote(profileId: Int) {
-        val token = currentPullToken(profileId) ?: return
-        ProfileScopedKey.scopedToSuspend(profileId) {
-            HomeCatalogSettingsRepository.onProfileChanged()
-            if (currentPullToken(profileId) == token) {
-                pushToRemote(token)
-            }
         }
     }
 
@@ -211,83 +192,12 @@ object HomeCatalogSettingsSyncService {
         }
     }
 
-    private suspend fun fetchBestRemotePayload(
-        profileId: Int,
-        localPayload: SyncHomeCatalogPayload,
-    ): BestRemoteHomeCatalogSettings {
-        val shared = fetchRemotePayload(
-            profileId = profileId,
-            platform = HOME_CATALOG_SHARED_SYNC_PLATFORM,
-            localPayload = localPayload,
-        )
-        val legacyRows = HOME_CATALOG_LEGACY_SYNC_PLATFORMS.mapNotNull { platform ->
-            fetchRemotePayload(
-                profileId = profileId,
-                platform = platform,
-                localPayload = localPayload,
-            )
-        }
-        val rows = listOfNotNull(shared) + legacyRows
-        val selected = rows
-            .filter { it.payload.items.isNotEmpty() }
-            .maxByOrNull { it.updatedAt.orEmpty() }
-            ?: shared
-            ?: legacyRows.maxByOrNull { it.updatedAt.orEmpty() }
-
-        return BestRemoteHomeCatalogSettings(
-            selected = selected?.withNewestStandaloneSettings(rows),
-            sharedSettingsJson = shared?.settingsJson,
-        )
-    }
-
-    private suspend fun fetchRemotePayload(
-        profileId: Int,
-        platform: String,
-        localPayload: SyncHomeCatalogPayload,
-    ): RemoteHomeCatalogSettings? {
-        val blob = fetchRemoteBlob(profileId, platform) ?: return null
-        val payload = decodePayloadPreservingLocalDefaults(blob.settingsJson, localPayload)
-        if (payload == null) {
-            log.w { "pullFromServer — failed to parse remote home catalog settings for platform=$platform" }
-            return null
-        }
-        return RemoteHomeCatalogSettings(
-            platform = platform,
-            payload = payload,
-            settingsJson = blob.settingsJson,
-            updatedAt = blob.updatedAt,
-            hasShowCatalogType = blob.settingsJson.containsKey(SHOW_CATALOG_TYPE_KEY),
-            hasHideUnreleasedContent = blob.settingsJson.containsKey(HIDE_UNRELEASED_CONTENT_KEY),
-        )
-    }
-
-    private fun RemoteHomeCatalogSettings.withNewestStandaloneSettings(
-        rows: List<RemoteHomeCatalogSettings>,
-    ): RemoteHomeCatalogSettings {
-        val hideUnreleasedSource = rows
-            .filter { it.hasHideUnreleasedContent }
-            .maxByOrNull { it.updatedAt.orEmpty() }
-        val showCatalogTypeSource = rows
-            .filter { it.hasShowCatalogType }
-            .maxByOrNull { it.updatedAt.orEmpty() }
-
-        return copy(
-            payload = payload.copy(
-                showCatalogType = showCatalogTypeSource?.payload?.showCatalogType
-                    ?: payload.showCatalogType,
-                hideUnreleasedContent = hideUnreleasedSource?.payload?.hideUnreleasedContent
-                    ?: payload.hideUnreleasedContent,
-            ),
-        )
-    }
-
     private suspend fun fetchRemoteBlob(
         profileId: Int,
-        platform: String,
     ): SupabaseHomeCatalogSettingsBlob? {
         val params = buildJsonObject {
             put("p_profile_id", profileId)
-            put("p_platform", platform)
+            put("p_platform", HOME_CATALOG_SHARED_SYNC_PLATFORM)
         }
         val result = SupabaseProvider.client.postgrest.rpc("sync_pull_home_catalog_settings", params)
         return result.decodeList<SupabaseHomeCatalogSettingsBlob>().firstOrNull()

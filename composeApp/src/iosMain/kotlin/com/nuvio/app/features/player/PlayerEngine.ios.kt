@@ -81,7 +81,11 @@ actual fun PlatformPlayerSurface(
     }
 
     val controller = remember(bridge) {
-        object : PlayerEngineController {
+        object : PlayerEngineController, VideoZoomController {
+            override fun setVideoZoom(state: PlayerVideoZoomState) {
+                bridge.setVideoZoom(state.normalized().zoom, false)
+            }
+
             override fun play() {
                 bridge.play()
             }

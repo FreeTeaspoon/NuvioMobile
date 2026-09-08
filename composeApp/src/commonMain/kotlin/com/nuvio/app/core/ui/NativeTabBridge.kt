@@ -35,15 +35,9 @@ internal enum class NativeNavigationTab {
 internal object NativeTabBridge {
     private val _requestedTabs = MutableSharedFlow<NativeNavigationTab>(extraBufferCapacity = 1)
     val requestedTabs: SharedFlow<NativeNavigationTab> = _requestedTabs.asSharedFlow()
-    private val _profileTabLongPresses = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val profileTabLongPresses: SharedFlow<Unit> = _profileTabLongPresses.asSharedFlow()
 
     fun requestTab(tabName: String) {
         _requestedTabs.tryEmit(NativeNavigationTab.fromName(tabName))
-    }
-
-    fun requestProfileTabLongPress() {
-        _profileTabLongPresses.tryEmit(Unit)
     }
 
     fun publishSelectedTab(tab: NativeNavigationTab) {
@@ -193,10 +187,6 @@ class NativeProfileSwitcherController {
 
 fun nativeTabSelect(tabName: String) {
     NativeTabBridge.requestTab(tabName)
-}
-
-fun nativeProfileTabLongPress() {
-    NativeTabBridge.requestProfileTabLongPress()
 }
 
 internal expect fun isLiquidGlassNativeTabBarSupported(): Boolean

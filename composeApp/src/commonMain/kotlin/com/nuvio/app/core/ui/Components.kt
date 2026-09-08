@@ -50,7 +50,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,8 +75,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import com.nuvio.app.navigation.LocalNativeNavigationBarHidden
 import com.nuvio.app.navigation.LocalUseNativeNavigation
 
-val LocalNuvioBottomOverlayScrollPadding = staticCompositionLocalOf { 0.dp }
-
 @Composable
 fun NuvioScreen(
     modifier: Modifier = Modifier,
@@ -97,8 +94,7 @@ fun NuvioScreen(
             start = horizontalPadding,
             top = topPadding ?: tokens.spacing.screenTop + statusBarTop + nuvioPlatformExtraTopPadding,
             end = horizontalPadding,
-            bottom = nuvioSafeBottomPadding(tokens.spacing.screenBottom) +
-                LocalNuvioBottomOverlayScrollPadding.current,
+            bottom = nuvioSafeBottomPadding(tokens.spacing.screenBottom),
         ),
         verticalArrangement = Arrangement.spacedBy(tokens.spacing.listGap),
         content = content,
@@ -551,32 +547,12 @@ fun NuvioToastHost(
                 tonalElevation = tokens.elevation.raised,
                 shadowElevation = tokens.elevation.overlay,
             ) {
-                Row(
-                    modifier = Modifier.padding(
-                        horizontal = NuvioTokens.Space.s16,
-                        vertical = NuvioTokens.Space.s12,
-                    ),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap),
-                ) {
-                    Text(
-                        text = currentToast.message,
-                        modifier = Modifier.weight(1f, fill = false),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = tokens.colors.textPrimary,
-                    )
-                    currentToast.actionLabel?.let { actionLabel ->
-                        Text(
-                            text = actionLabel,
-                            modifier = Modifier.clickable {
-                                NuvioToastController.performAction(currentToast.id)
-                            },
-                            style = MaterialTheme.typography.labelLarge,
-                            color = tokens.colors.accent,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
+                Text(
+                    text = currentToast.message,
+                    modifier = Modifier.padding(horizontal = NuvioTokens.Space.s16, vertical = NuvioTokens.Space.s12),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tokens.colors.textPrimary,
+                )
             }
         }
     }
@@ -586,8 +562,6 @@ data class NuvioToastMessage(
     val id: Long,
     val message: String,
     val durationMillis: Long,
-    val actionLabel: String? = null,
-    val onAction: (() -> Unit)? = null,
 )
 
 object NuvioToastController {
@@ -598,24 +572,13 @@ object NuvioToastController {
     fun show(
         message: String,
         durationMillis: Long = 2500L,
-        actionLabel: String? = null,
-        onAction: (() -> Unit)? = null,
     ) {
         nextToastId += 1L
         _currentToast.value = NuvioToastMessage(
             id = nextToastId,
             message = message,
             durationMillis = durationMillis,
-            actionLabel = actionLabel,
-            onAction = onAction,
         )
-    }
-
-    fun performAction(id: Long) {
-        val activeToast = _currentToast.value ?: return
-        if (activeToast.id != id) return
-        _currentToast.value = null
-        activeToast.onAction?.invoke()
     }
 
     fun dismiss(id: Long? = null) {

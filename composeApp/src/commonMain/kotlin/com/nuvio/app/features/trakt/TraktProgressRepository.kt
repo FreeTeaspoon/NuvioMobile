@@ -377,6 +377,7 @@ object TraktProgressRepository {
                 val history = async { fetchHistoryEntries(headers) }
                 val watchedShowSeeds = async { fetchWatchedShowSeedEntries(headers) }
                 val hiddenShows = async { fetchHiddenShowIds(headers) }
+                
                 val list = history.await() + watchedShowSeeds.await()
                 hiddenProgressShowIds.value = hiddenShows.await()
                 list

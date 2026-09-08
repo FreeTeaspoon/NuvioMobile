@@ -22,7 +22,6 @@ actual object PlayerSettingsStorage {
     private const val showLoadingOverlayKey = "show_loading_overlay"
     private const val showParentalGuideKey = "show_parental_guide"
     private const val resizeModeKey = "resize_mode"
-    private const val videoZoomKey = "video_zoom"
     private const val holdToSpeedEnabledKey = "hold_to_speed_enabled"
     private const val holdToSpeedValueKey = "hold_to_speed_value"
     private const val touchGesturesEnabledKey = "touch_gestures_enabled"
@@ -89,9 +88,6 @@ actual object PlayerSettingsStorage {
     private const val iosContrastKey = "ios_contrast"
     private const val iosSaturationKey = "ios_saturation"
     private const val iosGammaKey = "ios_gamma"
-    private const val rememberedAudioSelectionsKey = "remembered_audio_selections"
-    private const val rememberedSubtitleSelectionsKey = "remembered_subtitle_selections"
-    private const val rememberedVideoZoomsKey = "remembered_video_zooms"
     private val syncKeys = listOf(
         showLoadingOverlayKey,
         showParentalGuideKey,
@@ -136,8 +132,6 @@ actual object PlayerSettingsStorage {
         skipIntroEnabledKey,
         animeSkipEnabledKey,
         animeSkipClientIdKey,
-        introDbApiKeyKey,
-        introSubmitEnabledKey,
         streamAutoPlayNextEpisodeEnabledKey,
         streamAutoPlayNextEpisodeFallbackEnabledKey,
         streamAutoPlayPreferBingeGroupKey,
@@ -211,23 +205,6 @@ actual object PlayerSettingsStorage {
         preferences
             ?.edit()
             ?.putString(ProfileScopedKey.of(resizeModeKey), mode)
-            ?.apply()
-    }
-
-    actual fun loadVideoZoom(): Float? =
-        preferences?.let { sharedPreferences ->
-            val key = ProfileScopedKey.of(videoZoomKey)
-            if (sharedPreferences.contains(key)) {
-                sharedPreferences.getFloat(key, 0f)
-            } else {
-                null
-            }
-        }
-
-    actual fun saveVideoZoom(zoom: Float) {
-        preferences
-            ?.edit()
-            ?.putFloat(ProfileScopedKey.of(videoZoomKey), clampPlayerVideoZoom(zoom))
             ?.apply()
     }
 
@@ -1121,36 +1098,6 @@ actual object PlayerSettingsStorage {
         saveIosInt(iosGammaKey, value)
     }
 
-    actual fun loadRememberedAudioSelections(): String? =
-        preferences?.getString(ProfileScopedKey.of(rememberedAudioSelectionsKey), null)
-
-    actual fun saveRememberedAudioSelections(json: String) {
-        preferences
-            ?.edit()
-            ?.putString(ProfileScopedKey.of(rememberedAudioSelectionsKey), json)
-            ?.apply()
-    }
-
-    actual fun loadRememberedSubtitleSelections(): String? =
-        preferences?.getString(ProfileScopedKey.of(rememberedSubtitleSelectionsKey), null)
-
-    actual fun saveRememberedSubtitleSelections(json: String) {
-        preferences
-            ?.edit()
-            ?.putString(ProfileScopedKey.of(rememberedSubtitleSelectionsKey), json)
-            ?.apply()
-    }
-
-    actual fun loadRememberedVideoZooms(): String? =
-        preferences?.getString(ProfileScopedKey.of(rememberedVideoZoomsKey), null)
-
-    actual fun saveRememberedVideoZooms(json: String) {
-        preferences
-            ?.edit()
-            ?.putString(ProfileScopedKey.of(rememberedVideoZoomsKey), json)
-            ?.apply()
-    }
-
     actual fun exportToSyncPayload(): JsonObject = buildJsonObject {
         loadShowLoadingOverlay()?.let { put(showLoadingOverlayKey, encodeSyncBoolean(it)) }
         loadShowParentalGuide()?.let { put(showParentalGuideKey, encodeSyncBoolean(it)) }
@@ -1197,8 +1144,6 @@ actual object PlayerSettingsStorage {
         loadSkipIntroEnabled()?.let { put(skipIntroEnabledKey, encodeSyncBoolean(it)) }
         loadAnimeSkipEnabled()?.let { put(animeSkipEnabledKey, encodeSyncBoolean(it)) }
         loadAnimeSkipClientId()?.let { put(animeSkipClientIdKey, encodeSyncString(it)) }
-        loadIntroDbApiKey()?.let { put(introDbApiKeyKey, encodeSyncString(it)) }
-        loadIntroSubmitEnabled()?.let { put(introSubmitEnabledKey, encodeSyncBoolean(it)) }
         loadStreamAutoPlayNextEpisodeEnabled()?.let { put(streamAutoPlayNextEpisodeEnabledKey, encodeSyncBoolean(it)) }
         loadStreamAutoPlayNextEpisodeFallbackEnabled()?.let { put(streamAutoPlayNextEpisodeFallbackEnabledKey, encodeSyncBoolean(it)) }
         loadStreamAutoPlayPreferBingeGroup()?.let { put(streamAutoPlayPreferBingeGroupKey, encodeSyncBoolean(it)) }

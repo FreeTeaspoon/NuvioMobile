@@ -1,9 +1,7 @@
 package com.nuvio.app.core.build
 
 actual object AppFeaturePolicy {
-    actual val pluginsEnabled: Boolean = true
-    actual val downloadsEnabled: Boolean = false
-    actual val notificationsEnabled: Boolean = false
+    actual val pluginsEnabled: Boolean = false
     actual val supportersContributorsPageEnabled: Boolean = true
     actual val accountDeletionEnabled: Boolean = false
     actual val personalMediaAddonCopyEnabled: Boolean = false
@@ -13,5 +11,6 @@ actual object AppFeaturePolicy {
     actual val inAppUpdaterEnabled: Boolean = false
     actual val imdbRatingLogoEnabled: Boolean = true
     actual val mediaPlaybackForegroundServiceEnabled: Boolean = false
+    actual val downloadForegroundServiceEnabled: Boolean = false
     actual val customServerConnectionsEnabled: Boolean = false
 }

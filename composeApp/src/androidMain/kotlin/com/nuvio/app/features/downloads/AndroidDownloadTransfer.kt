@@ -11,27 +11,10 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import okhttp3.Call
-import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
 internal val downloadHttpClient = OkHttpClient.Builder()
-    .addInterceptor { chain ->
-        val request = chain.request()
-        val url = request.url
-        val hasUserInfo = url.username.isNotBlank() || url.password.isNotBlank()
-        val hasAuthorization = request.header("Authorization") != null
-        if (hasUserInfo && !hasAuthorization) {
-            chain.proceed(
-                request.newBuilder()
-                    .header("Authorization", Credentials.basic(url.username, url.password))
-                    .build(),
-            )
-        } else {
-            chain.proceed(request)
-        }
-    }
-    .authenticator(DownloadWebDavAuthenticator)
     .connectTimeout(60, TimeUnit.SECONDS)
     .readTimeout(60, TimeUnit.SECONDS)
     .writeTimeout(60, TimeUnit.SECONDS)

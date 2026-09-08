@@ -1,212 +1,74 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
 upstream_ref="${1:-upstream/cmp-rewrite}"
 fork_base="${2:-HEAD}"
-repo_root="$(git rev-parse --show-toplevel)"
-cd "$repo_root"
-
+cd "$(git rev-parse --show-toplevel)"
 git rev-parse --verify "${upstream_ref}^{commit}" >/dev/null
 git rev-parse --verify "${fork_base}^{commit}" >/dev/null
-merge_base="$(git merge-base "$fork_base" "$upstream_ref")"
+printf 'upstream=%s fork-base=%s\n' "$(git rev-parse --short "$upstream_ref")" "$(git rev-parse --short "$fork_base")"
 
-printf 'fork-base=%s\n' "$(git rev-parse --short "$fork_base")"
-printf 'worktree-head=%s\n' "$(git rev-parse --short HEAD)"
-printf 'upstream=%s\n' "$(git rev-parse --short "$upstream_ref")"
-printf 'merge-base=%s\n' "$(git rev-parse --short "$merge_base")"
+python3 - "$upstream_ref" <<'PY'
+from pathlib import Path
+import subprocess,sys,xml.etree.ElementTree as ET
+upstream=sys.argv[1]
+paths=[p for p in Path('scripts/upstream-equivalent-paths.txt').read_text().splitlines() if p and not p.startswith('#')]
+failed=[]
+for path in paths:
+    original=subprocess.run(['git','show',f'{upstream}:{path}'],capture_output=True)
+    local=Path(path)
+    if original.returncode == 0:
+        if not local.is_file() or local.read_bytes()!=original.stdout:failed.append(path)
+    elif local.exists():failed.append(path)
+if failed:
+    sys.exit('Upstream parity FAILED:\n'+'\n'.join(failed))
+print(f'Upstream parity PASSED: {len(paths)} files identical or absent in both trees')
+resources=Path('composeApp/src/commonMain/composeResources')
+def keys(path):
+    names=[item.attrib['name'] for item in ET.parse(path).getroot() if item.tag=='string']
+    assert len(names)==len(set(names)),f'Duplicate resource names: {path}'
+    return set(names)
+default=keys(resources/'values/strings.xml')
+for path in sorted(resources.glob('values-*/strings.xml')):
+    assert keys(path)==default,f'Locale keys differ: {path}'
+print('Locale keys PASSED')
+PY
 
-printf '%s\n' '--- conflict paths ---'
-conflicts="$({
-  git merge-tree --write-tree --no-messages "$fork_base" "$upstream_ref" 2>/dev/null \
-    | awk -F '\t' 'NF >= 2 { n=split($1,a," "); if (a[n] ~ /^[123]$/) print $2 }' \
-    | sort -u
-} || true)"
-if [[ -n "$conflicts" ]]; then
-  printf '%s\n' "$conflicts"
-  conflict_count="$(printf '%s\n' "$conflicts" | sed '/^$/d' | wc -l | tr -d ' ')"
-  printf 'conflict-count=%s\n' "$conflict_count"
-else
-  printf '%s\n' '(none)'
-  printf 'conflict-count=0\n'
-fi
-
-printf '%s\n' '--- upstream shared UI changes to review ---'
-upstream_ui_paths=(
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/App.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/MainAppContent.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/MainTabsDestination.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/AppShellComponents.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/core/ui/LoadingIndicator.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/core/ui/PosterZoomActionOverlay.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/PlayerControls.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/PlayerOverlays.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/PlayerScreenRuntimeUi.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/PlayerSidePanel.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/features/details/MetaDetailsScreen.kt"
-)
-for upstream_ui_path in "${upstream_ui_paths[@]}"; do
-  if git cat-file -e "${upstream_ref}:${upstream_ui_path}" 2>/dev/null && \
-    ! git diff --quiet "$fork_base" "$upstream_ref" -- "$upstream_ui_path"; then
-    printf 'upstream-ui-changed %s\n' "$upstream_ui_path"
+check() {
+  local label="$1" pattern="$2"; shift 2
+  if ! rg -q -e "$pattern" -- "$@"; then
+    printf 'Missing retained behavior: %s\n' "$label" >&2
+    exit 1
   fi
-done
-
-audit_failed=0
-
-check_file() {
-  local path="$1"
-  if [[ -f "$repo_root/$path" ]]; then
-    printf 'present %s\n' "$path"
-  else
-    printf 'missing %s\n' "$path"
-    audit_failed=1
-  fi
+  printf 'present %s\n' "$label"
 }
-
-check_contract() {
-  local label="$1"
-  local pattern="$2"
-  shift 2
-  local hits
-  hits="$(rg -n -m 5 -e "$pattern" -- "$@" 2>/dev/null || true)"
-  if [[ -n "$hits" ]]; then
-    printf 'present %s\n' "$label"
-    printf '%s\n' "$hits"
-  else
-    printf 'missing %s: %s\n' "$label" "$pattern"
-    audit_failed=1
-  fi
-}
-
-printf '%s\n' '--- fork feature files ---'
-required_paths=(
-  "FORK_FEATURES.md"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/VideoZoomModal.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/RememberedVideoZoom.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/RememberedAudioSelection.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/features/player/RememberedSubtitleSelection.kt"
-  "composeApp/src/androidMain/kotlin/com/nuvio/app/features/downloads/DownloadsForegroundService.kt"
-  "composeApp/src/commonMain/kotlin/com/nuvio/app/features/downloads/DownloadProgressUpdateTracker.kt"
-)
-for required_path in "${required_paths[@]}"; do
-  check_file "$required_path"
-done
-
-printf '%s\n' '--- upstream UI host wiring ---'
-check_contract \
-  "long-press overlay component" \
-  'fun NuvioPosterZoomActionOverlay' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/core/ui/PosterZoomActionOverlay.kt
-check_contract \
-  "long-press overlay host" \
-  'NuvioPosterZoomActionOverlay\(' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/App.kt \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/MainAppContent.kt
-check_contract \
-  "long-press host callbacks" \
-  'onPosterLongClick' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/App.kt \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/MainAppContent.kt \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/CatalogDestination.kt \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/AppShellComponents.kt
-check_contract \
-  "upstream loading indicator" \
-  'NuvioLoadingIndicator' \
-  composeApp/src/commonMain/kotlin
-
-printf '%s\n' '--- fork behavior wiring ---'
-check_contract \
-  "video zoom behavior" \
-  'VideoZoomModal|RememberedVideoZoom|showVideoZoomModal|cycleResizeMode' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/features/player
-check_contract \
-  "remembered audio/subtitle behavior" \
-  'RememberedAudioSelectionRepository|RememberedSubtitleSelectionRepository|persistAudioPreference|persistInternalSubtitlePreference|persistAddonSubtitlePreference' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/features/player
-check_contract \
-  "custom speed chooser component" \
-  'PlaybackSpeedModal' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/features/player
-check_contract \
-  "custom speed chooser wiring" \
-  'onSpeedClick.*openSpeedModal|selectPlaybackSpeed' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/features/player
-check_contract \
-  "Media3 backward-seek buffer" \
-  'setBackBuffer\(' \
-  composeApp/src/androidMain/kotlin/com/nuvio/app/features/player/PlayerEngine.android.kt
-check_contract \
-  "MPV backward-seek cache" \
-  'demuxer-max-back-bytes|cache-secs|demuxer-seekable-cache' \
-  composeApp/src/androidMain/kotlin/com/nuvio/app/features/player
-check_contract \
-  "external subtitle propagation" \
-  'activeExternalSubtitles|externalSubtitles' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/features/player
-check_contract \
-  "upstream Android playback engine" \
-  'AndroidPlaybackEngine|LibmpvPlayerSurface|setAndroidPlaybackEngine' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/features/player \
-  composeApp/src/androidMain/kotlin/com/nuvio/app/features/player \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/features/settings
-check_contract \
-  "foreground/recovered downloads" \
-  'DownloadsForegroundService|DownloadProgressUpdateTracker|recovered' \
-  composeApp/src
-check_contract \
-  "scheduled download WebDAV authentication" \
-  'authenticator\(DownloadWebDavAuthenticator\)' \
-  composeApp/src/androidMain/kotlin/com/nuvio/app/features/downloads/AndroidDownloadTransfer.kt
-check_contract \
-  "scheduled download progress pacing" \
-  'DownloadProgressUpdateTracker' \
-  composeApp/src/androidMain/kotlin/com/nuvio/app/features/downloads/AndroidDownloadScheduler.kt
-check_contract \
-  "managed foreground download adapter" \
-  'DownloadsForegroundService.transferForegroundInfo' \
-  composeApp/src/androidMain/kotlin/com/nuvio/app/features/downloads/DownloadsTransferWorker.kt
-check_contract \
-  "player system/launch storage" \
-  'PlayerSystemMediaControls|PlayerTrackPreferenceStorage|PlayerLaunchStorage' \
-  composeApp/src
-
-printf '%s\n' '--- data/UI integration boundaries ---'
-check_contract \
-  "Trakt credential synchronization" \
-  'TraktCredentialSync|sync_(pull|push)_provider_credentials|pushCurrentToRemote|pullFromRemote' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/core/sync \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/features/trakt
-check_contract \
-  "profile sync safety" \
-  'ProfileSettingsSync|isCurrent|pending|outbox' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/core/sync
-check_contract \
-  "watched confirmations" \
-  'WatchedConfirmationAction|watched_confirm_|WatchedActionSheet' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/features/details \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/App.kt
-check_contract \
-  "IMDb/rating links" \
-  'buildRatingProviderUrl|buildImdbParentsGuideUrl|DetailRatingLinks' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app/features/details
-check_contract \
-  "desktop navigation consumer" \
-  'DesktopNavigationLayout|DesktopHoverSidebar|settings_appearance_desktop_navigation' \
-  composeApp/src/commonMain/kotlin/com/nuvio/app
-
-printf '%s\n' '--- generated files ---'
-generated_files="$(git ls-files 'supabase/.temp/**')"
-if [[ -n "$generated_files" ]]; then
-  printf '%s\n' "$generated_files"
-  printf '%s\n' 'generated Supabase files are still tracked'
-  audit_failed=1
-else
-  printf '%s\n' '(none tracked)'
-fi
-
-if [[ "$audit_failed" -ne 0 ]]; then
-  printf '%s\n' 'fork merge audit FAILED: inspect missing contracts before committing'
+common=composeApp/src/commonMain/kotlin/com/nuvio/app
+android=composeApp/src/androidMain/kotlin/com/nuvio/app
+check 'poster overlay host' 'NuvioPosterZoomActionOverlay\(' "$common/App.kt" "$common/MainAppContent.kt"
+check 'upstream loading indicator' 'NuvioLoadingIndicator' "$common/core/ui/LoadingIndicator.kt"
+check 'upstream custom themes' 'AppearanceThemePicker' "$common/features/settings/AppearanceSettingsPage.kt"
+check 'zoom modal host' 'VideoZoomModal\(' "$common/features/player/PlayerScreenModalHosts.kt"
+check 'zoom runtime binding' 'BindVideoZoom\(' "$common/features/player/PlayerScreenRuntimeUi.kt"
+check 'Media3 zoom wiring' 'applyVideoZoom\(videoZoom\)' "$android/features/player/PlayerEngine.android.kt"
+check 'MPV zoom wiring' 'setPropertyDouble\("video-zoom"' "$android/features/player/PlayerEngine.android.kt"
+check 'zoom persistence' 'VideoZoomStorage.save' "$common/features/player/RememberedVideoZoom.kt"
+check 'offline Downloads switch' 'downloadsUiState.autoOpenOnOffline && hasPlayableDownload' "$common/MainAppContent.kt"
+check 'custom speed chooser' 'onSpeedClick.*openSpeedModal' "$common/features/player/PlayerScreenRuntimeUi.kt"
+check 'back buffer' 'setBackBuffer\(120_000, true\)' "$android/features/player/PlayerEngine.android.kt"
+check 'buffered seek bar' 'bufferedFraction' "$common/features/player/PlayerControls.kt"
+check 'horizontal seek feedback' 'liveHorizontalSeekTarget' "$common/features/player/PlayerScreenRuntimeGestureActions.kt"
+check 'managed foreground downloads' 'setForeground\(ForegroundInfo' "$android/features/downloads/DownloadsTransferWorker.kt"
+check 'download progress pacing' 'DownloadProgressUpdateTracker' "$android/features/downloads/AndroidDownloadScheduler.kt"
+check 'download recovery' 'recover' "$common/features/downloads/DownloadsRepository.kt"
+check 'system media controls' 'PlatformSystemMediaControls\(' "$common/features/player/PlayerScreenRuntimeUi.kt"
+check 'backup UI' 'BackupRepository' "$common/features/settings/AccountSettingsPage.kt"
+check 'watched confirmations' 'WatchedConfirmationAction' "$common/features/details/MetaDetailsScreen.kt"
+check 'rating links' 'buildRatingProviderUrl' "$common/features/details/components/DetailMetaInfo.kt"
+check 'Parents Guide' 'buildImdbParentsGuideUrl' "$common/features/details/components/DetailMetaInfo.kt"
+check 'fork updater' 'FreeTeaspoon' "$common/features/updater/AppUpdater.kt"
+check 'fork package identity' 'com.nuvio.app.freeteaspoon' androidApp/build.gradle.kts
+check 'fork release workflow' 'gh release' .github/workflows/build-cmp-rewrite-release.yml
+if [[ -n "$(git ls-files 'supabase/.temp/**')" ]]; then
+  printf 'Generated Supabase state is tracked\n' >&2
   exit 1
 fi
-
-printf '%s\n' 'fork merge audit PASSED'
+printf 'Fork merge audit PASSED\n'

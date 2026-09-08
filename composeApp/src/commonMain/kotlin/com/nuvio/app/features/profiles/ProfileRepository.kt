@@ -8,7 +8,6 @@ import com.nuvio.app.core.network.SupabaseProvider
 import com.nuvio.app.core.sync.putSyncOriginClientId
 import com.nuvio.app.core.tracking.ensureTrackingProvidersRegistered
 import com.nuvio.app.features.addons.AddonRepository
-import com.nuvio.app.features.backup.BackupProfilePayload
 import com.nuvio.app.features.collection.CollectionMobileSettingsRepository
 import com.nuvio.app.features.collection.CollectionRepository
 import com.nuvio.app.features.downloads.DownloadsRepository
@@ -44,9 +43,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -71,7 +67,6 @@ object ProfileRepository {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val log = Logger.withTag("ProfileRepository")
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    private val profileSwitchMutex = Mutex()
     private fun localizedString(resource: StringResource): String = runBlocking { getString(resource) }
 
     private val _state = MutableStateFlow(ProfileState())
@@ -123,51 +118,6 @@ object ProfileRepository {
         _state.value = ProfileState()
     }
 
-    internal fun importLocalProfilesFromBackup(
-        activeProfileIndex: Int,
-        profiles: List<BackupProfilePayload>,
-    ) {
-        val authState = AuthRepository.state.value as? AuthState.Authenticated ?: return
-        val importedProfiles = profiles
-            .mapNotNull { payload ->
-                val metadata = payload.profile ?: return@mapNotNull null
-                NuvioProfile(
-                    id = "",
-                    userId = authState.userId,
-                    profileIndex = payload.profileIndex,
-                    name = metadata.name,
-                    avatarColorHex = metadata.avatarColorHex,
-                    avatarId = metadata.avatarId,
-                    avatarUrl = metadata.avatarUrl,
-                    usesPrimaryAddons = metadata.usesPrimaryAddons,
-                    usesPrimaryPlugins = metadata.usesPrimaryPlugins,
-                    pinEnabled = metadata.pinEnabled,
-                )
-            }
-            .ifEmpty {
-                listOf(
-                    NuvioProfile(
-                        id = "",
-                        userId = authState.userId,
-                        profileIndex = activeProfileIndex,
-                        name = "Profile $activeProfileIndex",
-                    ),
-                )
-            }
-            .sortedBy { it.profileIndex }
-
-        this.activeProfileIndex = activeProfileIndex
-        _state.value = ProfileState(
-            profiles = importedProfiles,
-            activeProfile = importedProfiles.find { it.profileIndex == activeProfileIndex }
-                ?: importedProfiles.firstOrNull(),
-            isLoaded = importedProfiles.isNotEmpty(),
-        )
-        _state.value.activeProfile?.let { this.activeProfileIndex = it.profileIndex }
-        loadedCacheForUserId = authState.userId
-        persist()
-    }
-
     suspend fun pullProfiles() {
         if (AuthRepository.state.value.isAnonymous) {
             if (!_state.value.isLoaded) {
@@ -193,14 +143,6 @@ object ProfileRepository {
             log.e(e) { "Failed to pull profiles" }
             if (!_state.value.isLoaded) {
                 _state.value = _state.value.copy(isLoaded = true)
-            }
-        }
-    }
-
-    suspend fun switchToProfile(profileIndex: Int) {
-        profileSwitchMutex.withLock {
-            withContext(Dispatchers.Default) {
-                selectProfile(profileIndex)
             }
         }
     }

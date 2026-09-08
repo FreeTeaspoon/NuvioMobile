@@ -154,7 +154,6 @@ data class P2pStreamRequest(
     val infoHash: String,
     val fileIdx: Int?,
     val filename: String? = null,
-    val magnetUri: String? = null,
     val trackers: List<String> = emptyList(),
 )
 
@@ -167,75 +166,17 @@ internal fun canonicalP2pInfoHash(infoHash: String): String {
     return canonical
 }
 
-internal fun buildP2pMagnetUri(
-    infoHash: String,
-    trackers: List<String>,
-    magnetUri: String? = null,
-): String {
+internal fun buildP2pMagnetUri(infoHash: String, trackers: List<String>): String {
     val canonicalHash = canonicalP2pInfoHash(infoHash)
     val topic = if (canonicalHash.length == 40) {
         "urn:btih:$canonicalHash"
     } else {
         "urn:btmh:1220$canonicalHash"
     }
-    val parsedMagnet = parseP2pMagnetUri(magnetUri)
-    val sourceTrackerParameters = parsedMagnet.trackerParameters
-        .map { it.lowercase() }
-        .toSet()
-    val trackerParameters = buildList {
-        addAll(parsedMagnet.trackerParameters)
-        trackers
-            .asSequence()
-            .map(String::trim)
-            .filter(String::isNotBlank)
-            .distinctBy(String::lowercase)
-            .map(String::encodeP2pQueryValue)
-            .filterNot { it.lowercase() in sourceTrackerParameters }
-            .forEach { add(it) }
+    val trackerParameters = trackers.filter(String::isNotBlank).distinct().joinToString("") { tracker ->
+        "&tr=${tracker.encodeP2pQueryValue()}"
     }
-    return buildString {
-        append("magnet:?xt=$topic")
-        parsedMagnet.passthroughParams.forEach { param ->
-            append('&')
-            append(param)
-        }
-        trackerParameters.forEach { tracker ->
-            append("&tr=")
-            append(tracker)
-        }
-    }
-}
-
-private data class ParsedP2pMagnet(
-    val trackerParameters: List<String>,
-    val passthroughParams: List<String>,
-)
-
-private fun parseP2pMagnetUri(magnetUri: String?): ParsedP2pMagnet {
-    val raw = magnetUri
-        ?.trim()
-        ?.takeIf { it.startsWith("magnet:", ignoreCase = true) }
-        ?: return ParsedP2pMagnet(emptyList(), emptyList())
-    val query = raw.substringAfter('?', missingDelimiterValue = "")
-    if (query.isBlank()) return ParsedP2pMagnet(emptyList(), emptyList())
-
-    val trackerParameters = mutableListOf<String>()
-    val passthroughParams = mutableListOf<String>()
-    query.split('&')
-        .filter(String::isNotBlank)
-        .forEach { param ->
-            when (param.substringBefore('=').lowercase()) {
-                "tr" -> param.substringAfter('=', missingDelimiterValue = "")
-                    .takeIf(String::isNotBlank)
-                    ?.let(trackerParameters::add)
-                "xt" -> Unit
-                else -> passthroughParams += param
-            }
-        }
-    return ParsedP2pMagnet(
-        trackerParameters = trackerParameters.distinct(),
-        passthroughParams = passthroughParams.distinct(),
-    )
+    return "magnet:?xt=$topic$trackerParameters"
 }
 
 private fun String.encodeP2pQueryValue(): String = buildString {
@@ -287,8 +228,6 @@ class P2pStreamingException(message: String) : Exception(message)
 
 expect object P2pStreamingEngine {
     val state: StateFlow<P2pStreamingState>
-    fun warmup()
-    fun cooldownWarmup()
     val cacheState: StateFlow<P2pCacheUiState>
     suspend fun startStream(request: P2pStreamRequest): String
     suspend fun clearCache(): P2pCacheClearResult

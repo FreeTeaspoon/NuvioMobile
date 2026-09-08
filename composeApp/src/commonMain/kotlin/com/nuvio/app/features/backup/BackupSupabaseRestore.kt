@@ -5,7 +5,13 @@ import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.network.SupabaseProvider
 import com.nuvio.app.core.sync.ProfileSettingsSync
-import com.nuvio.app.features.home.HomeCatalogSettingsSyncService
+import com.nuvio.app.core.sync.HOME_CATALOG_SHARED_SYNC_PLATFORM
+import com.nuvio.app.core.sync.putSyncOriginClientId
+import com.nuvio.app.features.home.HomeCatalogSettingsRepository
+import com.nuvio.app.features.home.mergeHomeCatalogSettingsJson
+import com.nuvio.app.features.profiles.ProfileRepository
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import com.nuvio.app.features.home.PosterShape
 import com.nuvio.app.features.library.LibraryItem
 import com.nuvio.app.features.plugins.StoredPluginsState
@@ -132,9 +138,28 @@ internal object BackupSupabaseRestore {
     }
 
     private suspend fun pushSettings(profile: BackupProfilePayload) {
-        ProfileSettingsSync.pushProfileToRemote(profile.profileIndex)
-        HomeCatalogSettingsSyncService.pushProfileToRemote(profile.profileIndex)
+        check(ProfileRepository.activeProfileId == profile.profileIndex)
+        ProfileSettingsSync.pushCurrentProfileToRemote()
+        val pullParams = buildJsonObject {
+            put("p_profile_id", profile.profileIndex)
+            put("p_platform", HOME_CATALOG_SHARED_SYNC_PLATFORM)
+        }
+        val remote = SupabaseProvider.client.postgrest.rpc("sync_pull_home_catalog_settings", pullParams)
+            .decodeList<BackupHomeSettingsRow>().firstOrNull()?.settingsJson
+        val local = json.encodeToJsonElement(HomeCatalogSettingsRepository.exportToSyncPayload()).jsonObject
+        val params = buildJsonObject {
+            put("p_profile_id", profile.profileIndex)
+            put("p_platform", HOME_CATALOG_SHARED_SYNC_PLATFORM)
+            put("p_settings_json", mergeHomeCatalogSettingsJson(remote, local))
+            putSyncOriginClientId()
+        }
+        SupabaseProvider.client.postgrest.rpc("sync_push_home_catalog_settings", params)
     }
+
+    @Serializable
+    private data class BackupHomeSettingsRow(
+        @SerialName("settings_json") val settingsJson: JsonObject = buildJsonObject { },
+    )
 
     private suspend fun pushCollections(payload: NuvioBackupPayload) {
         val collectionsJson = payload.global.collectionsPayload

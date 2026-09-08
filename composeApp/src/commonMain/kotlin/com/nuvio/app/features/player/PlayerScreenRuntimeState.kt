@@ -100,7 +100,6 @@ internal class PlayerScreenRuntime(
     var activeSourceHeaders by mutableStateOf(sanitizePlaybackHeaders(sourceHeaders))
     var activeSourceResponseHeaders by mutableStateOf(sanitizePlaybackResponseHeaders(sourceResponseHeaders))
     var activeStreamType by mutableStateOf(streamType)
-    var activeExternalSubtitles by mutableStateOf(externalSubtitles)
     var activeTorrentInfoHash by mutableStateOf(torrentInfoHash)
     var activeTorrentFileIdx by mutableStateOf(torrentFileIdx)
     var activeTorrentFilename by mutableStateOf(torrentFilename)
@@ -209,7 +208,6 @@ internal class PlayerScreenRuntime(
     var lastSyncedSettingsResizeMode: PlayerResizeMode? = null
     var lastResetPlaybackIdentity: String? = null
     var lastResetVideoIdentity: String? = null
-    var lastResetVideoZoomContentKey: String? = null
     var videoZoom by mutableStateOf(0f)
 
     val videoZoomContentKey: String?

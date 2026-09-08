@@ -70,7 +70,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.ui.NuvioBackButton
@@ -91,7 +90,6 @@ import com.nuvio.app.features.debrid.DirectDebridPlayableResult
 import com.nuvio.app.features.debrid.DirectDebridPlaybackResolver
 import com.nuvio.app.features.debrid.toastMessage
 import com.nuvio.app.features.player.PlayerSettingsRepository
-import com.nuvio.app.features.watchprogress.progressForPlaybackTarget
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watched.WatchedRepository
@@ -120,7 +118,6 @@ fun StreamsScreen(
     episodeNumber: Int? = null,
     episodeTitle: String? = null,
     episodeThumbnail: String? = null,
-    episodeMeta: StreamEpisodeMeta? = null,
     resumePositionMs: Long? = null,
     resumeProgressFraction: Float? = null,
     manualSelection: Boolean = false,
@@ -132,7 +129,6 @@ fun StreamsScreen(
         resumePositionMs: Long?,
         resumeProgressFraction: Float?,
     ) -> Unit = { _, _, _, _ -> },
-    onOpenImdbUrl: ((String) -> Unit)? = null,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -163,8 +159,6 @@ fun StreamsScreen(
     }
     val isEpisode = seasonNumber != null && episodeNumber != null
     val clipboardManager = LocalClipboardManager.current
-    val uriHandler = LocalUriHandler.current
-    val effectiveOpenImdbUrl: (String) -> Unit = onOpenImdbUrl ?: { url -> uriHandler.openUri(url) }
     val streamLinkCopiedText = stringResource(Res.string.streams_link_copied)
     val noDirectStreamLinkText = stringResource(Res.string.streams_no_direct_link)
     var streamActionsTarget by remember(videoId) { mutableStateOf<StreamItem?>(null) }
@@ -172,7 +166,7 @@ fun StreamsScreen(
     var preferredFilterApplied by remember(videoId) { mutableStateOf(false) }
     var autoPlayOverlayLogoLoadError by remember(logo) { mutableStateOf(false) }
     val autoPlayOverlayLogoUrl = logo?.takeIf { it.isNotBlank() }
-    val episodeProgress = watchProgressUiState.entries.progressForPlaybackTarget(
+    val episodeProgress = watchProgressUiState.progressForVideo(
         videoId = videoId,
         parentMetaId = parentMetaId,
         seasonNumber = seasonNumber,
@@ -256,8 +250,6 @@ fun StreamsScreen(
                 seasonNumber = seasonNumber,
                 episodeNumber = episodeNumber,
                 episodeTitle = episodeTitle,
-                episodeMeta = episodeMeta,
-                onOpenImdbUrl = effectiveOpenImdbUrl,
                 uiState = uiState,
                 debridEnabled = debridSettings.canResolvePlayableLinks,
                 appendInstantServiceToDefaultName = debridSettings.canResolvePlayableLinks && !debridSettings.hasCustomStreamFormatting,
@@ -584,15 +576,11 @@ internal fun resolveStreamResumeState(
     startFromBeginning: Boolean,
 ): StreamResumeState {
     if (startFromBeginning || progress?.isResumable == false) return StreamResumeState()
-    // Refresh from current storage after playback, retaining the fork's preference
-    // for an exact position over a percentage when both are available.
-    val resume = resolveEffectiveStreamResume(
-        requestedPositionMs = initialPositionMs.takeIf { progress == null },
-        requestedProgressFraction = initialProgressFraction.takeIf { progress == null },
-        storedProgress = progress,
-        startFromBeginning = startFromBeginning,
-    )
-    return StreamResumeState(positionMs = resume.positionMs, progressFraction = resume.progressFraction)
+    val fraction = (if (progress != null) progress.progressPercent?.div(100f) else initialProgressFraction)
+        ?.takeIf { it > 0f }?.coerceIn(0f, 1f)
+    val position = if (fraction != null) null
+        else (progress?.lastPositionMs ?: initialPositionMs)?.takeIf { it > 0L }
+    return StreamResumeState(positionMs = position, progressFraction = fraction)
 }
 
 @Composable

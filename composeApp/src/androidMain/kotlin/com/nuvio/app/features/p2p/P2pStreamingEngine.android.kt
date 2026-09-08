@@ -131,10 +131,6 @@ actual object P2pStreamingEngine {
         appContext = context.applicationContext
     }
 
-    actual fun warmup() = Unit
-
-    actual fun cooldownWarmup() = Unit
-
     actual suspend fun startStream(request: P2pStreamRequest): String = withContext(Dispatchers.IO) {
         startMutex.withLock { startStreamLocked(request) }
     }
@@ -197,7 +193,6 @@ actual object P2pStreamingEngine {
             val magnetUri = buildP2pMagnetUri(
                 request.infoHash,
                 (DEFAULT_TRACKERS + request.trackers).distinct(),
-                request.magnetUri,
             )
             logPhase(requestSequence, startedAtMs, phase.get())
 

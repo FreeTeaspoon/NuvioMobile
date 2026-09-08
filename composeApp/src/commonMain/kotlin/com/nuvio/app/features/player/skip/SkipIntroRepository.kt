@@ -290,8 +290,9 @@ object SkipIntroRepository {
         return SkipIntroApi.submitIntro(apiKey, request)
     }
 
-    suspend fun verifyIntroDbApiKey(apiKey: String): Boolean =
-        SkipIntroApi.verifyIntroDbApiKey(apiKey)
+    suspend fun verifyIntroDbApiKey(apiKey: String): Boolean {
+        return SkipIntroApi.verifyIntroDbApiKey(apiKey)
+    }
 
     fun clearCache() {
         cache.clear()

@@ -102,7 +102,7 @@ data class BackupSettingsPayload(
     @SerialName("home_catalog_settings_payload") val homeCatalogSettingsPayload: String = "",
     @SerialName("collection_mobile_settings_payload") val collectionMobileSettingsPayload: String = "",
     @SerialName("continue_watching_preferences_payload") val continueWatchingPreferencesPayload: String = "",
-    @SerialName("player_track_preferences_payload") val playerTrackPreferencesPayload: String = "",
+    @SerialName("video_zoom_payload") val videoZoomPayload: String = "",
     @SerialName("resume_was_in_player") val resumeWasInPlayer: Boolean? = null,
     @SerialName("resume_last_player_video_id") val resumeLastPlayerVideoId: String? = null,
     @SerialName("trakt_auth_payload") val traktAuthPayload: String = "",

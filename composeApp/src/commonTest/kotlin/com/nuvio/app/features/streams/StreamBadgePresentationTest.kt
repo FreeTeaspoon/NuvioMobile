@@ -176,25 +176,4 @@ class StreamBadgePresentationTest {
 
         assertEquals(listOf("ACTIVE"), presented.badges.map { it.name })
     }
-
-    @Test
-    fun `normalizing badge imports caps source count`() {
-        val rules = StreamBadgeRules(
-            imports = (1..5).map { index ->
-                StreamBadgeImport(
-                    sourceUrl = "https://example.test/badges-$index.json",
-                    filters = listOf(
-                        StreamBadgeFilter(
-                            name = "BADGE_$index",
-                            pattern = "badge-$index",
-                        ),
-                    ),
-                    isActive = index == 4,
-                )
-            },
-        ).normalized()
-
-        assertEquals(STREAM_BADGE_IMPORT_LIMIT, rules.imports.size)
-        assertEquals("https://example.test/badges-1.json", rules.activeImport?.sourceUrl)
-    }
 }

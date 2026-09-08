@@ -77,25 +77,6 @@ class WatchProgressRulesTest {
     }
 
     @Test
-    fun `progress target falls back to episode coordinates when video id changed`() {
-        val progress = entry(
-            videoId = "addon-episode-id",
-            parentMetaId = "show",
-            seasonNumber = 2,
-            episodeNumber = 3,
-        )
-
-        val result = listOf(progress).progressForPlaybackTarget(
-            videoId = "show:2:3",
-            parentMetaId = "show",
-            seasonNumber = 2,
-            episodeNumber = 3,
-        )
-
-        assertEquals("addon-episode-id", result?.videoId)
-    }
-
-    @Test
     fun `continue watching entries are sorted and capped`() {
         val entries = (1..25).map { index ->
             entry(videoId = "video-$index", lastUpdatedEpochMs = index.toLong())

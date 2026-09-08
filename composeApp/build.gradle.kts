@@ -1,4 +1,3 @@
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
@@ -25,12 +24,6 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
 
     @get:Input
     abstract val appVersionCode: Property<Int>
-
-    @get:Input
-    abstract val desktopAppVersionName: Property<String>
-
-    @get:Input
-    abstract val desktopAppVersionCode: Property<Int>
 
     @get:Input
     abstract val supabaseUrl: Property<String>
@@ -134,8 +127,8 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |package com.nuvio.app.features.details
                 |
                 |object ImdbEpisodeRatingsConfig {
-                |    const val IMDB_RATINGS_API_BASE_URL = "${props.getProperty("IMDB_RATINGS_API_BASE_URL", "")}"
-                |    const val IMDB_TAPFRAME_API_BASE_URL = "${props.getProperty("IMDB_TAPFRAME_API_BASE_URL", "")}"
+                |    const val IMDB_RATINGS_API_BASE_URL = "${props.getProperty("IMDB_RATINGS_API_BASE_URL", "")}" 
+                |    const val IMDB_TAPFRAME_API_BASE_URL = "${props.getProperty("IMDB_TAPFRAME_API_BASE_URL", "")}" 
                 |}
                 """.trimMargin()
             )
@@ -163,8 +156,6 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |object AppVersionConfig {
                 |    const val VERSION_NAME = "${appVersionName.get()}"
                 |    const val VERSION_CODE = ${appVersionCode.get()}
-                |    const val DESKTOP_VERSION_NAME = "${desktopAppVersionName.get()}"
-                |    const val DESKTOP_VERSION_CODE = ${desktopAppVersionCode.get()}
                 |}
                 """.trimMargin()
             )
@@ -220,31 +211,6 @@ val releaseAppVersionName = readXcconfigValue(appVersionConfigFile, "MARKETING_V
 val releaseAppVersionCode = readXcconfigValue(appVersionConfigFile, "CURRENT_PROJECT_VERSION")
     ?.toIntOrNull()
     ?: error("CURRENT_PROJECT_VERSION is missing or invalid in ${appVersionConfigFile.path}")
-val desktopVersionConfigFile = rootProject.file("composeApp/Configuration/DesktopVersion.properties")
-val desktopVersionProps = Properties().apply {
-    if (desktopVersionConfigFile.exists()) {
-        desktopVersionConfigFile.inputStream().use { load(it) }
-    }
-}
-val desktopReleaseVersionName = (
-    providers.gradleProperty("nuvio.desktop.versionName").orNull
-        ?: System.getenv("NUVIO_DESKTOP_VERSION_NAME")
-        ?: supabaseProps.getProperty("NUVIO_DESKTOP_VERSION_NAME")
-        ?: desktopVersionProps.getProperty("VERSION_NAME")
-        ?: "0.1.0"
-    ).trim()
-require(desktopReleaseVersionName.isNotBlank()) {
-    "Desktop version name must not be blank."
-}
-val desktopReleaseVersionCode = (
-    providers.gradleProperty("nuvio.desktop.versionCode").orNull
-        ?: System.getenv("NUVIO_DESKTOP_VERSION_CODE")
-        ?: supabaseProps.getProperty("NUVIO_DESKTOP_VERSION_CODE")
-        ?: desktopVersionProps.getProperty("VERSION_CODE")
-    )?.trim()
-    ?.takeIf { it.isNotBlank() }
-    ?.toIntOrNull()
-    ?: 1
 val iosDistribution = (
     providers.gradleProperty("nuvio.ios.distribution").orNull
         ?: System.getenv("NUVIO_IOS_DISTRIBUTION")
@@ -262,7 +228,6 @@ val iosDistributionSourceDir = if (iosDistribution == "full") {
 val iosFrameworkBundleId = "com.nuvio.media"
 val nuvioEngineAppleFramework = rootProject.file("../nuvio-engine/platform/apple/NuvioEngine.xcframework")
 val fullCommonSourceDir = project.file("src/fullCommonMain/kotlin")
-val fullPluginSourceDir = fullCommonSourceDir.resolve("com/nuvio/app/features/plugins")
 val generatedRuntimeConfigDir = layout.buildDirectory.dir("generated/runtime-config/kotlin")
 val requestedGradleTasks = gradle.startParameter.taskNames.map { taskName ->
     taskName.substringAfterLast(':').lowercase()
@@ -312,12 +277,6 @@ fun runtimeConfigValue(key: String, fallback: String = ""): String =
         ?: providers.environmentVariable(key).orNull?.trim()?.takeIf { it.isNotBlank() }
         ?: fallback
 
-fun runtimeConfigValue(vararg keys: String, fallback: String = ""): String =
-    keys.firstNotNullOfOrNull { key ->
-        runtimeLocalProperties.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
-            ?: providers.environmentVariable(key).orNull?.trim()?.takeIf { it.isNotBlank() }
-    } ?: fallback
-
 fun runtimeConfigBoolean(key: String, default: Boolean): Boolean =
     when (runtimeConfigValue(key).lowercase()) {
         "1", "true", "yes", "y", "on" -> true
@@ -330,10 +289,8 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
     localPropertiesFile.set(rootProject.layout.projectDirectory.file("local.properties"))
     appVersionName.set(releaseAppVersionName)
     appVersionCode.set(releaseAppVersionCode)
-    desktopAppVersionName.set(desktopReleaseVersionName)
-    desktopAppVersionCode.set(desktopReleaseVersionCode)
-    supabaseUrl.set(runtimeConfigValue("NUVIO_SUPABASE_URL", "SUPABASE_URL"))
-    supabaseAnonKey.set(runtimeConfigValue("NUVIO_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY"))
+    supabaseUrl.set(runtimeConfigValue("NUVIO_SUPABASE_URL"))
+    supabaseAnonKey.set(runtimeConfigValue("NUVIO_SUPABASE_ANON_KEY"))
     supabaseFallbackUrl.set(runtimeConfigValue("NUVIO_SUPABASE_FALLBACK_URL"))
     sentryDsn.set(runtimeConfigValue("SENTRY_DSN"))
     sentryEnvironment.set(
@@ -345,8 +302,6 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
     )
 }
 
-// The upstream player has no separate native desktop MPV/WebView bridge.
-// Desktop packaging remains available, but it uses the no-player surface.
 tasks.withType<KotlinCompilationTask<*>>().configureEach {
     dependsOn(generateRuntimeConfigs)
 }
@@ -363,12 +318,6 @@ kotlin {
         androidResources.enable = true
         withHostTest { isIncludeAndroidResources = true }
 
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
-        }
-    }
-
-    jvm("desktop") {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
@@ -414,12 +363,9 @@ kotlin {
             if (iosDistribution == "full") {
                 defaultSourceSet.kotlin.srcDir(fullCommonSourceDir)
             }
-            defaultSourceSet.kotlin.srcDir(project.file("src/mobileMain/kotlin"))
             defaultSourceSet.kotlin.srcDir(project.file(iosDistributionSourceDir))
             defaultSourceSet.dependencies {
                 implementation(libs.ktor.client.darwin)
-                implementation(libs.backdrop)
-                implementation(libs.kyant.capsule)
                 if (iosDistribution == "full") {
                     implementation(libs.quickjs.kt)
                     implementation(libs.ksoup)
@@ -447,11 +393,11 @@ kotlin {
             kotlin.srcDir(generatedRuntimeConfigDir)
         }
         androidMain {
-            kotlin.srcDir(project.file("src/mobileMain/kotlin"))
             kotlin.srcDir(project.file(androidDistributionSourceDir))
             if (androidDistribution == "full") {
                 kotlin.srcDir(fullCommonSourceDir)
             }
+
             dependencies {
                 implementation(libs.compose.uiToolingPreview)
                 implementation(libs.androidx.appcompat)
@@ -462,7 +408,7 @@ kotlin {
                 implementation("androidx.recyclerview:recyclerview:1.4.0")
                 implementation("com.squareup.okhttp3:okhttp:4.12.0")
                 implementation("com.google.code.gson:gson:2.11.0")
-                implementation("io.github.peerless2012:ass-media:0.4.0-beta01")
+                implementation("io.github.peerless2012:ass-media:0.5.1")
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.sentry.android)
                 implementation(libs.androidx.media3.exoplayer.hls)
@@ -476,10 +422,7 @@ kotlin {
                 implementation(libs.androidx.media3.common)
                 implementation(libs.androidx.media3.container)
                 implementation(libs.androidx.media3.extractor)
-                implementation(libs.backdrop)
-                implementation(libs.kyant.capsule)
                 implementation(libs.mpv.android.lib)
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
                 implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("lib-*.aar"))))
                 if (androidDistribution == "full") {
                     implementation(files("libs/quickjs-kt-android-1.0.5-nuvio.aar"))
@@ -487,19 +430,10 @@ kotlin {
                 }
             }
         }
-        val desktopMain by getting {
-            kotlin.srcDir(fullPluginSourceDir)
-            dependencies {
-                implementation(compose.desktop.currentOs)
-                implementation(libs.kotlinx.coroutines.swing)
-                implementation(libs.ktor.client.cio)
-                implementation(libs.quickjs.kt)
-                implementation(libs.ksoup)
-            }
-        }
         val androidHostTest by getting {
             dependencies {
                 implementation("org.robolectric:robolectric:4.16")
+                implementation("androidx.work:work-testing:${libs.versions.androidx.work.get()}")
                 implementation("com.squareup.okhttp3:mockwebserver:5.3.2")
             }
             if (androidDistribution == "full") {
@@ -523,6 +457,7 @@ kotlin {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
+            implementation(libs.compose.materialRipple)
             implementation(compose.materialIconsExtended)
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
@@ -530,10 +465,12 @@ kotlin {
             implementation(libs.compottie)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.androidx.savedstate)
+            implementation(libs.androidx.savedstate.compose)
+            implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.atomicfu)
             implementation(libs.kmpalette.core)
-            implementation(libs.androidx.navigation.compose)
             implementation(libs.androidx.navigation3.ui)
             implementation(libs.kermit)
             implementation(libs.supabase.postgrest)
@@ -544,43 +481,6 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
-        }
-    }
-}
-
-compose.desktop {
-    application {
-        mainClass = "com.nuvio.app.MainKt"
-        jvmArgs += listOfNotNull(
-            "-Dapple.awt.application.appearance=NSAppearanceNameDarkAqua",
-            "--add-opens=java.desktop/java.awt=ALL-UNNAMED",
-            "--add-opens=java.desktop/sun.lwawt=ALL-UNNAMED",
-            "--add-opens=java.desktop/sun.lwawt.macosx=ALL-UNNAMED",
-            "--add-opens=java.desktop/sun.awt.windows=ALL-UNNAMED",
-        )
-
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "Nuvio"
-            packageVersion = desktopReleaseVersionName
-            vendor = "Nuvio Media"
-            modules("java.net.http")
-            macOS {
-                iconFile.set(project.file("src/desktopMain/resources/icons/nuvio-app-icon.icns"))
-            }
-            windows {
-                iconFile.set(project.file("src/desktopMain/resources/icons/nuvio-app-icon.ico"))
-                shortcut = true
-                menu = true
-                menuGroup = "Nuvio"
-            }
-            linux {
-                iconFile.set(project.file("src/desktopMain/resources/icons/nuvio-app-icon.png"))
-            }
-        }
-
-        buildTypes.release.proguard {
-            isEnabled.set(false)
         }
     }
 }

@@ -60,9 +60,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.AppIconResource
 import com.nuvio.app.core.ui.NuvioBackButton
-import com.nuvio.app.core.ui.ThemeColors
+import com.nuvio.app.core.ui.themePalette
 import com.nuvio.app.core.ui.accentBrush
-import com.nuvio.app.core.ui.appTheme
 import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.nuvioTypeScale
 import nuvio.composeapp.generated.resources.*
@@ -760,7 +759,7 @@ private fun PlayerSeekBar(
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
-    val playerAccentBrush = ThemeColors.getColorPalette(MaterialTheme.appTheme).accentBrush()
+    val playerAccentBrush = MaterialTheme.themePalette.accentBrush()
     val fractions = calculatePlayerSeekBarFractions(
         durationMs = durationMs,
         displayedPositionMs = displayedPositionMs,

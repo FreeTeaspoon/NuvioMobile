@@ -246,7 +246,7 @@ fun DetailSeriesContent(
                                     video = episode,
                                     fallbackImage = meta.background ?: meta.poster,
                                     progressEntry = progressByVideoId[episodeVideoId],
-                                    imdbRating = resolveEpisodeDisplayRating(episode, episodeRatings),
+                                    imdbRating = episode.seasonEpisodeKey()?.let { episodeRatings[it] } ?: episode.rating,
                                     isWatched = progressByVideoId[episodeVideoId]?.isEffectivelyCompleted == true ||
                                         WatchingState.isEpisodeWatched(
                                             watchedKeys = watchedKeys,
@@ -327,7 +327,7 @@ internal fun DetailSeriesListEpisode(
             video = episode,
             fallbackImage = meta.background ?: meta.poster,
             progressEntry = progressByVideoId[episodeVideoId],
-            imdbRating = episode.seasonEpisodeKey()?.let { episodeRatings[it] } ?: episode.rating?.toDoubleOrNull(),
+            imdbRating = episode.seasonEpisodeKey()?.let { episodeRatings[it] } ?: episode.rating,
             isWatched = progressByVideoId[episodeVideoId]?.isEffectivelyCompleted == true ||
                 WatchingState.isEpisodeWatched(
                     watchedKeys = watchedKeys,
@@ -757,7 +757,7 @@ private fun EpisodeHorizontalRow(
                 video = episode,
                 fallbackImage = fallbackImage,
                 progressEntry = progressByVideoId[episodeVideoId],
-                imdbRating = resolveEpisodeDisplayRating(episode, episodeRatings),
+                imdbRating = episode.seasonEpisodeKey()?.let { episodeRatings[it] } ?: episode.rating,
                 isWatched = progressByVideoId[episodeVideoId]?.isEffectivelyCompleted == true ||
                     WatchingState.isEpisodeWatched(
                         watchedKeys = watchedKeys,
@@ -1498,17 +1498,6 @@ private fun MetaVideo.seasonEpisodeKey(): Pair<Int, Int>? {
     val episodeNumber = episode ?: return null
     return seasonNumber to episodeNumber
 }
-
-internal fun resolveEpisodeDisplayRating(
-    video: MetaVideo,
-    episodeRatings: Map<Pair<Int, Int>, Double>,
-): Double? =
-    video.rating
-        ?.trim()
-        ?.takeIf(String::isNotBlank)
-        ?.toDoubleOrNull()
-        ?.takeIf { it > 0.0 }
-        ?: video.seasonEpisodeKey()?.let { episodeRatings[it]?.takeIf { rating -> rating > 0.0 } }
 
 private fun formatEpisodeRating(rating: Double): String {
     val roundedTenths = (rating * 10.0).roundToInt()

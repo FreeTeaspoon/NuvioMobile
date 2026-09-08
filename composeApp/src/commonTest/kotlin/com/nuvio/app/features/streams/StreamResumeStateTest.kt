@@ -46,7 +46,7 @@ class StreamResumeStateTest {
     @Test
     fun launchPositionIsAvailableBeforeSavedProgressLoads() {
         assertEquals(StreamResumeState(positionMs = 60_000L), resolve(null, initialPosition = 60_000L))
-        assertEquals(StreamResumeState(positionMs = 60_000L),
+        assertEquals(StreamResumeState(progressFraction = 0.1f),
             resolve(null, initialPosition = 60_000L, initialFraction = 0.1f))
     }
 

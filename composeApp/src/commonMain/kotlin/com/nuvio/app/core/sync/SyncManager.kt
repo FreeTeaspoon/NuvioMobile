@@ -12,7 +12,6 @@ import com.nuvio.app.features.library.LibrarySourceMode
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.plugins.PluginRepository
 import com.nuvio.app.features.profiles.ProfileRepository
-import com.nuvio.app.features.trakt.TraktCredentialSync
 import com.nuvio.app.features.tracking.TrackingProviderRegistry
 import com.nuvio.app.features.tracking.TrackingSettingsRepository
 import com.nuvio.app.features.tracking.WatchProgressSource
@@ -41,7 +40,6 @@ internal enum class ProfileSyncStep {
     Addons,
     Plugins,
     ProfileSettings,
-    TraktCredentials,
     ProviderCredentials,
     Library,
     ActiveWatchSource,
@@ -53,7 +51,6 @@ internal data class ProfileSyncOperations(
     val pullAddons: suspend (Int) -> Unit,
     val pullPlugins: suspend (Int) -> Unit,
     val pullProfileSettings: suspend (Int) -> Unit,
-    val pullTraktCredentials: suspend (Int) -> Unit,
     val syncProviderCredentials: suspend (Int) -> Unit,
     val pullLibrary: suspend (Int) -> Unit,
     val refreshActiveWatchSource: suspend (Int) -> Unit,
@@ -121,14 +118,7 @@ internal suspend fun runOrderedProfileSync(
     }
 
     runStep(ProfileSyncStep.ProfileSettings, operations.pullProfileSettings)
-    coroutineScope {
-        launch {
-            runStep(ProfileSyncStep.TraktCredentials, operations.pullTraktCredentials)
-        }
-        launch {
-            runStep(ProfileSyncStep.ProviderCredentials, operations.syncProviderCredentials)
-        }
-    }
+    runStep(ProfileSyncStep.ProviderCredentials, operations.syncProviderCredentials)
     runStep(ProfileSyncStep.Addons, operations.pullAddons)
     if (pluginsEnabled) {
         runStep(ProfileSyncStep.Plugins, operations.pullPlugins)
@@ -290,10 +280,6 @@ object SyncManager {
         pullAddons = { profileId -> AddonRepository.pullFromServer(profileId) },
         pullPlugins = { profileId -> PluginRepository.pullFromServer(profileId) },
         pullProfileSettings = { profileId -> ProfileSettingsSync.pull(profileId) },
-        pullTraktCredentials = { profileId ->
-            TraktCredentialSync.pullFromRemoteOrThrow(profileId)
-            Unit
-        },
         syncProviderCredentials = { profileId -> ProviderCredentialSync.syncFromRemote(profileId) },
         pullLibrary = { profileId -> LibraryRepository.pullFromServer(profileId) },
         refreshActiveWatchSource = { profileId ->
@@ -575,53 +561,4 @@ object SyncManager {
         periodicNuvioSyncProfileId = null
     }
 
-    fun requestRealtimeSurfacePull(profileId: Int, surface: String) {
-        val authState = AuthRepository.state.value
-        if (authState !is AuthState.Authenticated || authState.isAnonymous) return
-
-        accountScopeSnapshot().launch {
-            log.i { "requestRealtimeSurfacePull($profileId, $surface)" }
-            when (surface) {
-                "addons" -> {
-                    runCatching { AddonRepository.pullFromServer(profileId) }
-                        .onFailure { log.e(it) { "Realtime addons pull failed" } }
-                }
-                "plugins" -> {
-                    if (AppFeaturePolicy.pluginsEnabled) {
-                        runCatching { PluginRepository.pullFromServer(profileId) }
-                            .onFailure { log.e(it) { "Realtime plugins pull failed" } }
-                    }
-                }
-                "library" -> {
-                    runCatching { LibraryRepository.pullFromServer(profileId) }
-                        .onFailure { log.e(it) { "Realtime library pull failed" } }
-                }
-                "watch_progress", "watched_items" -> {
-                    runCatching {
-                        WatchProgressSourceCoordinator.refreshActiveSource(profileId = profileId, force = false)
-                    }.onFailure { log.e(it) { "Realtime active watch source pull failed" } }
-                }
-                "profile_settings" -> {
-                    runCatching { ProfileSettingsSync.pull(profileId) }
-                        .onFailure { log.e(it) { "Realtime profile settings pull failed" } }
-                    runCatching { TraktCredentialSync.pullFromRemoteOrThrow(profileId) }
-                        .onFailure { log.e(it) { "Realtime Trakt credentials pull failed" } }
-                    runCatching { ProviderCredentialSync.syncFromRemote(profileId) }
-                        .onFailure { log.e(it) { "Realtime provider credentials pull failed" } }
-                }
-                "collections" -> {
-                    runCatching { CollectionSyncService.pullFromServer(profileId) }
-                        .onFailure { log.e(it) { "Realtime collections pull failed" } }
-                }
-                "home_catalog_settings" -> {
-                    runCatching { HomeCatalogSettingsSyncService.pullFromServer(profileId) }
-                        .onFailure { log.e(it) { "Realtime home catalog settings pull failed" } }
-                }
-                "profiles" -> {
-                    runCatching { ProfileRepository.pullProfiles() }
-                        .onFailure { log.e(it) { "Realtime profiles pull failed" } }
-                }
-            }
-        }
-    }
 }

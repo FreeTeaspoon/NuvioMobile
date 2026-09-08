@@ -16,7 +16,6 @@ import com.nuvio.app.features.streams.StreamLaunchStore
 import com.nuvio.app.features.streams.StreamsRepository
 import com.nuvio.app.features.watchprogress.ResumePromptRepository
 import com.nuvio.app.navigation.*
-import com.nuvio.app.navigation.CatalogRoute as NavigationCatalogRoute
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
@@ -44,7 +43,7 @@ internal val navigationSavedStateConfiguration = SavedStateConfiguration {
             subclass(CollectionEditorPageRoute::class, CollectionEditorPageRoute.serializer())
             subclass(FolderDetailRoute::class, FolderDetailRoute.serializer())
             subclass(StreamRoute::class, StreamRoute.serializer())
-            subclass(NavigationCatalogRoute::class, NavigationCatalogRoute.serializer())
+            subclass(CatalogRoute::class, CatalogRoute.serializer())
             subclass(PlayerRoute::class, PlayerRoute.serializer())
         }
     }
@@ -62,7 +61,7 @@ internal fun disposeRouteResources(route: AppRoute) {
             PlayerLaunchStore.remove(route.launchId)
         }
 
-        is NavigationCatalogRoute -> {
+        is CatalogRoute -> {
             CatalogRepository.clear()
             CatalogLaunchStore.remove(route.launchId)
         }

@@ -10,10 +10,6 @@ actual object P2pStreamingEngine {
     private val _cacheState = MutableStateFlow(P2pCacheUiState())
     actual val cacheState: StateFlow<P2pCacheUiState> = _cacheState.asStateFlow()
 
-    actual fun warmup() = Unit
-
-    actual fun cooldownWarmup() = Unit
-
     actual suspend fun startStream(request: P2pStreamRequest): String {
         val message = "P2P streaming is not available on this platform"
         _state.value = P2pStreamingState.Error(message)

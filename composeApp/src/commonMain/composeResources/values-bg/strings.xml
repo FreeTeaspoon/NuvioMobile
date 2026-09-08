@@ -2245,4 +2245,51 @@
         <item quantity="one">%d заглавие</item>
         <item quantity="other">%d заглавия</item>
     </plurals>
+
+    <!-- Fallbacks for strings not yet translated in this locale. -->
+    <string name="action_confirm">Confirm</string>
+    <string name="backup_confirm_passphrase">Confirm password</string>
+    <string name="backup_error_export_failed">Backup export failed</string>
+    <string name="backup_error_import_failed">Backup import failed</string>
+    <string name="backup_export">Export backup</string>
+    <string name="backup_export_success">Backup exported.</string>
+    <string name="backup_import">Import backup</string>
+    <string name="backup_import_replace_confirm">This will replace current local app data. Downloaded files and caches are not included.</string>
+    <string name="backup_import_success">Backup imported.</string>
+    <string name="backup_import_summary_title">Import backup</string>
+    <string name="backup_passphrase">Backup password</string>
+    <string name="backup_passphrase_mismatch">Backup passwords do not match.</string>
+    <string name="backup_sensitive_warning">Backups include saved items, watch history, settings, addons, and connected service credentials. Keep the file and password private.</string>
+    <string name="backup_title">Backup</string>
+    <string name="compose_player_playback_speed">Playback speed</string>
+    <string name="compose_player_set_as_default">Set as default</string>
+    <string name="compose_player_video_zoom">Video Zoom</string>
+    <string name="compose_player_zoom_decrease">Decrease video zoom</string>
+    <string name="compose_player_zoom_increase">Increase video zoom</string>
+    <string name="custom_theme_brightness">Brightness</string>
+    <string name="custom_theme_color_number">Color %1$d</string>
+    <string name="custom_theme_edit">Edit custom theme</string>
+    <string name="custom_theme_hex_error">Enter six characters (0–9, A–F), with or without #.</string>
+    <string name="custom_theme_hex_title">Hex color</string>
+    <string name="custom_theme_hue">Hue</string>
+    <string name="custom_theme_mode_gradient">Gradient</string>
+    <string name="custom_theme_mode_solid">Single color</string>
+    <string name="custom_theme_preview">Preview</string>
+    <string name="custom_theme_preview_accent">Your accent</string>
+    <string name="custom_theme_saturation">Saturation</string>
+    <string name="custom_theme_save">Save theme</string>
+    <string name="custom_theme_solid_subtitle">Choose a color for your theme.</string>
+    <string name="custom_theme_solid_title">Your custom color</string>
+    <string name="custom_theme_subtitle">Choose three colors for your theme. Select a color to edit it.</string>
+    <string name="custom_theme_title">Your custom gradient</string>
+    <string name="downloads_auto_open_offline_description">When Nuvio starts without a connection, open Downloads if playable files are saved.</string>
+    <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
+    <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>
+    <string name="downloads_delete_confirm_title">Delete download?</string>
+    <string name="settings_reset_confirm_message">This will restore these settings to their default values.</string>
+    <string name="settings_reset_confirm_title">Reset to default?</string>
+    <string name="theme_custom">Custom</string>
+    <string name="watched_confirm_mark_title_unwatched">Mark %1$s as unwatched</string>
+    <string name="watched_confirm_mark_title_watched">Mark %1$s as watched</string>
+    <string name="watched_confirm_message">This will update watched status.</string>
 </resources>

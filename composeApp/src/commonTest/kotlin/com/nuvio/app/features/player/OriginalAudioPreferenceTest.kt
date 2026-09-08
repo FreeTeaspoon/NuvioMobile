@@ -13,43 +13,6 @@ import kotlin.test.assertTrue
 
 class OriginalAudioPreferenceTest {
     @Test
-    fun rememberedForkAudioIsNotOverriddenByLateOriginalLanguageMetadata() {
-        val controller = RecordingController(audioTracks())
-        val runtime = runtime(controller)
-        runtime.args = runtime.args.copy(parentMetaId = "tt-fork-remembered-audio")
-        val key = rememberedAudioContentKey("movie", "tt-fork-remembered-audio")
-        RememberedAudioSelectionRepository.saveSelection(key, controller.tracks[0])
-        try {
-            runtime.refreshTracks()
-            runtime.metaUiState = MetaDetailsUiState(meta = enrichedMeta().copy(id = "tt-fork-remembered-audio"))
-            runtime.refreshTracks()
-            assertEquals(0, runtime.selectedAudioIndex)
-            assertTrue(runtime.isUserExplicitAudioSelection)
-            assertEquals(emptyList(), controller.audioLanguagePreferences)
-        } finally {
-            RememberedAudioSelectionRepository.clearLocalState()
-        }
-    }
-
-    @Test
-    fun missingRememberedForkTrackFallsBackToEngineLanguagePreferences() {
-        val controller = RecordingController(audioTracks())
-        val runtime = runtime(controller, contentLanguage = originalLanguage)
-        runtime.args = runtime.args.copy(parentMetaId = "tt-fork-missing-audio")
-        RememberedAudioSelectionRepository.saveSelection(
-            rememberedAudioContentKey("movie", "tt-fork-missing-audio"),
-            AudioTrack(9, "missing", "Spanish", "es"),
-        )
-        try {
-            runtime.refreshTracks()
-            assertFalse(runtime.isUserExplicitAudioSelection)
-            assertEquals(listOf(listOf(originalLanguage)), controller.audioLanguagePreferences)
-        } finally {
-            RememberedAudioSelectionRepository.clearLocalState()
-        }
-    }
-
-    @Test
     fun tmdbDetailsAvailableBeforePlaybackSelectOriginalAudio() {
         val controller = RecordingController(audioTracks())
         val runtime = runtime(controller)

@@ -9,8 +9,6 @@ internal expect object PlayerSettingsStorage {
     fun saveShowParentalGuide(enabled: Boolean)
     fun loadResizeMode(): String?
     fun saveResizeMode(mode: String)
-    fun loadVideoZoom(): Float?
-    fun saveVideoZoom(zoom: Float)
     fun loadHoldToSpeedEnabled(): Boolean?
     fun saveHoldToSpeedEnabled(enabled: Boolean)
     fun loadHoldToSpeedValue(): Float?
@@ -91,6 +89,7 @@ internal expect object PlayerSettingsStorage {
     fun saveAnimeSkipEnabled(enabled: Boolean)
     fun loadAnimeSkipClientId(): String?
     fun saveAnimeSkipClientId(clientId: String)
+
     fun loadIntroDbApiKey(): String?
     fun saveIntroDbApiKey(apiKey: String)
     fun loadIntroSubmitEnabled(): Boolean?
@@ -143,12 +142,6 @@ internal expect object PlayerSettingsStorage {
     fun saveIosSaturation(value: Int)
     fun loadIosGamma(): Int?
     fun saveIosGamma(value: Int)
-    fun loadRememberedAudioSelections(): String?
-    fun saveRememberedAudioSelections(json: String)
-    fun loadRememberedSubtitleSelections(): String?
-    fun saveRememberedSubtitleSelections(json: String)
-    fun loadRememberedVideoZooms(): String?
-    fun saveRememberedVideoZooms(json: String)
     fun exportToSyncPayload(): JsonObject
     fun replaceFromSyncPayload(payload: JsonObject)
 }

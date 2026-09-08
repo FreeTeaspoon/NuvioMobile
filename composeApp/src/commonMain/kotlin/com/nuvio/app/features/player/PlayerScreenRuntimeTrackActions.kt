@@ -32,18 +32,6 @@ internal val PlayerScreenRuntime.selectedAddonSubtitle: AddonSubtitle?
             ?: visibleAddonSubtitles.findSelectedAddon(selectedId)
     }
 
-private val PlayerScreenRuntime.rememberedAudioSelectionKey: String?
-    get() = rememberedAudioContentKey(parentMetaType, parentMetaId)
-
-private val PlayerScreenRuntime.rememberedSubtitleSelectionKeys: List<String?>
-    get() = rememberedSubtitleContentKeys(
-        parentMetaType = parentMetaType,
-        parentMetaId = parentMetaId,
-        seasonNumber = activeSeasonNumber,
-        episodeNumber = activeEpisodeNumber,
-        videoId = activeVideoId,
-    )
-
 internal fun PlayerScreenRuntime.updateTrackPreference(
     update: (PersistedPlayerTrackPreference) -> PersistedPlayerTrackPreference,
 ) {
@@ -61,9 +49,6 @@ internal fun PlayerScreenRuntime.persistAudioPreference(track: AudioTrack?) {
             audioName = track?.label,
             audioTrackId = track?.id,
         )
-    }
-    track?.let { rememberedTrack ->
-        RememberedAudioSelectionRepository.saveSelection(rememberedAudioSelectionKey, rememberedTrack)
     }
 }
 
@@ -84,12 +69,6 @@ internal fun PlayerScreenRuntime.persistInternalSubtitlePreference(track: Subtit
             addonSubtitleAddonName = null,
         )
     }
-    track?.let { rememberedTrack ->
-        RememberedSubtitleSelectionRepository.saveBuiltInSelection(
-            contentKeys = rememberedSubtitleSelectionKeys,
-            track = rememberedTrack,
-        )
-    }
 }
 
 internal fun PlayerScreenRuntime.persistAddonSubtitlePreference(subtitle: AddonSubtitle) {
@@ -105,10 +84,6 @@ internal fun PlayerScreenRuntime.persistAddonSubtitlePreference(subtitle: AddonS
             subtitleIsForced = null,
         )
     }
-    RememberedSubtitleSelectionRepository.saveAddonSelection(
-        contentKeys = rememberedSubtitleSelectionKeys,
-        addon = subtitle,
-    )
 }
 
 internal fun PlayerScreenRuntime.restorePersistedTrackPreferenceIfNeeded() {
@@ -150,7 +125,7 @@ internal fun PlayerScreenRuntime.restorePersistedTrackPreferenceIfNeeded() {
         PersistedSubtitleSelectionType.ADDON -> {
             val url = preference.addonSubtitleUrl?.takeIf { it.isNotBlank() }
             if (url != null) {
-                selectedAddonSubtitleId = url
+                selectedAddonSubtitleId = url ?: preference.addonSubtitleId
                 selectedSubtitleIndex = -1
                 useCustomSubtitles = true
                 playerController?.setSubtitleUri(url)
@@ -183,70 +158,6 @@ internal fun PlayerScreenRuntime.refreshTracks() {
     }
 
     restorePersistedTrackPreferenceIfNeeded()
-
-    if (!preferredAudioSelectionApplied) {
-        val rememberedAudioIndex = resolveRememberedAudioTrackIndex(
-            tracks = audioTracks,
-            selection = RememberedAudioSelectionRepository.selectionFor(rememberedAudioSelectionKey),
-        )
-        if (rememberedAudioIndex >= 0) {
-            if (rememberedAudioIndex != selectedAudioIndex) {
-                playerController?.selectAudioTrack(rememberedAudioIndex)
-                selectedAudioIndex = rememberedAudioIndex
-            }
-            isUserExplicitAudioSelection = true
-            preferredAudioSelectionApplied = true
-        }
-    }
-
-    if (!preferredSubtitleSelectionApplied) {
-        val rememberedSubtitleSelection = RememberedSubtitleSelectionRepository.selectionFor(
-            rememberedSubtitleSelectionKeys,
-        )
-        when (rememberedSubtitleSelection?.kind) {
-            RememberedSubtitleKind.BuiltIn -> {
-                val rememberedSubtitleIndex = resolveRememberedSubtitleTrackIndex(
-                    tracks = subtitleTracks,
-                    selection = rememberedSubtitleSelection,
-                )
-                if (rememberedSubtitleIndex >= 0) {
-                    if (rememberedSubtitleIndex != selectedSubtitleIndex || useCustomSubtitles) {
-                        if (useCustomSubtitles) {
-                            playerController?.clearExternalSubtitleAndSelect(rememberedSubtitleIndex)
-                        } else {
-                            playerController?.selectSubtitleTrack(rememberedSubtitleIndex)
-                        }
-                        selectedSubtitleIndex = rememberedSubtitleIndex
-                    }
-                    selectedAddonSubtitleId = null
-                    useCustomSubtitles = false
-                    preferredSubtitleSelectionApplied = true
-                    isUserExplicitSubtitleSelection = true
-                }
-            }
-
-            RememberedSubtitleKind.Addon -> {
-                val rememberedAddon = resolveRememberedAddonSubtitle(
-                    addons = addonSubtitles,
-                    selection = rememberedSubtitleSelection,
-                )
-                if (rememberedAddon != null) {
-                    if (!useCustomSubtitles || selectedAddonSubtitleId != rememberedAddon.selectionKey) {
-                        selectedAddonSubtitleId = rememberedAddon.selectionKey
-                        selectedSubtitleIndex = -1
-                        useCustomSubtitles = true
-                        playerController?.setSubtitleUri(rememberedAddon.url)
-                    }
-                    preferredSubtitleSelectionApplied = true
-                    isUserExplicitSubtitleSelection = true
-                } else if (isLoadingAddonSubtitles || addonSubtitles.isEmpty()) {
-                    return
-                }
-            }
-
-            null -> Unit
-        }
-    }
 
     val preferredAudioTargets = preferredAudioLanguageTargets
 

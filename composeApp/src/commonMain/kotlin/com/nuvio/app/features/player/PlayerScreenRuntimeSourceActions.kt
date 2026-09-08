@@ -176,7 +176,6 @@ internal fun PlayerScreenRuntime.switchToP2pSourceStream(stream: StreamItem) {
     activeSourceHeaders = emptyMap()
     activeSourceResponseHeaders = emptyMap()
     activeStreamType = null
-    activeExternalSubtitles = emptyList()
     activeTorrentInfoHash = infoHash
     activeTorrentFileIdx = stream.p2pFileIdx
     activeTorrentFilename = stream.behaviorHints.filename
@@ -220,7 +219,6 @@ internal fun PlayerScreenRuntime.switchToP2pEpisodeStream(
     activeSourceHeaders = emptyMap()
     activeSourceResponseHeaders = emptyMap()
     activeStreamType = null
-    activeExternalSubtitles = emptyList()
     activeTorrentInfoHash = infoHash
     activeTorrentFileIdx = stream.p2pFileIdx
     activeTorrentFilename = stream.behaviorHints.filename
@@ -272,7 +270,6 @@ internal fun PlayerScreenRuntime.switchToSource(stream: StreamItem) {
     activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
     activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
     activeStreamType = stream.streamType
-    activeExternalSubtitles = stream.externalSubtitles
     activeSourceIdentityKey = sourceIdentityKey
     activeStreamTitle = stream.streamLabel
     activeStreamSubtitle = stream.streamSubtitle
@@ -355,7 +352,6 @@ internal fun PlayerScreenRuntime.switchToDownloadedEpisode(downloadItem: Downloa
     activeSourceHeaders = emptyMap()
     activeSourceResponseHeaders = emptyMap()
     activeStreamType = null
-    activeExternalSubtitles = emptyList()
     activeSourceIdentityKey = null
     activeStreamTitle = downloadItem.streamTitle.ifBlank {
         episode.title.ifBlank { title }
@@ -413,7 +409,6 @@ internal fun PlayerScreenRuntime.openSourcesPanel() {
     )
     showSourcesPanel = true
     showEpisodesPanel = false
-    showSpeedModal = false
     controlsVisible = false
 }
 
@@ -425,7 +420,6 @@ internal fun PlayerScreenRuntime.openEpisodesPanel() {
     }
     showEpisodesPanel = true
     showSourcesPanel = false
-    showSpeedModal = false
     controlsVisible = false
 }
 
@@ -468,8 +462,6 @@ private fun PlayerScreenRuntime.applyEpisodeStreamMetadata(
     episode: MetaVideo,
     resume: EpisodeResume,
 ) {
-    val isP2p = activeTorrentInfoHash != null
-    activeExternalSubtitles = if (isP2p) emptyList() else stream.externalSubtitles
     activeSourceIdentityKey = stream.playerSourceIdentityKey()
     activeStreamTitle = stream.streamLabel
     activeStreamSubtitle = stream.streamSubtitle

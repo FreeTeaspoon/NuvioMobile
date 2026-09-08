@@ -1,15 +1,6 @@
 package com.nuvio.app.features.player
 
 import com.nuvio.app.core.storage.ProfileScopedKey
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonPrimitive
-import platform.Foundation.NSNumber
-import platform.Foundation.NSString
 import platform.Foundation.NSUserDefaults
 
 internal actual object PlayerTrackPreferenceStorage {
@@ -25,7 +16,6 @@ internal actual object PlayerTrackPreferenceStorage {
     private const val audioTrackIdKey = "audio_track_id"
     private const val subtitleIsForcedKey = "subtitle_is_forced"
     private const val subtitleDelayMsKey = "subtitle_delay_ms"
-    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     actual fun load(contentId: String): PersistedPlayerTrackPreference? {
         val id = contentId.normalizedStorageId() ?: return null
@@ -90,39 +80,6 @@ internal actual object PlayerTrackPreferenceStorage {
             delayMs.coerceIn(SUBTITLE_DELAY_MIN_MS, SUBTITLE_DELAY_MAX_MS).toLong(),
             forKey = scopedKey(subtitleDelayMsKey, id),
         )
-    }
-
-    actual fun loadPayload(): String? {
-        val defaults = NSUserDefaults.standardUserDefaults
-        val profileSuffix = ProfileScopedKey.of("")
-        val payload = buildJsonObject {
-            defaults.dictionaryRepresentation().forEach { (rawKey, value) ->
-                val key = rawKey as? String ?: return@forEach
-                if (!key.endsWith(profileSuffix)) return@forEach
-                when (value) {
-                    is String -> put(key, JsonPrimitive(value))
-                    is NSString -> put(key, JsonPrimitive(value.toString()))
-                    is NSNumber -> put(key, JsonPrimitive(value.intValue))
-                }
-            }
-        }
-        return payload.takeIf { it.isNotEmpty() }?.let(json::encodeToString)
-    }
-
-    actual fun savePayload(payload: String) {
-        val defaults = NSUserDefaults.standardUserDefaults
-        val profileSuffix = ProfileScopedKey.of("")
-        val parsed = runCatching { json.decodeFromString<JsonObject>(payload) }.getOrNull()
-        defaults.dictionaryRepresentation().keys
-            .mapNotNull { it as? String }
-            .filter { it.endsWith(profileSuffix) }
-            .forEach(defaults::removeObjectForKey)
-        parsed?.forEach { (key, value) ->
-            if (!key.endsWith(profileSuffix)) return@forEach
-            val primitive = value.jsonPrimitive
-            primitive.intOrNull?.let { defaults.setInteger(it.toLong(), forKey = key) }
-                ?: primitive.contentOrNull?.let { defaults.setObject(it, forKey = key) }
-        }
     }
 
     private fun loadString(field: String, contentId: String): String? =

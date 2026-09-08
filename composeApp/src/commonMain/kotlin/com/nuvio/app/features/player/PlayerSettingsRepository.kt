@@ -164,16 +164,10 @@ object PlayerSettingsRepository {
     }
 
     fun onProfileChanged() {
-        RememberedAudioSelectionRepository.onProfileChanged()
-        RememberedSubtitleSelectionRepository.onProfileChanged()
-        RememberedVideoZoomRepository.onProfileChanged()
         loadFromDisk()
     }
 
     fun clearLocalState() {
-        RememberedAudioSelectionRepository.clearLocalState()
-        RememberedSubtitleSelectionRepository.clearLocalState()
-        RememberedVideoZoomRepository.clearLocalState()
         hasLoaded = false
         showLoadingOverlay = true
         showParentalGuide = true

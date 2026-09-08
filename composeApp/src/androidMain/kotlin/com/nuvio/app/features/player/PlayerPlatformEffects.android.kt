@@ -23,45 +23,19 @@ import androidx.core.util.Consumer
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlin.math.roundToInt
 
 @Composable
 actual fun LockPlayerToLandscape() {
     val activity = LocalContext.current.findActivity() ?: return
-    val lifecycleOwner = LocalLifecycleOwner.current
     if (!activity.shouldForceLandscapePlayer()) return
 
-    DisposableEffect(activity, lifecycleOwner) {
-        fun lockToLandscapeIfNeeded() {
-            if (activity.shouldForceLandscapePlayer()) {
-                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-            }
-        }
-        lockToLandscapeIfNeeded()
-
-        val lifecycleObserver = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_START,
-                Lifecycle.Event.ON_RESUME,
-                -> lockToLandscapeIfNeeded()
-                else -> Unit
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(lifecycleObserver)
-
-        PlayerPictureInPictureManager.registerPictureInPictureExitCallback { callbackActivity ->
-            if (callbackActivity === activity) {
-                lockToLandscapeIfNeeded()
-            }
-        }
+    DisposableEffect(activity) {
+        val previousOrientation = activity.requestedOrientation
+        activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
 
         onDispose {
-            lifecycleOwner.lifecycle.removeObserver(lifecycleObserver)
-            PlayerPictureInPictureManager.registerPictureInPictureExitCallback(null)
-            activity.restoreDefaultOrientationAfterPlayer()
+            activity.requestedOrientation = previousOrientation
         }
     }
 }
@@ -69,10 +43,6 @@ actual fun LockPlayerToLandscape() {
 @Composable
 actual fun EnterImmersivePlayerMode(keepScreenAwake: Boolean) {
     val activity = LocalContext.current.findActivity() ?: return
-    val keepScreenOnWasSet = remember(activity) {
-        val flags = activity.window.attributes.flags
-        (flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) != 0
-    }
 
     DisposableEffect(activity) {
         val window = activity.window
@@ -86,19 +56,6 @@ actual fun EnterImmersivePlayerMode(keepScreenAwake: Boolean) {
         onDispose {
             controller.show(WindowInsetsCompat.Type.systemBars())
             controller.systemBarsBehavior = previousBehavior
-            if (keepScreenOnWasSet) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            } else {
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            }
-        }
-    }
-
-    SideEffect {
-        if (keepScreenAwake || keepScreenOnWasSet) {
-            activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        } else {
-            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 }
@@ -178,12 +135,6 @@ private fun Activity.shouldForceLandscapePlayer(): Boolean {
     if (resources.configuration.smallestScreenWidthDp >= 600) return false
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode) return false
     return true
-}
-
-private fun Activity.restoreDefaultOrientationAfterPlayer() {
-    if (resources.configuration.smallestScreenWidthDp >= 600) return
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode) return
-    requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 }
 
 private class AndroidPlayerGestureController(

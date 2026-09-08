@@ -731,8 +731,6 @@ final class MPVPlayerViewController: UIViewController {
     func setVideoZoom(_ zoom: Double, panAndZoomEnabled: Bool) {
         guard mpv != nil else { return }
         var normalizedZoom = min(2.0, max(-2.0, zoom))
-        var panscan = min(1.0, max(0.0, normalizedZoom))
-        mpv_set_property(mpv, "panscan", MPV_FORMAT_DOUBLE, &panscan)
         mpv_set_property(mpv, "video-zoom", MPV_FORMAT_DOUBLE, &normalizedZoom)
         if !panAndZoomEnabled || normalizedZoom == 0.0 {
             var zero = 0.0

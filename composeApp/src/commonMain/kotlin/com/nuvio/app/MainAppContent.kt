@@ -165,7 +165,7 @@ import com.nuvio.app.features.watchprogress.continueWatchingItemKey
 import com.nuvio.app.features.watchprogress.nextUpDismissKey
 import com.nuvio.app.features.watchprogress.toContinueWatchingItem
 import com.nuvio.app.navigation.*
-import com.nuvio.app.navigation.CatalogRoute as NavigationCatalogRoute
+import com.nuvio.app.navigation.CatalogRoute
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -560,6 +560,7 @@ internal fun MainAppContent(
     LaunchedEffect(
         initialHomeReady,
         offlineLaunchRouteHandled,
+        downloadsUiState.autoOpenOnOffline,
         networkStatusUiState.condition,
         downloadsUiState.completedItems,
     ) {
@@ -582,7 +583,7 @@ internal fun MainAppContent(
                 val hasPlayableDownload = downloadsUiState.completedItems.any {
                     DownloadsRepository.playableLocalFileUri(it) != null
                 }
-                if (hasPlayableDownload) {
+                if (downloadsUiState.autoOpenOnOffline && hasPlayableDownload) {
                     activateTab(AppScreenTab.Settings)
                     navController.navigate(DownloadsSettingsRoute(downloadsSettingsTitle)) {
                         launchSingleTop = true
@@ -1076,7 +1077,7 @@ internal fun MainAppContent(
                 ),
             )
             navController.navigate(
-                NavigationCatalogRoute(
+                CatalogRoute(
                     launchId = launchId,
                     title = section.title,
                     subtitle = section.subtitle,
@@ -1103,7 +1104,7 @@ internal fun MainAppContent(
                 ),
             )
             navController.navigate(
-                NavigationCatalogRoute(
+                CatalogRoute(
                     launchId = launchId,
                     title = section.displayTitle,
                     subtitle = librarySectionSubtitle,
@@ -1473,7 +1474,7 @@ internal fun MainAppContent(
                         openExternalStreamUrl = ::openExternalStreamUrl,
                     )
                 }
-                entry<NavigationCatalogRoute> { route ->
+                entry<CatalogRoute> { route ->
                     CatalogDestination(
                         route = route,
                         navController = navController,

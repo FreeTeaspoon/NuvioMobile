@@ -95,8 +95,7 @@ data class MetaVideo(
     val episode: Int? = null,
     val overview: String? = null,
     val runtime: Int? = null,
-    val rating: String? = null,
-    val imdbId: String? = null,
+    val rating: Double? = null,
     val streams: List<StreamItem> = emptyList(),
 )
 
@@ -104,6 +103,4 @@ data class MetaDetailsUiState(
     val isLoading: Boolean = false,
     val meta: MetaDetails? = null,
     val errorMessage: String? = null,
-    val requestType: String? = null,
-    val requestId: String? = null,
 )

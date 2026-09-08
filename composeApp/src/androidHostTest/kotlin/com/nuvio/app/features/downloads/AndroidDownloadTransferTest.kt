@@ -120,36 +120,6 @@ class AndroidDownloadTransferTest {
     }
 
     @Test
-    fun webDavUrlCredentialsSurviveTheScheduledTransferPath(): Unit = runBlocking {
-        MockWebServer().use { server ->
-            server.enqueue(MockResponse().setBody("video"))
-            val url = server.url("/video").newBuilder().username("user").password("secret").build()
-            val output = transferAndroidDownload(downloadItem(url.toString()).copy(sourceHeaders = emptyMap()),
-                temporary.newFolder(), null, onHeaders = { _, _ -> }, onProgress = { _, _ -> })
-            assertEquals("video", output.readText())
-            assertEquals(okhttp3.Credentials.basic("user", "secret"), server.takeRequest().getHeader("Authorization"))
-        }
-    }
-
-    @Test
-    fun webDavDigestChallengeRetriesWithTheRequestedPathAndQuery(): Unit = runBlocking {
-        MockWebServer().use { server ->
-            server.enqueue(MockResponse().setResponseCode(401)
-                .setHeader("WWW-Authenticate", "Digest realm=\"files\", nonce=\"nonce\", qop=\"auth\""))
-            server.enqueue(MockResponse().setBody("video"))
-            val url = server.url("/video?source=1").newBuilder().username("user").password("secret").build()
-            val output = transferAndroidDownload(downloadItem(url.toString()).copy(sourceHeaders = emptyMap()),
-                temporary.newFolder(), null, onHeaders = { _, _ -> }, onProgress = { _, _ -> })
-            assertEquals("video", output.readText())
-            server.takeRequest()
-            val authorization = server.takeRequest().getHeader("Authorization").orEmpty()
-            assertTrue(authorization.startsWith("Digest "))
-            assertTrue(authorization.contains("uri=\"/video?source=1\""))
-            assertTrue(authorization.contains("username=\"user\""))
-        }
-    }
-
-    @Test
     fun retryPolicyDistinguishesTransientAndPermanentFailures() {
         assertTrue(shouldRetryAndroidDownload(IOException("connection lost"), 0))
         assertTrue(shouldRetryAndroidDownload(DownloadHttpException(503), 0))

@@ -20,7 +20,6 @@ actual object PlayerSettingsStorage {
     private const val showLoadingOverlayKey = "show_loading_overlay"
     private const val showParentalGuideKey = "show_parental_guide"
     private const val resizeModeKey = "resize_mode"
-    private const val videoZoomKey = "video_zoom"
     private const val holdToSpeedEnabledKey = "hold_to_speed_enabled"
     private const val holdToSpeedValueKey = "hold_to_speed_value"
     private const val touchGesturesEnabledKey = "touch_gestures_enabled"
@@ -87,9 +86,6 @@ actual object PlayerSettingsStorage {
     private const val iosContrastKey = "ios_contrast"
     private const val iosSaturationKey = "ios_saturation"
     private const val iosGammaKey = "ios_gamma"
-    private const val rememberedAudioSelectionsKey = "remembered_audio_selections"
-    private const val rememberedSubtitleSelectionsKey = "remembered_subtitle_selections"
-    private const val rememberedVideoZoomsKey = "remembered_video_zooms"
     private val syncKeys = listOf(
         showLoadingOverlayKey,
         showParentalGuideKey,
@@ -134,8 +130,6 @@ actual object PlayerSettingsStorage {
         skipIntroEnabledKey,
         animeSkipEnabledKey,
         animeSkipClientIdKey,
-        introDbApiKeyKey,
-        introSubmitEnabledKey,
         streamAutoPlayNextEpisodeEnabledKey,
         streamAutoPlayNextEpisodeFallbackEnabledKey,
         streamAutoPlayPreferBingeGroupKey,
@@ -219,21 +213,6 @@ actual object PlayerSettingsStorage {
     actual fun saveResizeMode(mode: String) {
         NSUserDefaults.standardUserDefaults.setObject(mode, forKey = ProfileScopedKey.of(resizeModeKey))
     }
-
-    actual fun loadVideoZoom(): Float? {
-        val defaults = NSUserDefaults.standardUserDefaults
-        val key = ProfileScopedKey.of(videoZoomKey)
-        return if (defaults.objectForKey(key) != null) {
-            defaults.floatForKey(key)
-        } else {
-            null
-        }
-    }
-
-    actual fun saveVideoZoom(zoom: Float) {
-        NSUserDefaults.standardUserDefaults.setFloat(clampPlayerVideoZoom(zoom), forKey = ProfileScopedKey.of(videoZoomKey))
-    }
-
 
     actual fun loadHoldToSpeedEnabled(): Boolean? {
         val defaults = NSUserDefaults.standardUserDefaults
@@ -926,36 +905,6 @@ actual object PlayerSettingsStorage {
         saveInt(iosGammaKey, value)
     }
 
-    actual fun loadRememberedAudioSelections(): String? {
-        val defaults = NSUserDefaults.standardUserDefaults
-        val key = ProfileScopedKey.of(rememberedAudioSelectionsKey)
-        return defaults.stringForKey(key)
-    }
-
-    actual fun saveRememberedAudioSelections(json: String) {
-        NSUserDefaults.standardUserDefaults.setObject(json, forKey = ProfileScopedKey.of(rememberedAudioSelectionsKey))
-    }
-
-    actual fun loadRememberedSubtitleSelections(): String? {
-        val defaults = NSUserDefaults.standardUserDefaults
-        val key = ProfileScopedKey.of(rememberedSubtitleSelectionsKey)
-        return defaults.stringForKey(key)
-    }
-
-    actual fun saveRememberedSubtitleSelections(json: String) {
-        NSUserDefaults.standardUserDefaults.setObject(json, forKey = ProfileScopedKey.of(rememberedSubtitleSelectionsKey))
-    }
-
-    actual fun loadRememberedVideoZooms(): String? {
-        val defaults = NSUserDefaults.standardUserDefaults
-        val key = ProfileScopedKey.of(rememberedVideoZoomsKey)
-        return defaults.stringForKey(key)
-    }
-
-    actual fun saveRememberedVideoZooms(json: String) {
-        NSUserDefaults.standardUserDefaults.setObject(json, forKey = ProfileScopedKey.of(rememberedVideoZoomsKey))
-    }
-
     actual fun exportToSyncPayload(): JsonObject = buildJsonObject {
         loadShowLoadingOverlay()?.let { put(showLoadingOverlayKey, encodeSyncBoolean(it)) }
         loadShowParentalGuide()?.let { put(showParentalGuideKey, encodeSyncBoolean(it)) }
@@ -1001,8 +950,6 @@ actual object PlayerSettingsStorage {
         loadSkipIntroEnabled()?.let { put(skipIntroEnabledKey, encodeSyncBoolean(it)) }
         loadAnimeSkipEnabled()?.let { put(animeSkipEnabledKey, encodeSyncBoolean(it)) }
         loadAnimeSkipClientId()?.let { put(animeSkipClientIdKey, encodeSyncString(it)) }
-        loadIntroDbApiKey()?.let { put(introDbApiKeyKey, encodeSyncString(it)) }
-        loadIntroSubmitEnabled()?.let { put(introSubmitEnabledKey, encodeSyncBoolean(it)) }
         loadStreamAutoPlayNextEpisodeEnabled()?.let { put(streamAutoPlayNextEpisodeEnabledKey, encodeSyncBoolean(it)) }
         loadStreamAutoPlayNextEpisodeFallbackEnabled()?.let { put(streamAutoPlayNextEpisodeFallbackEnabledKey, encodeSyncBoolean(it)) }
         loadStreamAutoPlayPreferBingeGroup()?.let { put(streamAutoPlayPreferBingeGroupKey, encodeSyncBoolean(it)) }
@@ -1078,7 +1025,6 @@ actual object PlayerSettingsStorage {
         payload.decodeSyncBoolean(animeSkipEnabledKey)?.let(::saveAnimeSkipEnabled)
         payload.decodeSyncString(animeSkipClientIdKey)?.let(::saveAnimeSkipClientId)
         payload.decodeSyncString(introDbApiKeyKey)?.let(::saveIntroDbApiKey)
-        payload.decodeSyncBoolean(introSubmitEnabledKey)?.let(::saveIntroSubmitEnabled)
         payload.decodeSyncBoolean(streamAutoPlayNextEpisodeEnabledKey)?.let(::saveStreamAutoPlayNextEpisodeEnabled)
         payload.decodeSyncBoolean(streamAutoPlayNextEpisodeFallbackEnabledKey)?.let(::saveStreamAutoPlayNextEpisodeFallbackEnabled)
         payload.decodeSyncBoolean(streamAutoPlayPreferBingeGroupKey)?.let(::saveStreamAutoPlayPreferBingeGroup)

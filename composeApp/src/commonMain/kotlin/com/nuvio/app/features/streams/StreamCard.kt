@@ -39,8 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nuvio.app.core.ui.NuvioAsyncImage as AsyncImage
-import com.nuvio.app.core.ui.secondaryClick
+import coil3.compose.AsyncImage
 import com.nuvio.app.features.debrid.DebridProviders
 
 @Composable
@@ -94,7 +93,6 @@ internal fun StreamCard(
                 onClick = onClick,
                 onLongClick = onLongClick,
             )
-            .secondaryClick(if (enabled) onLongClick else null)
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

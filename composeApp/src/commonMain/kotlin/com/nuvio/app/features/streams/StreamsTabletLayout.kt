@@ -60,7 +60,6 @@ internal fun TabletStreamsLayout(
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
-    episodeMeta: StreamEpisodeMeta?,
     uiState: StreamsUiState,
     debridEnabled: Boolean,
     appendInstantServiceToDefaultName: Boolean,
@@ -68,7 +67,6 @@ internal fun TabletStreamsLayout(
     resumeProgressFraction: Float?,
     onStreamSelected: (stream: StreamItem, resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit,
     onStreamLongPress: (StreamItem) -> Unit,
-    onOpenImdbUrl: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -153,8 +151,6 @@ internal fun TabletStreamsLayout(
                         episodeNumber = episodeNumber,
                         episodeTitle = episodeTitle,
                         showTitle = title,
-                        episodeMeta = episodeMeta,
-                        onOpenImdbUrl = onOpenImdbUrl,
                     )
                 } else {
                     TabletMovieInfoPanel(
@@ -289,8 +285,6 @@ private fun TabletEpisodeInfoPanel(
     episodeNumber: Int,
     episodeTitle: String?,
     showTitle: String,
-    episodeMeta: StreamEpisodeMeta?,
-    onOpenImdbUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var logoLoadError by remember(logo) { mutableStateOf(false) }
@@ -350,11 +344,6 @@ private fun TabletEpisodeInfoPanel(
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        EpisodeMetadataRow(
-            episodeMeta = episodeMeta,
-            onOpenImdbUrl = onOpenImdbUrl,
         )
     }
 }

@@ -71,10 +71,10 @@ import com.nuvio.app.features.mdblist.MdbListSettings
 import com.nuvio.app.features.mdblist.MdbListSettingsRepository
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepository
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsUiState
+import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.AndroidLibmpvVideoOutput
 import com.nuvio.app.features.player.AndroidPlaybackEngine
-import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.simkl.SimklAuthRepository
 import com.nuvio.app.features.simkl.SimklAuthUiState
@@ -262,7 +262,8 @@ fun SettingsScreen(
         val scrollToTopRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
         val pageTitles = settingsPageTitles()
         val page = remember(currentPage) {
-            settingsPageFromSavedName(currentPage)
+            runCatching { SettingsPage.valueOf(currentPage) }
+                .getOrDefault(SettingsPage.Root)
                 .takeIf { it.isEnabledByPolicy() }
                 ?: SettingsPage.Root
         }
@@ -354,7 +355,8 @@ fun SettingsScreen(
         }
 
         LaunchedEffect(requestedPageName, rootActionsEnabled) {
-            val targetPage = settingsPageFromSavedNameOrNull(requestedPageName)
+            val requestedPage = requestedPageName ?: return@LaunchedEffect
+            val targetPage = runCatching { SettingsPage.valueOf(requestedPage) }.getOrNull()
             if (targetPage == null || !targetPage.isEnabledByPolicy()) {
                 onRequestedPageConsumed()
                 return@LaunchedEffect
@@ -377,7 +379,6 @@ fun SettingsScreen(
                 onNavigateBack = ::navigateBack,
                 showInternalHeader = showInternalHeader,
                 showLoadingOverlay = playerSettingsUiState.showLoadingOverlay,
-                androidPlaybackEngine = playerSettingsUiState.androidPlaybackEngine,
                 holdToSpeedEnabled = playerSettingsUiState.holdToSpeedEnabled,
                 holdToSpeedValue = playerSettingsUiState.holdToSpeedValue,
                 touchGesturesEnabled = playerSettingsUiState.touchGesturesEnabled,
@@ -387,6 +388,7 @@ fun SettingsScreen(
                 secondaryPreferredSubtitleLanguage = playerSettingsUiState.secondaryPreferredSubtitleLanguage,
                 streamReuseLastLinkEnabled = playerSettingsUiState.streamReuseLastLinkEnabled,
                 streamReuseLastLinkCacheHours = playerSettingsUiState.streamReuseLastLinkCacheHours,
+                androidPlaybackEngine = playerSettingsUiState.androidPlaybackEngine,
                 androidLibmpvVideoOutput = playerSettingsUiState.androidLibmpvVideoOutput,
                 androidLibmpvHardwareDecodingEnabled = playerSettingsUiState.androidLibmpvHardwareDecodingEnabled,
                 androidLibmpvYuv420pEnabled = playerSettingsUiState.androidLibmpvYuv420pEnabled,
@@ -445,7 +447,6 @@ fun SettingsScreen(
                 onNavigateBack = ::navigateBack,
                 showInternalHeader = showInternalHeader,
                 showLoadingOverlay = playerSettingsUiState.showLoadingOverlay,
-                androidPlaybackEngine = playerSettingsUiState.androidPlaybackEngine,
                 holdToSpeedEnabled = playerSettingsUiState.holdToSpeedEnabled,
                 holdToSpeedValue = playerSettingsUiState.holdToSpeedValue,
                 touchGesturesEnabled = playerSettingsUiState.touchGesturesEnabled,
@@ -455,6 +456,7 @@ fun SettingsScreen(
                 secondaryPreferredSubtitleLanguage = playerSettingsUiState.secondaryPreferredSubtitleLanguage,
                 streamReuseLastLinkEnabled = playerSettingsUiState.streamReuseLastLinkEnabled,
                 streamReuseLastLinkCacheHours = playerSettingsUiState.streamReuseLastLinkCacheHours,
+                androidPlaybackEngine = playerSettingsUiState.androidPlaybackEngine,
                 androidLibmpvVideoOutput = playerSettingsUiState.androidLibmpvVideoOutput,
                 androidLibmpvHardwareDecodingEnabled = playerSettingsUiState.androidLibmpvHardwareDecodingEnabled,
                 androidLibmpvYuv420pEnabled = playerSettingsUiState.androidLibmpvYuv420pEnabled,
@@ -523,7 +525,6 @@ private fun MobileSettingsScreen(
     onNavigateBack: () -> Unit,
     showInternalHeader: Boolean,
     showLoadingOverlay: Boolean,
-    androidPlaybackEngine: AndroidPlaybackEngine,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     touchGesturesEnabled: Boolean,
@@ -533,6 +534,7 @@ private fun MobileSettingsScreen(
     secondaryPreferredSubtitleLanguage: String?,
     streamReuseLastLinkEnabled: Boolean,
     streamReuseLastLinkCacheHours: Int,
+    androidPlaybackEngine: AndroidPlaybackEngine,
     androidLibmpvVideoOutput: AndroidLibmpvVideoOutput,
     androidLibmpvHardwareDecodingEnabled: Boolean,
     androidLibmpvYuv420pEnabled: Boolean,
@@ -723,7 +725,6 @@ private fun MobileSettingsScreen(
                 SettingsPage.Playback -> playbackSettingsContent(
                     isTablet = false,
                     showLoadingOverlay = showLoadingOverlay,
-                    androidPlaybackEngine = androidPlaybackEngine,
                     holdToSpeedEnabled = holdToSpeedEnabled,
                     holdToSpeedValue = holdToSpeedValue,
                     touchGesturesEnabled = touchGesturesEnabled,
@@ -733,6 +734,7 @@ private fun MobileSettingsScreen(
                     secondaryPreferredSubtitleLanguage = secondaryPreferredSubtitleLanguage,
                     streamReuseLastLinkEnabled = streamReuseLastLinkEnabled,
                     streamReuseLastLinkCacheHours = streamReuseLastLinkCacheHours,
+                    androidPlaybackEngine = androidPlaybackEngine,
                     androidLibmpvVideoOutput = androidLibmpvVideoOutput,
                     androidLibmpvHardwareDecodingEnabled = androidLibmpvHardwareDecodingEnabled,
                     androidLibmpvYuv420pEnabled = androidLibmpvYuv420pEnabled,
@@ -845,16 +847,6 @@ private fun MobileSettingsScreen(
     }
 }
 
-internal fun settingsPageFromSavedName(name: String?): SettingsPage =
-    settingsPageFromSavedNameOrNull(name) ?: SettingsPage.Root
-
-internal fun settingsPageFromSavedNameOrNull(name: String?): SettingsPage? =
-    name?.let { raw -> runCatching { SettingsPage.valueOf(raw) }.getOrNull() }
-
-internal fun settingsCategoryFromSavedName(name: String?): SettingsCategory =
-    name?.let { raw -> runCatching { SettingsCategory.valueOf(raw) }.getOrNull() }
-        ?: SettingsCategory.General
-
 @Composable
 private fun rememberSettingsRootSearchRevealConnection(
     page: SettingsPage,
@@ -905,7 +897,6 @@ private fun TabletSettingsScreen(
     onNavigateBack: () -> Unit,
     showInternalHeader: Boolean,
     showLoadingOverlay: Boolean,
-    androidPlaybackEngine: AndroidPlaybackEngine,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
     touchGesturesEnabled: Boolean,
@@ -915,6 +906,7 @@ private fun TabletSettingsScreen(
     secondaryPreferredSubtitleLanguage: String?,
     streamReuseLastLinkEnabled: Boolean,
     streamReuseLastLinkCacheHours: Int,
+    androidPlaybackEngine: AndroidPlaybackEngine,
     androidLibmpvVideoOutput: AndroidLibmpvVideoOutput,
     androidLibmpvHardwareDecodingEnabled: Boolean,
     androidLibmpvYuv420pEnabled: Boolean,
@@ -966,15 +958,9 @@ private fun TabletSettingsScreen(
     onCollectionsClick: () -> Unit = {},
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(SettingsCategory.General.name) }
-    val activeCategory = remember(selectedCategory) { settingsCategoryFromSavedName(selectedCategory) }
+    val activeCategory = SettingsCategory.valueOf(selectedCategory)
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val topOffset = max(statusBarPadding + 24.dp, 48.dp) + 64.dp
-
-    LaunchedEffect(activeCategory, selectedCategory) {
-        if (selectedCategory != activeCategory.name) {
-            selectedCategory = activeCategory.name
-        }
-    }
 
     LaunchedEffect(page) {
         if (page.opensInlineOnTablet) {
@@ -1167,7 +1153,6 @@ private fun TabletSettingsScreen(
                     SettingsPage.Playback -> playbackSettingsContent(
                         isTablet = true,
                         showLoadingOverlay = showLoadingOverlay,
-                        androidPlaybackEngine = androidPlaybackEngine,
                         holdToSpeedEnabled = holdToSpeedEnabled,
                         holdToSpeedValue = holdToSpeedValue,
                         touchGesturesEnabled = touchGesturesEnabled,
@@ -1177,6 +1162,7 @@ private fun TabletSettingsScreen(
                         secondaryPreferredSubtitleLanguage = secondaryPreferredSubtitleLanguage,
                         streamReuseLastLinkEnabled = streamReuseLastLinkEnabled,
                         streamReuseLastLinkCacheHours = streamReuseLastLinkCacheHours,
+                        androidPlaybackEngine = androidPlaybackEngine,
                         androidLibmpvVideoOutput = androidLibmpvVideoOutput,
                         androidLibmpvHardwareDecodingEnabled = androidLibmpvHardwareDecodingEnabled,
                         androidLibmpvYuv420pEnabled = androidLibmpvYuv420pEnabled,

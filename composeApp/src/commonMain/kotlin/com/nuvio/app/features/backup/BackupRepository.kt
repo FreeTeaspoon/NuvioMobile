@@ -3,7 +3,6 @@ package com.nuvio.app.features.backup
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.build.AppVersionConfig
-import com.nuvio.app.core.storage.ProfileScopedKey
 import com.nuvio.app.core.ui.PosterCardStyleRepository
 import com.nuvio.app.core.ui.PosterCardStyleStorage
 import com.nuvio.app.features.addons.AddonRepository
@@ -28,7 +27,7 @@ import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepositor
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsStorage
 import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.p2p.P2pSettingsStorage
-import com.nuvio.app.features.player.PlayerTrackPreferenceStorage
+import com.nuvio.app.features.player.VideoZoomStorage
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.PlayerSettingsStorage
 import com.nuvio.app.features.plugins.PluginRepository
@@ -152,7 +151,7 @@ object BackupRepository {
     }
 
     private fun profilePayload(profileId: Int, profile: NuvioProfile?): BackupProfilePayload =
-        ProfileScopedKey.scopedTo(profileId) {
+        run {
             BackupProfilePayload(
                 profileIndex = profileId,
                 profile = profile?.let(BackupProfileMetadata::fromProfile),
@@ -178,7 +177,7 @@ object BackupRepository {
                     homeCatalogSettingsPayload = HomeCatalogSettingsStorage.loadPayload().orEmpty(),
                     collectionMobileSettingsPayload = CollectionMobileSettingsStorage.loadPayload().orEmpty(),
                     continueWatchingPreferencesPayload = ContinueWatchingPreferencesStorage.loadPayload().orEmpty(),
-                    playerTrackPreferencesPayload = PlayerTrackPreferenceStorage.loadPayload().orEmpty(),
+                    videoZoomPayload = VideoZoomStorage.load().orEmpty(),
                     resumeWasInPlayer = ResumePromptStorage.loadWasInPlayer(),
                     resumeLastPlayerVideoId = ResumePromptStorage.loadLastPlayerVideoId(),
                     traktAuthPayload = TraktAuthStorage.loadPayload(profileId).orEmpty(),
@@ -200,7 +199,7 @@ object BackupRepository {
         val profile = payload.profileForCurrentImport(activeProfileIndex)
         payload.global.collectionsPayload.takeIf(String::isNotBlank)?.let(CollectionStorage::savePayload)
 
-        ProfileScopedKey.scopedTo(activeProfileIndex) {
+        run {
             AddonStorage.saveInstalledAddonUrls(activeProfileIndex, profile.addons.urls)
             AddonStorage.saveAddonEnabledStates(activeProfileIndex, profile.addons.enabledByUrl)
             PluginRepository.importPayload(activeProfileIndex, profile.pluginsPayload)
@@ -215,8 +214,8 @@ object BackupRepository {
             activeProfileIndex = activeProfileIndex,
             profiles = listOf(profile),
         )
-        BackupSupabaseRestore.pushImportedPayload(currentProfilePayload, mode)
         reinitializeAfterImport(activeProfileIndex)
+        BackupSupabaseRestore.pushImportedPayload(currentProfilePayload, mode)
     }
 
     private fun NuvioBackupPayload.profileForCurrentImport(activeProfileIndex: Int): BackupProfilePayload =
@@ -241,7 +240,7 @@ object BackupRepository {
         HomeCatalogSettingsStorage.savePayload(settings.homeCatalogSettingsPayload)
         CollectionMobileSettingsStorage.savePayload(settings.collectionMobileSettingsPayload)
         ContinueWatchingPreferencesStorage.savePayload(settings.continueWatchingPreferencesPayload)
-        PlayerTrackPreferenceStorage.savePayload(settings.playerTrackPreferencesPayload)
+        VideoZoomStorage.save(settings.videoZoomPayload)
         settings.resumeWasInPlayer?.let(ResumePromptStorage::saveWasInPlayer)
         ResumePromptStorage.saveLastPlayerVideoId(settings.resumeLastPlayerVideoId)
         TraktAuthStorage.savePayload(profileId, settings.traktAuthPayload)

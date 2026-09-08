@@ -205,7 +205,7 @@ object StreamAutoPlaySelector {
                 AppFeaturePolicy.p2pEnabled &&
                     needsLocalDebridResolve &&
                     p2pInfoHash != null &&
-                    !isCheckingDebridAutoPlayCandidate(debridEnabled, activeResolverProviderId)
+                    !isPendingDebridAutoPlay(debridEnabled, activeResolverProviderId)
             ) ||
             (debridEnabled && isAddonDebridCandidate && isReadyDebridAutoPlay(activeResolverProviderId))
 
@@ -224,16 +224,6 @@ object StreamAutoPlaySelector {
         if (!debridCacheStatus?.providerId.matchesResolver(activeResolverProviderId)) return false
         val state = debridCacheStatus?.state
         return state == null || state == StreamDebridCacheState.CHECKING
-    }
-
-    private fun StreamItem.isCheckingDebridAutoPlayCandidate(
-        debridEnabled: Boolean,
-        activeResolverProviderId: String?,
-    ): Boolean {
-        if (!debridEnabled || !isInstalledAddonStream || !needsLocalDebridResolve) return false
-        val status = debridCacheStatus ?: return false
-        return status.state == StreamDebridCacheState.CHECKING &&
-            status.providerId.matchesResolver(activeResolverProviderId)
     }
 
     private fun String?.matchesResolver(activeResolverProviderId: String?): Boolean {

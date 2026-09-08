@@ -152,21 +152,3 @@ internal fun formatPlaybackSpeedLabel(speed: Float): String {
     val normalized = speed.toString().trimEnd('0').trimEnd('.')
     return "${normalized}x"
 }
-
-internal fun clampPlayerVideoZoom(zoom: Float): Float =
-    zoom.coerceIn(PlayerVideoZoomMin, PlayerVideoZoomMax)
-
-internal fun stepPlayerVideoZoom(zoom: Float, direction: Int): Float =
-    clampPlayerVideoZoom(zoom + PlayerVideoZoomStep * direction)
-
-internal fun formatPlayerVideoZoomLabel(zoom: Float): String =
-    "${(kotlin.math.round(clampPlayerVideoZoom(zoom) * 100f) / 100f).formatTwoDecimals()}x"
-
-private fun Float.formatTwoDecimals(): String {
-    val scaled = kotlin.math.round(this * 100f).toInt()
-    val sign = if (scaled < 0) "-" else ""
-    val absolute = kotlin.math.abs(scaled)
-    val whole = absolute / 100
-    val fraction = (absolute % 100).toString().padStart(2, '0')
-    return "$sign$whole.$fraction"
-}

@@ -10,6 +10,21 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ### Fixed
 
+## 0.4.14.2
+
+### Changed
+
+- Merged the latest upstream app updates, including custom themes, Russian localization, skeleton loading, startup optimizations, download fixes and subtitle rendering fixes.
+- Restored upstream audio/subtitle preferences, original-language selection, external subtitles, playback stability, orientation, playback restoration and IntroDB behavior.
+- Restored upstream profile/home catalog sync, Trakt credentials, metadata handling, stream selection, P2P magnets and Android minimum SDK requirements.
+- Removed fork WebDAV authentication, desktop support, old floating navigation, the extra episode metadata row, old poster actions, MPV cache/startup helpers, unused support hooks, extra policy flags and bundled TorrServer files.
+- Kept custom playback speed, buffered seeking, download recovery and speeds, encrypted backups, watched confirmations, rating links and the fork updater.
+
+### Fixed
+
+- Video zoom now scales the Media3 video around its center through layout changes and uses the same magnification as MPV. Subtitles keep their original size, and the label shows the actual magnification.
+- Open Downloads when offline now respects the saved switch and opens Downloads only when playable local files are available.
+
 ## 0.4.14.1
 
 ### Changed

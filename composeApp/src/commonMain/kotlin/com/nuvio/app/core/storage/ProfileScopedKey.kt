@@ -4,29 +4,6 @@ import com.nuvio.app.features.profiles.ProfileRepository
 
 
 object ProfileScopedKey {
-    private var overrideProfileId: Int? = null
-
-    fun of(baseKey: String): String = "${baseKey}_${overrideProfileId ?: ProfileRepository.activeProfileId}"
-
+    fun of(baseKey: String): String = "${baseKey}_${ProfileRepository.activeProfileId}"
     fun of(baseKey: String, profileId: Int): String = "${baseKey}_$profileId"
-
-    internal fun <T> scopedTo(profileId: Int, block: () -> T): T {
-        val previous = overrideProfileId
-        overrideProfileId = profileId
-        return try {
-            block()
-        } finally {
-            overrideProfileId = previous
-        }
-    }
-
-    internal suspend fun <T> scopedToSuspend(profileId: Int, block: suspend () -> T): T {
-        val previous = overrideProfileId
-        overrideProfileId = profileId
-        return try {
-            block()
-        } finally {
-            overrideProfileId = previous
-        }
-    }
 }
