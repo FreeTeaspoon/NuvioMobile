@@ -367,7 +367,7 @@ fun SettingsScreen(
         }
 
         PlatformBackHandler(
-            enabled = previousPage != null && (rootActionsEnabled || onExternalBack != null),
+            enabled = onNavigatePage == null && previousPage != null && rootActionsEnabled,
             onBack = ::navigateBack,
         )
 

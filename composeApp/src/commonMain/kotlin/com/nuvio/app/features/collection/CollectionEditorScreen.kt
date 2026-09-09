@@ -149,9 +149,11 @@ fun CollectionEditorScreen(
     }
 
     fun closePage(pageToClose: CollectionEditorPage, close: () -> Unit) {
-        close()
         if (initialPage == pageToClose) {
+            // The route decorator releases editor state after the exit animation.
             onBack()
+        } else {
+            close()
         }
     }
 
@@ -165,6 +167,7 @@ fun CollectionEditorScreen(
         }
 
         FolderEditorPage(
+            handleSystemBack = initialPage == null,
             state = state,
             onBack = {
                 closePage(CollectionEditorPage.FolderEditor) {
@@ -203,6 +206,7 @@ fun CollectionEditorScreen(
 
     if (page == CollectionEditorPage.CatalogPicker) {
         CatalogPickerScreen(
+            handleSystemBack = initialPage == null,
             availableCatalogs = state.availableCatalogs,
             selectedSources = state.editingFolder?.resolvedCatalogSources.orEmpty(),
             onToggle = { CollectionEditorRepository.toggleCatalogSource(it) },
@@ -217,6 +221,7 @@ fun CollectionEditorScreen(
 
     if (page == CollectionEditorPage.TmdbSourcePicker) {
         TmdbSourcePickerScreen(
+            handleSystemBack = initialPage == null,
             state = state,
             onBack = {
                 closePage(CollectionEditorPage.TmdbSourcePicker) {
@@ -229,6 +234,7 @@ fun CollectionEditorScreen(
 
     if (page == CollectionEditorPage.TraktSourcePicker) {
         TraktSourcePickerScreen(
+            handleSystemBack = initialPage == null,
             state = state,
             onBack = {
                 closePage(CollectionEditorPage.TraktSourcePicker) {
@@ -627,6 +633,7 @@ private fun FolderListItem(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FolderEditorPage(
+    handleSystemBack: Boolean,
     state: CollectionEditorUiState,
     onBack: () -> Unit,
     onNavigateToPage: ((page: CollectionEditorPage, title: String) -> Unit)?,
@@ -639,7 +646,7 @@ private fun FolderEditorPage(
     val traktSourcePickerTitle = stringResource(Res.string.collections_editor_trakt_sources)
     val editTraktSourcePickerTitle = stringResource(Res.string.collections_editor_edit_trakt_source)
 
-    PlatformBackHandler(enabled = true) {
+    PlatformBackHandler(enabled = handleSystemBack) {
         onBack()
     }
 
@@ -939,12 +946,13 @@ private fun FolderEditorPage(
 
 @Composable
 private fun CatalogPickerScreen(
+    handleSystemBack: Boolean,
     availableCatalogs: List<AvailableCatalog>,
     selectedSources: List<CollectionCatalogSource>,
     onToggle: (AvailableCatalog) -> Unit,
     onBack: () -> Unit,
 ) {
-    PlatformBackHandler(enabled = true) {
+    PlatformBackHandler(enabled = handleSystemBack) {
         onBack()
     }
 
@@ -1023,6 +1031,7 @@ private fun CatalogPickerScreen(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TmdbSourcePickerScreen(
+    handleSystemBack: Boolean,
     state: CollectionEditorUiState,
     onBack: () -> Unit,
 ) {
@@ -1049,7 +1058,7 @@ private fun TmdbSourcePickerScreen(
         state.tmdbBuilderMode == TmdbBuilderMode.DISCOVER
     val showFilterControls = state.tmdbBuilderMode == TmdbBuilderMode.DISCOVER
 
-    PlatformBackHandler(enabled = true) {
+    PlatformBackHandler(enabled = handleSystemBack) {
         onBack()
     }
 
@@ -1635,6 +1644,7 @@ private fun TmdbSourcePickerScreen(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TraktSourcePickerScreen(
+    handleSystemBack: Boolean,
     state: CollectionEditorUiState,
     onBack: () -> Unit,
 ) {
@@ -1643,7 +1653,7 @@ private fun TraktSourcePickerScreen(
     val trendingTitle = stringResource(Res.string.collections_editor_trakt_trending)
     val popularTitle = stringResource(Res.string.collections_editor_trakt_popular)
 
-    PlatformBackHandler(enabled = true) {
+    PlatformBackHandler(enabled = handleSystemBack) {
         onBack()
     }
 

@@ -3,10 +3,8 @@ package com.nuvio.app
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,6 +44,8 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
+import com.nuvio.app.navigation.nuvioPushTransition
+import com.nuvio.app.navigation.nuvioPopTransition
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.auth.DeviceSessionRegistration
@@ -1241,6 +1241,9 @@ internal fun MainAppContent(
                     backStack = navBackStack,
                     modifier = Modifier.fillMaxSize(),
                     onBack = { navController.popBackStack() },
+                    transitionSpec = { nuvioPushTransition() },
+                    popTransitionSpec = { nuvioPopTransition() },
+                    predictivePopTransitionSpec = { nuvioPopTransition() },
                     entryDecorators = listOf(
                         rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
                         routeDisposalDecorator,
@@ -1321,7 +1324,7 @@ internal fun MainAppContent(
                                     }
                                 },
                                 onConnectCloudClick = {
-                                    if (useNativeNavigation && !isTabletLayout) {
+                                    if (!useNativeNavigation || !isTabletLayout) {
                                         activateTab(AppScreenTab.Settings)
                                         navController.navigate(
                                             SettingsPageRoute(
@@ -1337,7 +1340,7 @@ internal fun MainAppContent(
                                 onContinueWatchingClick = onContinueWatchingClick,
                                 onContinueWatchingLongPress = onContinueWatchingLongPress,
                                 onSwitchProfile = onSwitchProfile,
-                                onSettingsPageClick = if (useNativeNavigation && !isTabletLayout) {
+                                onSettingsPageClick = if (!useNativeNavigation || !isTabletLayout) {
                                     { pageName, title ->
                                         navController.navigate(SettingsPageRoute(pageName, title))
                                     }
@@ -1450,19 +1453,7 @@ internal fun MainAppContent(
                         openExternalStreamUrl = ::openExternalStreamUrl,
                     )
                 }
-                entry<PlayerRoute>(
-                    metadata = if (isIos) {
-                        NavDisplay.transitionSpec {
-                            fadeIn(animationSpec = tween(220)) togetherWith
-                                fadeOut(animationSpec = tween(220))
-                        } + NavDisplay.popTransitionSpec {
-                            fadeIn(animationSpec = tween(220)) togetherWith
-                                fadeOut(animationSpec = tween(220))
-                        }
-                    } else {
-                        emptyMap()
-                    },
-                ) { route ->
+                entry<PlayerRoute> { route ->
                     PlayerDestination(
                         route = route,
                         navController = navController,
@@ -1515,7 +1506,6 @@ internal fun MainAppContent(
                     DownloadsDestination(
                         route = route,
                         navController = navController,
-                        useNativeNavigation = useNativeNavigation,
                         onOpenDownload = ::openDownloadedItem,
                     )
                 }
@@ -1568,7 +1558,6 @@ internal fun MainAppContent(
                     CollectionEditorDestination(
                         route = route,
                         navController = navController,
-                        useNativeNavigation = useNativeNavigation,
                     )
                 }
                 entry<CollectionEditorPageRoute> { route ->

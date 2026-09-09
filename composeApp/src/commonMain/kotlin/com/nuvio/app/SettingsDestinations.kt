@@ -72,17 +72,14 @@ internal fun SettingsRootDestination(
 internal fun DownloadsDestination(
     route: DownloadsSettingsRoute,
     navController: NuvioNavigator,
-    useNativeNavigation: Boolean,
     onOpenDownload: (DownloadItem) -> Unit,
 ) {
     val onBack = rememberGuardedPopBackStack(navController, route)
     DownloadsScreen(
         onBack = onBack,
         onOpenDownload = onOpenDownload,
-        onNavigateToShow = if (useNativeNavigation) {
-            { showId, title -> navController.navigate(DownloadShowRoute(showId, title)) }
-        } else {
-            null
+        onNavigateToShow = { showId, title ->
+            navController.navigate(DownloadShowRoute(showId, title))
         },
     )
 }
@@ -131,25 +128,20 @@ internal fun CollectionsDestination(
 internal fun CollectionEditorDestination(
     route: CollectionEditorRoute,
     navController: NuvioNavigator,
-    useNativeNavigation: Boolean,
 ) {
     val onBack = rememberGuardedPopBackStack(navController, route)
     CollectionEditorScreen(
         collectionId = route.collectionId,
         onBack = onBack,
-        initialPage = if (useNativeNavigation) CollectionEditorPage.Root else null,
-        onNavigateToPage = if (useNativeNavigation) {
-            { page, title ->
-                navController.navigate(
-                    CollectionEditorPageRoute(
-                        collectionId = route.collectionId,
-                        pageName = page.name,
-                        title = title,
-                    ),
-                )
-            }
-        } else {
-            null
+        initialPage = CollectionEditorPage.Root,
+        onNavigateToPage = { page, title ->
+            navController.navigate(
+                CollectionEditorPageRoute(
+                    collectionId = route.collectionId,
+                    pageName = page.name,
+                    title = title,
+                ),
+            )
         },
     )
 }
