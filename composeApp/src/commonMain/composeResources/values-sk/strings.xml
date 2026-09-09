@@ -2289,4 +2289,6 @@
     <string name="watched_confirm_mark_title_unwatched">Mark %1$s as unwatched</string>
     <string name="watched_confirm_mark_title_watched">Mark %1$s as watched</string>
     <string name="watched_confirm_message">This will update watched status.</string>
+    <string name="playback_unavailable">Playback unavailable</string>
+    <string name="playback_unavailable_message">Playback isn’t available for this title with your current setup.</string>
 </resources>

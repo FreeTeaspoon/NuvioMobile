@@ -1,6 +1,6 @@
 # Files restored by the September 2026 cleanup. Absent upstream means absent here.
 composeApp/Configuration/DesktopVersion.properties
-composeApp/build.gradle.kts
+# composeApp/build.gradle.kts has fork Supabase configuration aliases.
 composeApp/src/androidFull/kotlin/com/nuvio/app/core/build/AppFeaturePolicy.android.kt
 composeApp/src/androidFull/kotlin/com/nuvio/app/core/build/AppVersionPolicy.android.kt
 composeApp/src/androidFull/kotlin/com/nuvio/app/features/player/PlayerEngine.android.kt
@@ -32,7 +32,7 @@ composeApp/src/androidPlaystore/kotlin/com/nuvio/app/features/player/PlayerEngin
 composeApp/src/commonMain/kotlin/com/nuvio/app/AppNavigationSupport.kt
 composeApp/src/commonMain/kotlin/com/nuvio/app/AppShellComponents.kt
 composeApp/src/commonMain/kotlin/com/nuvio/app/LegacyCatalogRoute.kt
-composeApp/src/commonMain/kotlin/com/nuvio/app/MainTabsDestination.kt
+# MainTabsDestination.kt limits the tab back handler to the active root route.
 composeApp/src/commonMain/kotlin/com/nuvio/app/Platform.kt
 composeApp/src/commonMain/kotlin/com/nuvio/app/core/build/AppFeaturePolicy.kt
 composeApp/src/commonMain/kotlin/com/nuvio/app/core/build/AppVersionPolicy.kt

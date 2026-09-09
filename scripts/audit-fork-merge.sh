@@ -65,6 +65,9 @@ check 'watched confirmations' 'WatchedConfirmationAction' "$common/features/deta
 check 'rating links' 'buildRatingProviderUrl' "$common/features/details/components/DetailMetaInfo.kt"
 check 'Parents Guide' 'buildImdbParentsGuideUrl' "$common/features/details/components/DetailMetaInfo.kt"
 check 'fork updater' 'FreeTeaspoon' "$common/features/updater/AppUpdater.kt"
+check 'predictive back root ownership' 'PlatformBackHandler\(enabled = rootRouteActive' "$common/MainTabsDestination.kt"
+check 'predictive back transition' 'predictivePopTransitionSpec = \{ nuvioPopTransition\(\)' "$common/MainAppContent.kt"
+check 'Supabase local aliases' 'arrayOf\("NUVIO_SUPABASE_URL", "SUPABASE_URL"\)' composeApp/build.gradle.kts
 check 'fork package identity' 'com.nuvio.app.freeteaspoon' androidApp/build.gradle.kts
 check 'fork release workflow' 'gh release' .github/workflows/build-cmp-rewrite-release.yml
 if [[ -n "$(git ls-files 'supabase/.temp/**')" ]]; then

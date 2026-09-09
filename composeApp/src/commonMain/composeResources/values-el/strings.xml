@@ -2261,4 +2261,6 @@
     <string name="custom_theme_subtitle">Choose three colors for your theme. Select a color to edit it.</string>
     <string name="custom_theme_title">Your custom gradient</string>
     <string name="theme_custom">Custom</string>
+    <string name="playback_unavailable">Playback unavailable</string>
+    <string name="playback_unavailable_message">Playback isn’t available for this title with your current setup.</string>
 </resources>

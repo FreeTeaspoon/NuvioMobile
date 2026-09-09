@@ -10,6 +10,19 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ### Fixed
 
+## 0.4.15.2
+
+### Changed
+
+- Pages now use consistent scale and fade-through transitions based on Google's full-screen predictive back guidance.
+- Settings, download show pages, and collection editor pages use the shared navigation stack.
+
+### Fixed
+
+- Reopening a settings option starts at the top instead of restoring its previous scroll position.
+- Android predictive back works between navigation pages, including show details to home and streams to show details.
+- Local builds accept both prefixed and unprefixed Supabase configuration keys.
+
 ## 0.4.14.2
 
 ### Changed
