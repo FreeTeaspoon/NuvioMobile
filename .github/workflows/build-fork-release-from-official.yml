@@ -317,6 +317,8 @@ jobs:
           TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID || vars.TRAKT_CLIENT_ID }}
           TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
           TRAKT_REDIRECT_URI: ${{ secrets.TRAKT_REDIRECT_URI || vars.TRAKT_REDIRECT_URI || 'nuvio://auth/trakt' }}
+          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID || vars.SIMKL_CLIENT_ID }}
+          SIMKL_REDIRECT_URI: ${{ secrets.SIMKL_REDIRECT_URI || vars.SIMKL_REDIRECT_URI || 'nuvio://auth/simkl' }}
           ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
           ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
           ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
@@ -346,6 +348,8 @@ jobs:
             printf 'TRAKT_CLIENT_ID=%s\n' "${TRAKT_CLIENT_ID}"
             printf 'TRAKT_CLIENT_SECRET=%s\n' "${TRAKT_CLIENT_SECRET}"
             printf 'TRAKT_REDIRECT_URI=%s\n' "${TRAKT_REDIRECT_URI}"
+            printf 'SIMKL_CLIENT_ID=%s\n' "${SIMKL_CLIENT_ID}"
+            printf 'SIMKL_REDIRECT_URI=%s\n' "${SIMKL_REDIRECT_URI}"
             printf 'INTRODB_API_URL=https://api.introdb.app\n'
             printf 'NUVIO_RELEASE_STORE_FILE=release-key.jks\n'
             printf 'NUVIO_RELEASE_STORE_PASSWORD=%s\n' "${ANDROID_RELEASE_STORE_PASSWORD}"
