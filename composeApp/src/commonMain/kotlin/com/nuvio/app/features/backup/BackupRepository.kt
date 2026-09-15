@@ -164,6 +164,7 @@ object BackupRepository {
                 watchProgressPayload = WatchProgressStorage.loadPayload(profileId).orEmpty(),
                 watchedPayload = WatchedStorage.loadPayload(profileId).orEmpty(),
                 searchHistoryPayload = SearchHistoryStorage.loadPayload().orEmpty(),
+                searchHistoryEnabled = SearchHistoryStorage.loadEnabled() ?: true,
                 settings = BackupSettingsPayload(
                     themeSettings = ThemeSettingsStorage.exportToSyncPayload(),
                     posterCardStylePayload = PosterCardStyleStorage.loadPayload().orEmpty(),
@@ -207,6 +208,7 @@ object BackupRepository {
             WatchProgressStorage.savePayload(activeProfileIndex, profile.watchProgressPayload)
             WatchedStorage.savePayload(activeProfileIndex, profile.watchedPayload)
             SearchHistoryStorage.savePayload(profile.searchHistoryPayload)
+            profile.searchHistoryEnabled?.let(SearchHistoryStorage::saveEnabled)
             applySettings(profile.settings, activeProfileIndex)
         }
 

@@ -12,7 +12,6 @@ internal const val PROVIDER_API_KEY_FIELD = "api_key"
 internal const val PROVIDER_CLIENT_ID_FIELD = "client_id"
 
 internal object ProviderCredentialIds {
-    const val TMDB = "tmdb"
     const val MDBLIST = "mdblist"
     const val ANIMESKIP = "animeskip"
     const val INTRODB = "introdb"
@@ -42,7 +41,7 @@ internal data class ProviderCredentialSnapshot(
         val remoteByProvider = rows.associateBy { it.provider.lowercase() }
         return copy(
             values = values.map { local ->
-                val remote = remoteByProvider[local.provider] ?: return@map local
+                val remote = remoteByProvider[local.provider.lowercase()] ?: return@map local.copy(value = "")
                 val element = remote.credentialJson[local.field] as? JsonPrimitive
                     ?: error("Invalid credential payload for ${local.provider}")
                 val value = element.contentOrNull
@@ -51,14 +50,6 @@ internal data class ProviderCredentialSnapshot(
             },
         )
     }
-}
-
-internal fun shouldSeedProviderCredentials(
-    snapshot: ProviderCredentialSnapshot,
-    rows: List<SupabaseProviderCredential>,
-): Boolean {
-    val remoteProviders = rows.mapTo(mutableSetOf()) { row -> row.provider.lowercase() }
-    return snapshot.values.any { credential -> credential.provider.lowercase() !in remoteProviders }
 }
 
 @Serializable

@@ -28,6 +28,7 @@ class BackupModelsTest {
                     ),
                     libraryPayload = """{"items":[{"id":"tt1"}]}""",
                     watchProgressPayload = """{"entries":[{"videoId":"tt1:1:1"}]}""",
+                    searchHistoryEnabled = false,
                 ),
             ),
         )
@@ -83,4 +84,3 @@ class BackupModelsTest {
         assertEquals(BackupSettingsPayload(), profile.settings)
     }
 }
-

@@ -55,6 +55,7 @@ data class BackupProfilePayload(
     val watchProgressPayload: String = "",
     val watchedPayload: String = "",
     val searchHistoryPayload: String = "",
+    val searchHistoryEnabled: Boolean? = null,
     val settings: BackupSettingsPayload = BackupSettingsPayload(),
 )
 

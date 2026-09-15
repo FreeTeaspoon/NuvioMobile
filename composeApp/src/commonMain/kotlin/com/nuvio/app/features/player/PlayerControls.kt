@@ -55,6 +55,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -401,7 +403,7 @@ private fun PlayerHeader(
 }
 
 @Composable
-private fun PlayerHeaderIconButton(
+internal fun PlayerHeaderIconButton(
     icon: ImageVector,
     contentDescription: String,
     buttonSize: androidx.compose.ui.unit.Dp,
@@ -484,7 +486,7 @@ private fun SideControlButton(
 }
 
 @Composable
-private fun PlayPauseControlButton(
+internal fun PlayPauseControlButton(
     isPlaying: Boolean,
     isBuffering: Boolean,
     metrics: PlayerLayoutMetrics,
@@ -538,20 +540,9 @@ private fun ProgressControls(
     onOpenInExternalPlayer: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val durationMs = playbackSnapshot.durationMs.coerceAtLeast(1L)
     val aspectRatioPainter = appIconPainter(AppIconResource.PlayerAspectRatio)
     val subtitlesPainter = appIconPainter(AppIconResource.PlayerSubtitles)
     val audioPainter = appIconPainter(AppIconResource.PlayerAudioFilled)
-    var scrubActive by remember { mutableStateOf(false) }
-    var latestScrubPositionMs by remember {
-        mutableStateOf(displayedPositionMs.coerceIn(0L, durationMs))
-    }
-
-    LaunchedEffect(displayedPositionMs, durationMs, scrubActive) {
-        if (!scrubActive) {
-            latestScrubPositionMs = displayedPositionMs.coerceIn(0L, durationMs)
-        }
-    }
     val sourcePainter = appIconPainter(AppIconResource.PlayerSource)
     val episodesPainter = appIconPainter(AppIconResource.PlayerEpisodes)
 
@@ -559,43 +550,12 @@ private fun ProgressControls(
         PlayerSeekBar(
             durationMs = playbackSnapshot.durationMs,
             displayedPositionMs = displayedPositionMs,
+            metrics = metrics,
             bufferedPositionMs = playbackSnapshot.bufferedPositionMs,
-            sliderTouchHeight = metrics.sliderTouchHeight,
-            sliderScaleY = metrics.sliderScaleY,
-            value = displayedPositionMs.coerceIn(0L, durationMs).toFloat(),
-            onValueChange = { value ->
-                val positionMs = resolveFinishedScrubTarget(
-                    latestScrubPositionMs = value.toLong(),
-                    durationMs = durationMs,
-                )
-                latestScrubPositionMs = positionMs
-                scrubActive = true
-                onScrubActiveChanged(true)
-                onScrubChange(positionMs)
-            },
-            onValueChangeFinished = {
-                scrubActive = false
-                onScrubActiveChanged(false)
-                onScrubFinished(
-                    resolveFinishedScrubTarget(
-                        latestScrubPositionMs = latestScrubPositionMs,
-                        durationMs = durationMs,
-                    ),
-                )
-            },
-            valueRange = 0f..durationMs.toFloat(),
+            onScrubActiveChanged = onScrubActiveChanged,
+            onScrubChange = onScrubChange,
+            onScrubFinished = onScrubFinished,
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp)
-                .padding(top = 4.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TimePill(text = formatPlaybackTime(displayedPositionMs), fontSize = metrics.timeSize)
-            TimePill(text = formatPlaybackTime(durationMs), fontSize = metrics.timeSize)
-        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
@@ -650,6 +610,72 @@ private fun ProgressControls(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+internal fun PlayerSeekBar(
+    durationMs: Long,
+    displayedPositionMs: Long,
+    metrics: PlayerLayoutMetrics,
+    onScrubChange: (Long) -> Unit,
+    onScrubFinished: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    bufferedPositionMs: Long = 0L,
+    onScrubActiveChanged: (Boolean) -> Unit = {},
+) {
+    val seekDurationMs = durationMs.coerceAtLeast(1L)
+    var scrubActive by remember { mutableStateOf(false) }
+    var latestScrubPositionMs by remember {
+        mutableStateOf(displayedPositionMs.coerceIn(0L, seekDurationMs))
+    }
+    LaunchedEffect(displayedPositionMs, seekDurationMs, scrubActive) {
+        if (!scrubActive) {
+            latestScrubPositionMs = displayedPositionMs.coerceIn(0L, seekDurationMs)
+        }
+    }
+    Column(modifier = modifier) {
+        BufferedPlayerSeekSlider(
+            durationMs = durationMs,
+            displayedPositionMs = displayedPositionMs,
+            bufferedPositionMs = bufferedPositionMs,
+            sliderTouchHeight = metrics.sliderTouchHeight,
+            sliderScaleY = metrics.sliderScaleY,
+            value = displayedPositionMs.coerceIn(0L, seekDurationMs).toFloat(),
+            onValueChange = { value ->
+                val positionMs = resolveFinishedScrubTarget(
+                    latestScrubPositionMs = value.toLong(),
+                    durationMs = seekDurationMs,
+                )
+                latestScrubPositionMs = positionMs
+                scrubActive = true
+                onScrubActiveChanged(true)
+                onScrubChange(positionMs)
+            },
+            onValueChangeFinished = {
+                scrubActive = false
+                onScrubActiveChanged(false)
+                onScrubFinished(
+                    resolveFinishedScrubTarget(
+                        latestScrubPositionMs = latestScrubPositionMs,
+                        durationMs = seekDurationMs,
+                    ),
+                )
+            },
+            enabled = durationMs > 0L,
+            valueRange = 0f..seekDurationMs.toFloat(),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp)
+                .padding(top = 4.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TimePill(text = formatPlaybackTime(displayedPositionMs), fontSize = metrics.timeSize)
+            TimePill(text = formatPlaybackTime(durationMs), fontSize = metrics.timeSize)
         }
     }
 }
@@ -718,7 +744,7 @@ internal fun LockedPlayerOverlay(
                 .padding(horizontal = horizontalSafePadding + metrics.horizontalPadding)
                 .padding(bottom = metrics.sliderBottomOffset),
         ) {
-            PlayerSeekBar(
+            BufferedPlayerSeekSlider(
                 durationMs = playbackSnapshot.durationMs,
                 displayedPositionMs = displayedPositionMs,
                 bufferedPositionMs = playbackSnapshot.bufferedPositionMs,
@@ -746,7 +772,7 @@ internal fun LockedPlayerOverlay(
 }
 
 @Composable
-private fun PlayerSeekBar(
+private fun BufferedPlayerSeekSlider(
     durationMs: Long,
     displayedPositionMs: Long,
     bufferedPositionMs: Long,
@@ -759,6 +785,7 @@ private fun PlayerSeekBar(
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
+    val seekDescription = stringResource(Res.string.player_seek_position)
     val playerAccentBrush = MaterialTheme.themePalette.accentBrush()
     val fractions = calculatePlayerSeekBarFractions(
         durationMs = durationMs,
@@ -816,7 +843,7 @@ private fun PlayerSeekBar(
         }
 
         Slider(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = seekDescription },
             value = value,
             onValueChange = onValueChange,
             onValueChangeFinished = onValueChangeFinished,

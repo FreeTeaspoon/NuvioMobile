@@ -1016,11 +1016,8 @@
     <string name="settings_playback_timeout_unlimited">Nelimitat</string>
     <string name="settings_playback_tunneled_playback">Redare tunelată</string>
     <string name="settings_playback_tunneled_playback_description">Sincronizare audio/video la nivel hardware. Poate îmbunătăți redarea pe unele dispozitive Android TV</string>
-    <string name="settings_tmdb_add_api_key_first">Adaugă propria cheie API TMDB mai jos înainte de a activa îmbunătățirea.</string>
-    <string name="settings_tmdb_api_key_label">Cheie API</string>
     <string name="settings_tmdb_enable_enrichment">Activează îmbunătățirea TMDB</string>
     <string name="settings_tmdb_enable_enrichment_description">Folosește TMDB ca sursă de metadate pentru a îmbunătăți datele din extensii</string>
-    <string name="settings_tmdb_enter_api_key">Introdu cheia API TMDB v3.</string>
     <string name="settings_tmdb_language_code_label">Cod limbă</string>
     <string name="settings_tmdb_module_artwork">Imagini și elemente vizuale</string>
     <string name="settings_tmdb_module_artwork_description">Logouri și imagini de fundal de pe TMDB</string>
@@ -1044,10 +1041,8 @@
     <string name="settings_tmdb_module_season_posters_description">Folosește posterele de sezoane TMDB în selectorul de sezoane pentru seriale.</string>
     <string name="settings_tmdb_module_trailers">Trailere</string>
     <string name="settings_tmdb_module_trailers_description">Trailere potențiale din videoclipurile TMDB pentru secțiunea dedicată</string>
-    <string name="settings_tmdb_personal_api_key">Cheie API personală</string>
     <string name="settings_tmdb_preferred_language">Limbă</string>
     <string name="settings_tmdb_preferred_language_description">Limba metadatelor TMDB pentru titlu, siglă și câmpurile activate</string>
-    <string name="settings_tmdb_section_credentials">CREDENTIALE</string>
     <string name="settings_tmdb_section_localization">LOCALIZARE</string>
     <string name="settings_tmdb_section_modules">MODULE</string>
     <string name="settings_tmdb_section_title">ÎMBUNĂTĂȚIRE TMDB</string>
@@ -1464,7 +1459,6 @@
     <string name="trakt_error_add_list_failed">Nu s-a putut adăuga în lista Trakt</string>
     <string name="trakt_error_missing_ids">Lipsesc ID-uri Trakt compatibile</string>
     <string name="trakt_error_empty_response">Corpul răspunsului este gol</string>
-    <string name="tmdb_sources_api_key_required">Adaugă o cheie API TMDB în Setări pentru a folosi sursele TMDB.</string>
     <string name="tmdb_sources_collection_fallback_title">Colecție TMDB %1$d</string>
     <string name="tmdb_sources_collection_not_found">Colecția TMDB nu a fost găsită</string>
     <string name="tmdb_sources_company_fallback_title">Producție TMDB %1$d</string>
@@ -1779,7 +1773,6 @@
     <string name="collections_editor_tmdb_production_title_format">Producție TMDB %1$s</string>
     <string name="collections_editor_tmdb_source_load_failed">Sursa TMDB nu a putut fi încărcată</string>
     <string name="collections_editor_trakt_list_id_format">ID %1$s</string>
-    <string name="collections_tmdb_api_key_required">Adaugă o cheie API TMDB în Setări pentru a folosi sursele TMDB.</string>
     <string name="collections_tmdb_collection_not_found">Colecția TMDB nu a fost găsită</string>
     <string name="collections_tmdb_company_not_found">Compania TMDB nu a fost găsită</string>
     <string name="collections_tmdb_discover_no_data">Descoperirea TMDB nu a returnat date</string>
@@ -1822,8 +1815,6 @@
     <string name="plugins_badge_providers">%1$d furnizori</string>
     <string name="plugins_badge_refreshing">Se reîmprospătează</string>
     <string name="plugins_badge_repos">%1$d depozite (repos)</string>
-    <string name="plugins_badge_tmdb_key_missing">Lipsește cheia API TMDB</string>
-    <string name="plugins_badge_tmdb_key_set">Cheia API TMDB este configurată</string>
     <string name="plugins_button_install_repo">Instalează depozitul de module</string>
     <string name="plugins_button_installing">Se instalează…</string>
     <string name="plugins_button_test_provider">Testează furnizorul</string>
@@ -1867,7 +1858,6 @@
     <string name="plugins_test_error_title">Eroare</string>
     <string name="plugins_test_failed">Testul furnizorului a eșuat</string>
     <string name="plugins_test_results_count">Rezultate test (%1$d)</string>
-    <string name="plugins_tmdb_required_message">Furnizorii de module necesită o cheie API TMDB. Seteaz-o în ecranul TMDB, altfel modulele furnizorilor nu vor funcționa corect.</string>
     <string name="search_error_no_results_for_catalog">Nu s-au returnat rezultate de căutare pentru %1$s.</string>
     <string name="settings_playback_introdb_invalid_key">Cheie API nevalidă sau conexiunea a eșuat</string>
     <string name="streams_plugin_repository_fallback">Depozit de module</string>
@@ -2028,6 +2018,7 @@
     <string name="custom_theme_solid_title">Your custom color</string>
     <string name="custom_theme_subtitle">Choose three colors for your theme. Select a color to edit it.</string>
     <string name="custom_theme_title">Your custom gradient</string>
+    <string name="debrid_resolving_stream">Resolving debrid stream</string>
     <string name="downloads_auto_open_offline_description">When Nuvio starts without a connection, open Downloads if playable files are saved.</string>
     <string name="downloads_auto_open_offline_title">Open Downloads when offline</string>
     <string name="downloads_delete_confirm_message">Delete %1$s from downloads? This removes the saved file or cancels the active download.</string>
@@ -2050,6 +2041,19 @@
     <string name="library_sort_provider_order">Tracker order</string>
     <string name="library_sort_title_asc">Title A–Z</string>
     <string name="library_sort_title_desc">Title Z–A</string>
+    <string name="playback_show_loading_status">Show loading status</string>
+    <string name="playback_show_loading_status_sub">Display step-by-step progress while the player is initializing.</string>
+    <string name="playback_unavailable">Playback unavailable</string>
+    <string name="playback_unavailable_message">Playback isn’t available for this title with your current setup.</string>
+    <string name="player_loading_buffering">Buffering…</string>
+    <string name="player_loading_building">Building player…</string>
+    <string name="player_loading_preparing">Preparing stream…</string>
+    <string name="player_loading_starting">Starting stream…</string>
+    <string name="player_loading_subtitles">Fetching subtitles…</string>
+    <string name="player_loading_subtitles_addon">Subtitles: %1$s (%2$d / %3$d)</string>
+    <string name="player_loading_subtitles_from">Fetching subtitles from %1$d addons…</string>
+    <string name="player_loading_subtitles_progress">Fetching subtitles… (%1$d / %2$d)</string>
+    <string name="player_seek_position">Playback position</string>
     <string name="player_torrent_connecting_status">%1$s · %2$s · %3$s</string>
     <string name="player_torrent_fetching_metadata">Fetching torrent metadata…</string>
     <string name="player_torrent_loading_status">%1$s downloaded · %2$s · %3$s</string>
@@ -2142,15 +2146,31 @@
     <string name="settings_card_depth_surface_posters">Posters</string>
     <string name="settings_card_depth_surface_trailers">Trailers</string>
     <string name="settings_card_depth_title">CARD DEPTH EFFECT</string>
+    <string name="settings_content_discovery_recent_searches">Recent Searches</string>
+    <string name="settings_content_discovery_recent_searches_description">Save recent searches and show them when the search bar is focused.</string>
+    <string name="settings_content_discovery_section_search">SEARCH</string>
     <string name="settings_continue_watching_sort_mode_split_upcoming">Separate Upcoming Row</string>
     <string name="settings_continue_watching_sort_mode_split_upcoming_desc">Move unaired episodes to a separate Upcoming row</string>
     <string name="settings_homescreen_load_failed_title">Couldn’t load Home catalogs</string>
+    <string name="settings_licenses_attributions_haze_body">Used for background blur effects. Created by Chris Banes.</string>
+    <string name="settings_licenses_attributions_haze_license">Licensed under the Apache License, Version 2.0.</string>
+    <string name="settings_licenses_attributions_haze_title">Haze 1.7.2</string>
+    <string name="settings_licenses_attributions_section_ui">UI LIBRARIES</string>
     <string name="settings_licenses_attributions_simkl_body">Nuvio connects to Simkl for account authentication, watchlists, watched history, playback progress, and scrobbling. Movie, TV, and anime tracking data is provided by Simkl. Nuvio is not affiliated with or endorsed by Simkl.</string>
     <string name="settings_licenses_attributions_simkl_title">Simkl</string>
+    <string name="settings_meta_poster_transition">Poster Transition</string>
+    <string name="settings_meta_poster_transition_description">Expand and blur posters when opening details.</string>
+    <string name="settings_nav_bar_glow">Glass glow</string>
+    <string name="settings_nav_bar_glow_description">Adds soft light around the floating bar.</string>
+    <string name="settings_nav_bar_glow_off">Glow off</string>
+    <string name="settings_nav_bar_glow_on">Glow on</string>
+    <string name="settings_nav_bar_preview_hint">Tap the bar to try it. Scroll the preview to try adaptive sizing.</string>
+    <string name="settings_nav_bar_preview_tap_hint">Tap the bar to try it.</string>
     <string name="settings_nav_bar_style_adaptive">Adaptive</string>
     <string name="settings_nav_bar_style_classic">Classic</string>
     <string name="settings_nav_bar_style_compact">Always Compact</string>
     <string name="settings_nav_bar_style_expanded">Always Expanded</string>
+    <string name="settings_nav_bar_summary">%1$s · %2$s</string>
     <string name="settings_p2p_cache_10_gb">10 GB</string>
     <string name="settings_p2p_cache_2_gb">2 GB</string>
     <string name="settings_p2p_cache_5_gb">5 GB</string>
@@ -2174,6 +2194,8 @@
     <string name="settings_playback_auto_play_next_episode_fallback_description">Auto-select first available stream if binge group is not found. When off, shows the stream picker instead.</string>
     <string name="settings_playback_parental_guide">Content Warnings</string>
     <string name="settings_playback_parental_guide_description">Show parental guidance overlay when playback starts.</string>
+    <string name="settings_playback_pause_overlay">Pause Overlay</string>
+    <string name="settings_playback_pause_overlay_description">Show details overlay after 5 seconds while paused.</string>
     <string name="settings_playback_subtitle_strip_sdh">Strip SDH Subtitles</string>
     <string name="settings_playback_subtitle_strip_sdh_description">Hide sound descriptions and speaker labels from text subtitles.</string>
     <string name="settings_reset_confirm_message">This will restore these settings to their default values.</string>
@@ -2201,6 +2223,8 @@
     <string name="settings_simkl_sync_info_title">How Simkl syncing works</string>
     <string name="settings_simkl_sync_now">Sync now</string>
     <string name="settings_simkl_visit">Visit Simkl</string>
+    <string name="settings_stream_background_description">Choose the background for the streams screen.</string>
+    <string name="settings_stream_background_title">Background</string>
     <string name="settings_tmdb_module_release_dates">Release dates</string>
     <string name="settings_tmdb_module_release_dates_description">Use TMDB broadcaster air dates instead of precise add-on release times</string>
     <string name="settings_tracking_anime_id_dialog_subtitle">This controls how anime series are identified. Choosing MAL or Kitsu gives each season its own entry instead of grouping under one IMDB ID.</string>
@@ -2230,6 +2254,7 @@
     <string name="settings_tracking_tmdb_recommendations_description">Use TMDB recommendations on details pages.</string>
     <string name="settings_tracking_trakt_library_description">Use your Trakt watchlist and personal lists.</string>
     <string name="settings_tracking_trakt_progress_description">Resume with playback progress from Trakt.</string>
+    <string name="settings_tracking_trakt_progress_required">Available when Trakt is the Watch Progress source</string>
     <string name="settings_tracking_trakt_recommendations_description">Use personalized related titles from Trakt.</string>
     <string name="settings_tracking_viewing_discovery">Trakt features</string>
     <string name="settings_trakt_disconnect_description">This will disconnect your Trakt account from Nuvio.</string>
@@ -2251,6 +2276,8 @@
     <string name="tracking_source_simkl">Simkl</string>
     <string name="tracking_watch_progress_dialog_subtitle">Choose the service Nuvio reads for resume and Continue Watching. Scrobbling remains active for every connected service.</string>
     <string name="tracking_watch_progress_simkl_selected">Watch progress source set to Simkl</string>
+    <string name="trailer_enter_fullscreen">Enter fullscreen</string>
+    <string name="trailer_exit_fullscreen">Exit fullscreen</string>
     <string name="trakt_authorization_expired_reconnect">Your Trakt authorization is no longer valid. Reconnect your Trakt account.</string>
     <string name="upcoming_section_title">Upcoming</string>
     <string name="updates_debug_test_complete">Banner test complete</string>
@@ -2260,6 +2287,4 @@
     <string name="watched_confirm_mark_title_unwatched">Mark %1$s as unwatched</string>
     <string name="watched_confirm_mark_title_watched">Mark %1$s as watched</string>
     <string name="watched_confirm_message">This will update watched status.</string>
-    <string name="playback_unavailable">Playback unavailable</string>
-    <string name="playback_unavailable_message">Playback isn’t available for this title with your current setup.</string>
 </resources>

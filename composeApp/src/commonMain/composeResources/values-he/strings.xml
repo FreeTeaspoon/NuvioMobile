@@ -401,7 +401,6 @@
     <string name="settings_tmdb_module_season_posters">פוסטרים לעונה</string>
     <string name="settings_tmdb_module_trailers">טריילרים</string>
     <string name="settings_tmdb_preferred_language">שפה</string>
-    <string name="settings_tmdb_section_credentials">פרטי התחברות</string>
     <string name="settings_tmdb_section_localization">לוקליזציה</string>
     <string name="settings_tmdb_section_modules">מודלים</string>
     <string name="trakt_library_source_title">מקור ספרייה</string>
@@ -977,7 +976,6 @@
     <string name="collections_import_header">Import Collections</string>
     <string name="collections_import_json_placeholder">JSON</string>
     <string name="collections_import_paste_description">Paste your collections JSON below.</string>
-    <string name="collections_tmdb_api_key_required">Add a TMDB API key in Settings to use TMDB sources.</string>
     <string name="collections_tmdb_collection_not_found">TMDB collection not found</string>
     <string name="collections_tmdb_company_not_found">TMDB company not found</string>
     <string name="collections_tmdb_discover_no_data">TMDB discover returned no data</string>
@@ -1128,6 +1126,7 @@
     <string name="debrid_missing_api_key">Connect an account in Settings.</string>
     <string name="debrid_not_cached">Not cached on Torbox.</string>
     <string name="debrid_resolve_failed">Could not open this link.</string>
+    <string name="debrid_resolving_stream">Resolving debrid stream</string>
     <string name="debrid_stream_stale">This link expired. Refreshing results.</string>
     <string name="detail_comments_badge_rating">%1$d/10</string>
     <string name="detail_comments_spoiler_card">This comment contains spoilers.</string>
@@ -1270,6 +1269,10 @@
     <string name="person_something_wrong">Something went wrong</string>
     <string name="pin_backspace">Backspace</string>
     <string name="pin_locked_try_again">Locked. Try again in %1$ds</string>
+    <string name="playback_show_loading_status">Show loading status</string>
+    <string name="playback_show_loading_status_sub">Display step-by-step progress while the player is initializing.</string>
+    <string name="playback_unavailable">Playback unavailable</string>
+    <string name="playback_unavailable_message">Playback isn’t available for this title with your current setup.</string>
     <string name="player_action_submit_intro">Submit Intro</string>
     <string name="player_action_video_settings">Video settings</string>
     <string name="player_addon_subtitle_display_format">%1$s (%2$s)</string>
@@ -1277,7 +1280,7 @@
     <string name="player_error_mpv_unavailable">MPV player engine not available. Please rebuild the app.</string>
     <string name="player_error_unable_to_play_stream">Unable to play this stream.</string>
     <string name="player_external_downloading_subtitles">Downloading subtitles...</string>
-    <string name="player_external_loading_subtitles">Loading subtitles from addons...</string>
+    <string name="player_external_loading_subtitles">Loading subtitles from addons…</string>
     <string name="player_ios_hardware_decoder_off">Off</string>
     <string name="player_ios_preset_compatibility_desc">Closest to the older iOS MPV behavior.</string>
     <string name="player_ios_preset_compatibility_label">Compatibility</string>
@@ -1287,6 +1290,15 @@
     <string name="player_ios_preset_native_edr_label">Native EDR</string>
     <string name="player_ios_preset_sdr_tone_mapped_desc">More predictable whites and blacks on SDR-style output.</string>
     <string name="player_ios_preset_sdr_tone_mapped_label">SDR tone mapped</string>
+    <string name="player_loading_buffering">Buffering…</string>
+    <string name="player_loading_building">Building player…</string>
+    <string name="player_loading_preparing">Preparing stream…</string>
+    <string name="player_loading_starting">Starting stream…</string>
+    <string name="player_loading_subtitles">Fetching subtitles…</string>
+    <string name="player_loading_subtitles_addon">Subtitles: %1$s (%2$d / %3$d)</string>
+    <string name="player_loading_subtitles_from">Fetching subtitles from %1$d addons…</string>
+    <string name="player_loading_subtitles_progress">Fetching subtitles… (%1$d / %2$d)</string>
+    <string name="player_seek_position">Playback position</string>
     <string name="player_torrent_buffered_status">%1$s buffered · %2$s · %3$s</string>
     <string name="player_torrent_connecting_status">%1$s · %2$s · %3$s</string>
     <string name="player_torrent_fetching_metadata">Fetching torrent metadata…</string>
@@ -1314,8 +1326,6 @@
     <string name="plugins_badge_providers">%1$d providers</string>
     <string name="plugins_badge_refreshing">Refreshing</string>
     <string name="plugins_badge_repos">%1$d repos</string>
-    <string name="plugins_badge_tmdb_key_missing">TMDB API key missing</string>
-    <string name="plugins_badge_tmdb_key_set">TMDB API key set</string>
     <string name="plugins_button_install_repo">Install Plugin Repository</string>
     <string name="plugins_button_installing">Installing…</string>
     <string name="plugins_button_test_provider">Test Provider</string>
@@ -1359,7 +1369,6 @@
     <string name="plugins_test_error_title">Error</string>
     <string name="plugins_test_failed">Provider test failed</string>
     <string name="plugins_test_results_count">Test results (%1$d)</string>
-    <string name="plugins_tmdb_required_message">Plugin providers require a TMDB API key. Set it on the TMDB screen or plugin providers will not work correctly.</string>
     <string name="poster_logo_content_description">%1$s logo</string>
     <string name="profile_avatar_options_pending">Avatar options will appear here when the catalog loads.</string>
     <string name="profile_avatar_selected">Avatar: %1$s</string>
@@ -1507,7 +1516,10 @@
     <string name="settings_content_discovery_homescreen_description">Adjust home layout, content visibility, and poster behavior</string>
     <string name="settings_content_discovery_meta_screen_description">Settings for the detail and episode screens.</string>
     <string name="settings_content_discovery_plugins_description">Install JavaScript scraper repositories and test providers internally.</string>
+    <string name="settings_content_discovery_recent_searches">Recent Searches</string>
+    <string name="settings_content_discovery_recent_searches_description">Save recent searches and show them when the search bar is focused.</string>
     <string name="settings_content_discovery_section_home">HOME</string>
+    <string name="settings_content_discovery_section_search">SEARCH</string>
     <string name="settings_content_discovery_section_sources">SOURCES</string>
     <string name="settings_continue_watching_blur_next_up_description">Blur unwatched episode thumbnails in Continue Watching to avoid spoilers.</string>
     <string name="settings_continue_watching_blur_next_up_title">Blur Unwatched in Continue Watching</string>
@@ -1696,6 +1708,9 @@
     <string name="settings_licenses_attributions_exoplayer_body">Used for playback on Android builds.</string>
     <string name="settings_licenses_attributions_exoplayer_license">Licensed under the Apache License, Version 2.0.</string>
     <string name="settings_licenses_attributions_exoplayer_title">AndroidX Media3 ExoPlayer 1.8.0</string>
+    <string name="settings_licenses_attributions_haze_body">Used for background blur effects. Created by Chris Banes.</string>
+    <string name="settings_licenses_attributions_haze_license">Licensed under the Apache License, Version 2.0.</string>
+    <string name="settings_licenses_attributions_haze_title">Haze 1.7.2</string>
     <string name="settings_licenses_attributions_imdb_body">Nuvio uses IMDb Non-Commercial Datasets, including title.ratings.tsv.gz, for IMDb ratings and vote counts. Information courtesy of IMDb (https://www.imdb.com). Used with permission. IMDb data is for personal and non-commercial use under IMDb&apos;s terms.</string>
     <string name="settings_licenses_attributions_imdb_title">IMDb Non-Commercial Datasets</string>
     <string name="settings_licenses_attributions_introdb_body">Nuvio uses the IntroDB API for community-provided intro, recap, credits, and preview timestamps used by skip controls. Nuvio is not affiliated with or endorsed by IntroDB.</string>
@@ -1713,6 +1728,7 @@
     <string name="settings_licenses_attributions_section_app">APP LICENSE</string>
     <string name="settings_licenses_attributions_section_data">DATA &amp; SERVICES</string>
     <string name="settings_licenses_attributions_section_playback">PLAYBACK LICENSE</string>
+    <string name="settings_licenses_attributions_section_ui">UI LIBRARIES</string>
     <string name="settings_licenses_attributions_simkl_body">Nuvio connects to Simkl for account authentication, watchlists, watched history, playback progress, and scrobbling. Movie, TV, and anime tracking data is provided by Simkl. Nuvio is not affiliated with or endorsed by Simkl.</string>
     <string name="settings_licenses_attributions_simkl_title">Simkl</string>
     <string name="settings_licenses_attributions_tmdb_body">Nuvio uses the TMDB API for movie and TV metadata, artwork, trailers, cast, production details, collections, and recommendations. This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
@@ -1768,6 +1784,8 @@
     <string name="settings_meta_none">None</string>
     <string name="settings_meta_overview">Overview</string>
     <string name="settings_meta_overview_description">Synopsis, ratings, genres, and core credits.</string>
+    <string name="settings_meta_poster_transition">Poster Transition</string>
+    <string name="settings_meta_poster_transition_description">Expand and blur posters when opening details.</string>
     <string name="settings_meta_production">Production</string>
     <string name="settings_meta_production_description">Studios and networks.</string>
     <string name="settings_meta_section_appearance">APPEARANCE</string>
@@ -1777,10 +1795,17 @@
     <string name="settings_meta_tab_layout_description">Group sections into tabs like the TV app. Assign up to 3 sections per tab group.</string>
     <string name="settings_meta_trailers">Trailers</string>
     <string name="settings_meta_trailers_description">Trailer rail and playback shortcuts.</string>
+    <string name="settings_nav_bar_glow">Glass glow</string>
+    <string name="settings_nav_bar_glow_description">Adds soft light around the floating bar.</string>
+    <string name="settings_nav_bar_glow_off">Glow off</string>
+    <string name="settings_nav_bar_glow_on">Glow on</string>
+    <string name="settings_nav_bar_preview_hint">Tap the bar to try it. Scroll the preview to try adaptive sizing.</string>
+    <string name="settings_nav_bar_preview_tap_hint">Tap the bar to try it.</string>
     <string name="settings_nav_bar_style_adaptive">Adaptive</string>
     <string name="settings_nav_bar_style_classic">Classic</string>
     <string name="settings_nav_bar_style_compact">Always Compact</string>
     <string name="settings_nav_bar_style_expanded">Always Expanded</string>
+    <string name="settings_nav_bar_summary">%1$s · %2$s</string>
     <string name="settings_notifications_disabled_in_app">Notifications are currently disabled in Nuvio.</string>
     <string name="settings_notifications_episode_release_alerts">Episode release alerts</string>
     <string name="settings_notifications_episode_release_alerts_description">Schedule local notifications when a new episode for a saved show becomes available.</string>
@@ -1892,6 +1917,8 @@
     <string name="settings_playback_option_none">None</string>
     <string name="settings_playback_option_original">Original language</string>
     <string name="settings_playback_option_original_hint">Requires TMDB enrichment to be enabled</string>
+    <string name="settings_playback_pause_overlay">Pause Overlay</string>
+    <string name="settings_playback_pause_overlay_description">Show details overlay after 5 seconds while paused.</string>
     <string name="settings_playback_player_preference_description">Choose which player handles new playback.</string>
     <string name="settings_playback_prefer_binge_group">Prefer Binge Group (Next Episode)</string>
     <string name="settings_playback_prefer_binge_group_description">Try the same source profile first (same addon/quality group) before normal auto-play rules.</string>
@@ -2006,6 +2033,8 @@
     <string name="settings_simkl_sync_info_title">How Simkl syncing works</string>
     <string name="settings_simkl_sync_now">Sync now</string>
     <string name="settings_simkl_visit">Visit Simkl</string>
+    <string name="settings_stream_background_description">Choose the background for the streams screen.</string>
+    <string name="settings_stream_background_title">Background</string>
     <string name="settings_stream_badge_enter_url">Enter a badge JSON URL.</string>
     <string name="settings_stream_badge_import_failed">Badge import failed.</string>
     <string name="settings_stream_badge_import_limit">You can import up to %1$d badge URLs.</string>
@@ -2014,11 +2043,8 @@
     <string name="settings_stream_badge_urls_description">Import up to %1$d Fusion-style stream badge JSON URLs. Each URL can be updated or deleted separately.</string>
     <string name="settings_stream_badge_urls_search_description">Manage imported Fusion-style stream badge JSON URLs.</string>
     <string name="settings_stream_badge_urls_title">Fusion badge URLs</string>
-    <string name="settings_tmdb_add_api_key_first">Add your own TMDB API key below before turning enrichment on.</string>
-    <string name="settings_tmdb_api_key_label">API Key</string>
     <string name="settings_tmdb_enable_enrichment">Enable TMDB Enrichment</string>
     <string name="settings_tmdb_enable_enrichment_description">Use TMDB as a metadata source to enhance addon data</string>
-    <string name="settings_tmdb_enter_api_key">Enter your TMDB v3 API key.</string>
     <string name="settings_tmdb_language_code_label">Language code</string>
     <string name="settings_tmdb_module_artwork">Artwork</string>
     <string name="settings_tmdb_module_artwork_description">Logo and backdrop images from TMDB</string>
@@ -2036,7 +2062,6 @@
     <string name="settings_tmdb_module_release_dates_description">Use TMDB broadcaster air dates instead of precise add-on release times</string>
     <string name="settings_tmdb_module_season_posters_description">Use TMDB season posters in the metadata screen season selector for series.</string>
     <string name="settings_tmdb_module_trailers_description">Trailer candidates from TMDB videos for the detail trailer section</string>
-    <string name="settings_tmdb_personal_api_key">Personal API key</string>
     <string name="settings_tmdb_preferred_language_description">TMDB metadata language for title, logo, and enabled fields</string>
     <string name="settings_tmdb_section_title">TMDB ENRICHMENT</string>
     <string name="settings_tracking_anime_id_dialog_subtitle">This controls how anime series are identified. Choosing MAL or Kitsu gives each season its own entry instead of grouping under one IMDB ID.</string>
@@ -2066,6 +2091,7 @@
     <string name="settings_tracking_tmdb_recommendations_description">Use TMDB recommendations on details pages.</string>
     <string name="settings_tracking_trakt_library_description">Use your Trakt watchlist and personal lists.</string>
     <string name="settings_tracking_trakt_progress_description">Resume with playback progress from Trakt.</string>
+    <string name="settings_tracking_trakt_progress_required">Available when Trakt is the Watch Progress source</string>
     <string name="settings_tracking_trakt_recommendations_description">Use personalized related titles from Trakt.</string>
     <string name="settings_tracking_viewing_discovery">Trakt features</string>
     <string name="settings_trakt_approval_redirect">After approval, you will be redirected back automatically.</string>
@@ -2132,7 +2158,6 @@
     <string name="theme_graphite">Graphite</string>
     <string name="theme_jade">Jade</string>
     <string name="theme_rose_gold">Rose Gold</string>
-    <string name="tmdb_sources_api_key_required">Add a TMDB API key in Settings to use TMDB sources.</string>
     <string name="tmdb_sources_collection_fallback_title">TMDB Collection %1$d</string>
     <string name="tmdb_sources_collection_not_found">TMDB collection not found</string>
     <string name="tmdb_sources_company_fallback_title">TMDB Production %1$d</string>
@@ -2163,6 +2188,8 @@
     <string name="tracking_source_simkl">Simkl</string>
     <string name="tracking_watch_progress_dialog_subtitle">Choose the service Nuvio reads for resume and Continue Watching. Scrobbling remains active for every connected service.</string>
     <string name="tracking_watch_progress_simkl_selected">Watch progress source set to Simkl</string>
+    <string name="trailer_enter_fullscreen">Enter fullscreen</string>
+    <string name="trailer_exit_fullscreen">Exit fullscreen</string>
     <string name="trailer_no_playable_stream">No playable trailer stream found.</string>
     <string name="trailer_season_label">Season %1$d - %2$s</string>
     <string name="trailer_unable_to_play">Unable to play trailer</string>
@@ -2249,6 +2276,4 @@
     <string name="watched_confirm_mark_title_unwatched">Mark %1$s as unwatched</string>
     <string name="watched_confirm_mark_title_watched">Mark %1$s as watched</string>
     <string name="watched_confirm_message">This will update watched status.</string>
-    <string name="playback_unavailable">Playback unavailable</string>
-    <string name="playback_unavailable_message">Playback isn’t available for this title with your current setup.</string>
 </resources>

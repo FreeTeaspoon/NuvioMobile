@@ -7,10 +7,12 @@ git rev-parse --verify "${upstream_ref}^{commit}" >/dev/null
 git rev-parse --verify "${fork_base}^{commit}" >/dev/null
 printf 'upstream=%s fork-base=%s\n' "$(git rev-parse --short "$upstream_ref")" "$(git rev-parse --short "$fork_base")"
 
-python3 - "$upstream_ref" <<'PY'
+python3 - "$upstream_ref" "$fork_base" <<'PY'
 from pathlib import Path
 import subprocess,sys,xml.etree.ElementTree as ET
-upstream=sys.argv[1]
+upstream,fork_base=sys.argv[1:]
+merge_base=subprocess.check_output(['git','merge-base',upstream,fork_base],text=True).strip()
+print(f'Merge base: {merge_base}')
 paths=[p for p in Path('scripts/upstream-equivalent-paths.txt').read_text().splitlines() if p and not p.startswith('#')]
 failed=[]
 for path in paths:
@@ -31,6 +33,16 @@ default=keys(resources/'values/strings.xml')
 for path in sorted(resources.glob('values-*/strings.xml')):
     assert keys(path)==default,f'Locale keys differ: {path}'
 print('Locale keys PASSED')
+fork_changed=set(subprocess.check_output(
+    ['git','diff','--name-only',merge_base,fork_base],text=True,
+).splitlines())
+deleted=subprocess.check_output(
+    ['git','diff','--name-only','--diff-filter=D','--find-renames',fork_base,'--',':!supabase/.temp/**'],text=True,
+).splitlines()
+lost_fork_paths=sorted(fork_changed.intersection(deleted))
+if lost_fork_paths:
+    sys.exit('Fork baseline files deleted without a detected rename:\n'+'\n'.join(lost_fork_paths))
+print(f'Fork baseline deletion check PASSED: {len(fork_changed)} changed paths reviewed')
 PY
 
 check() {

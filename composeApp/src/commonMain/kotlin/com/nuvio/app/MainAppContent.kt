@@ -46,6 +46,9 @@ import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import com.nuvio.app.navigation.nuvioPushTransition
 import com.nuvio.app.navigation.nuvioPopTransition
+import com.nuvio.app.core.ui.LocalPosterClickAnchor
+import com.nuvio.app.navigation.PosterNavigationState
+import com.nuvio.app.navigation.posterNavigationEntry
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.auth.DeviceSessionRegistration
@@ -94,7 +97,9 @@ import com.nuvio.app.features.cloud.providerPosterUrl
 import com.nuvio.app.features.collection.CollectionRepository
 import com.nuvio.app.features.collection.CollectionSyncService
 import com.nuvio.app.features.details.MetaDetailsRepository
+import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.downloads.DownloadItem
+import com.nuvio.app.features.downloads.DownloadSubtitles
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
@@ -124,6 +129,8 @@ import com.nuvio.app.features.player.PlayerPlaybackSnapshot
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.SubtitleLanguageOption
 import com.nuvio.app.features.player.prepareExternalPlayerLaunch
+import com.nuvio.app.features.player.LockPlayerToLandscape
+import com.nuvio.app.features.player.HidePlayerSystemBars
 import com.nuvio.app.features.player.rememberExternalPlayerLauncher
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.settings.AccountSettingsScreen
@@ -197,17 +204,26 @@ internal fun MainAppContent(
     onSwitchProfile: () -> Unit = {},
 ) {
         val navBackStack = rememberNavBackStack(navigationSavedStateConfiguration, initialRoute)
+        val posterNavigation = remember { PosterNavigationState() }
+        val metaScreenSettings by remember {
+            MetaScreenSettingsRepository.ensureLoaded()
+            MetaScreenSettingsRepository.uiState
+        }.collectAsStateWithLifecycle()
+        val posterNavigationEnabled = supportsPosterNavigationMotion &&
+            metaScreenSettings.posterTransitionEnabled && onNavigate == null
         val routeDisposalDecorator = remember {
             RouteDisposalNavEntryDecorator<NavKey> { key ->
                 if (key is AppRoute) disposeRoute(key)
             }
         }
-        val navController = remember(navBackStack, onNavigate, onGoBack, onReplace) {
+        val navController = remember(navBackStack, onNavigate, onGoBack, onReplace, posterNavigationEnabled) {
             NuvioNavigator(
                 backStack = navBackStack,
                 onExternalNavigate = onNavigate,
                 onExternalBack = onGoBack,
                 onExternalReplace = onReplace,
+                onLocalNavigate = if (posterNavigationEnabled) posterNavigation::navigate else null,
+                onLocalPop = if (posterNavigationEnabled) posterNavigation::clear else null,
             )
         }
         val appUpdaterController = rememberAppUpdaterController()
@@ -234,6 +250,18 @@ internal fun MainAppContent(
         val libraryScrollToTopRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
         val settingsRootActionRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
         val currentRoute = navBackStack.lastOrNull() as? AppRoute
+        LaunchedEffect(currentRoute, posterNavigationEnabled) {
+            val request = posterNavigation.active
+            if (!posterNavigationEnabled || (request != null && currentRoute != request.to)) posterNavigation.clear()
+        }
+        LaunchedEffect(posterNavigation.active?.to) {
+            posterNavigation.active?.to?.let { route ->
+                MetaDetailsRepository.load(route.type, route.id)
+            }
+        }
+        DisposableEffect(posterNavigation) {
+            onDispose { posterNavigation.clear() }
+        }
         val liquidGlassNativeTabBarEnabled by remember {
             ThemeSettingsRepository.liquidGlassNativeTabBarEnabled
         }.collectAsStateWithLifecycle()
@@ -280,6 +308,11 @@ internal fun MainAppContent(
         PlayerSettingsRepository.ensureLoaded()
         PlayerSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
+    var streamLandscapeLoadingVisible by remember(currentRoute) { mutableStateOf(false) }
+    if (currentRoute is PlayerRoute || streamLandscapeLoadingVisible) {
+        LockPlayerToLandscape()
+        HidePlayerSystemBars()
+    }
     val p2pSettingsUiState by remember {
         P2pSettingsRepository.ensureLoaded()
         P2pSettingsRepository.uiState
@@ -807,7 +840,7 @@ internal fun MainAppContent(
                 sendSkipSegments = shouldSendSkipSegments,
                 preferredLanguage = playerSettingsUiState.preferredSubtitleLanguage,
                 secondaryLanguage = playerSettingsUiState.secondaryPreferredSubtitleLanguage,
-                onOverlayMessage = { _ -> },
+                onOverlayMessage = { message -> StreamsRepository.setOverlayVisible(true, message) },
             )
             StreamsRepository.setOverlayVisible(false)
             return when (
@@ -847,7 +880,7 @@ internal fun MainAppContent(
                 sourceUrl = sourceUrl,
                 sourceHeaders = emptyMap(),
                 sourceResponseHeaders = emptyMap(),
-                externalSubtitles = emptyList(),
+                externalSubtitles = DownloadSubtitles.localSubtitles(sourceUrl),
                 streamType = null,
                 logo = item.logo,
                 poster = item.poster,
@@ -969,7 +1002,7 @@ internal fun MainAppContent(
                         sourceUrl = localSourceUrl,
                         sourceHeaders = emptyMap(),
                         sourceResponseHeaders = emptyMap(),
-                        externalSubtitles = emptyList(),
+                        externalSubtitles = DownloadSubtitles.localSubtitles(localSourceUrl),
                         logo = logo,
                         poster = poster,
                         background = background,
@@ -1256,6 +1289,7 @@ internal fun MainAppContent(
             ) {
             SharedTransitionLayout {
                 CompositionLocalProvider(
+                    LocalPosterClickAnchor provides if (posterNavigationEnabled) posterNavigation::prepare else null,
                     LocalUseNativeNavigation provides useNativeNavigation,
                     LocalNativeNavigationBarHidden provides (currentRoute?.hidesNavigationBar == true),
                 ) {
@@ -1469,6 +1503,9 @@ internal fun MainAppContent(
                 entry<StreamRoute> { route ->
                     StreamDestination(
                         route = route,
+                        onLandscapeLoadingChanged = { visible ->
+                            if (currentRoute == route) streamLandscapeLoadingVisible = visible
+                        },
                         navController = navController,
                         p2pEnabled = p2pSettingsUiState.p2pEnabled,
                         openExternalPlayback = ::openExternalPlayback,
@@ -1599,7 +1636,11 @@ internal fun MainAppContent(
                         { key ->
                             routeDisposalDecorator.register(
                                 key = key,
-                                entry = provider(key),
+                                entry = if (posterNavigationEnabled) {
+                                    posterNavigationEntry(key, provider(key), posterNavigation)
+                                } else {
+                                    provider(key)
+                                },
                             )
                         }
                     },

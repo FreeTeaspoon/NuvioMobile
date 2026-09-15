@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class PlayerSurfaceGesturesTest {
+class HorizontalSeekDeadZoneTest {
     @Test
     fun horizontalSeekUsesMiddleEightyPercentAndLeavesOuterEdgesDead() {
         val width = 100f

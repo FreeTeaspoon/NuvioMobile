@@ -4,7 +4,6 @@ import com.nuvio.app.core.build.AppFeaturePolicy
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -49,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.AppTheme
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.NuvioScreen
+import com.nuvio.app.core.ui.ScreenBox
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.PlatformBackHandler
 import com.nuvio.app.core.ui.isLiquidGlassNativeTabBarSupported
@@ -141,7 +141,7 @@ fun SettingsScreen(
     onTestUpdateBannerClick: (() -> Unit)? = null,
     onCollectionsClick: () -> Unit = {},
 ) {
-    BoxWithConstraints(
+    ScreenBox(
         modifier = modifier.fillMaxSize(),
     ) {
         val playerSettingsUiState by remember {
@@ -612,16 +612,6 @@ private fun MobileSettingsScreen(
                 hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             }
         }
-        val searchEntries = settingsSearchEntries(
-            pluginsEnabled = AppFeaturePolicy.pluginsEnabled,
-            supportersContributorsPageEnabled = AppFeaturePolicy.supportersContributorsPageEnabled,
-            accountDeletionEnabled = AppFeaturePolicy.accountDeletionEnabled,
-            personalMediaAddonCopyEnabled = AppFeaturePolicy.personalMediaAddonCopyEnabled,
-            liquidGlassNativeTabBarSupported = liquidGlassNativeTabBarSupported,
-            switchProfileAvailable = onSwitchProfile != null,
-            checkForUpdatesAvailable = onCheckForUpdatesClick != null,
-        )
-
         fun openSearchTarget(target: SettingsSearchTarget) {
             when (target) {
                 is SettingsSearchTarget.Page -> when (target.page) {
@@ -683,7 +673,18 @@ private fun MobileSettingsScreen(
                 SettingsPage.Root -> {
                     settingsSearchRootContent(
                         query = settingsSearchQuery,
-                        entries = searchEntries,
+                        entries = {
+                            settingsSearchEntries(
+                                isTablet = false,
+                                pluginsEnabled = AppFeaturePolicy.pluginsEnabled,
+                                supportersContributorsPageEnabled = AppFeaturePolicy.supportersContributorsPageEnabled,
+                                accountDeletionEnabled = AppFeaturePolicy.accountDeletionEnabled,
+                                personalMediaAddonCopyEnabled = AppFeaturePolicy.personalMediaAddonCopyEnabled,
+                                liquidGlassNativeTabBarSupported = liquidGlassNativeTabBarSupported,
+                                switchProfileAvailable = onSwitchProfile != null,
+                                checkForUpdatesAvailable = onCheckForUpdatesClick != null,
+                            )
+                        },
                         isTablet = false,
                         showSearchField = rootSearchVisible,
                         animateSearchField = rootSearchRevealAnimating,
@@ -1022,16 +1023,6 @@ private fun TabletSettingsScreen(
             var rootSearchRevealAnimating by rememberSaveable { mutableStateOf(false) }
             val hapticFeedback = LocalHapticFeedback.current
             val hapticScope = rememberCoroutineScope()
-            val searchEntries = settingsSearchEntries(
-                pluginsEnabled = AppFeaturePolicy.pluginsEnabled,
-                supportersContributorsPageEnabled = AppFeaturePolicy.supportersContributorsPageEnabled,
-                accountDeletionEnabled = AppFeaturePolicy.accountDeletionEnabled,
-                personalMediaAddonCopyEnabled = AppFeaturePolicy.personalMediaAddonCopyEnabled,
-                liquidGlassNativeTabBarSupported = liquidGlassNativeTabBarSupported,
-                switchProfileAvailable = onSwitchProfile != null,
-                checkForUpdatesAvailable = onCheckForUpdatesClick != null,
-            )
-
             fun openSearchTarget(target: SettingsSearchTarget) {
                 when (target) {
                     is SettingsSearchTarget.Page -> {
@@ -1107,7 +1098,18 @@ private fun TabletSettingsScreen(
                     SettingsPage.Root -> {
                         settingsSearchRootContent(
                             query = settingsSearchQuery,
-                            entries = searchEntries,
+                            entries = {
+                                settingsSearchEntries(
+                                    isTablet = true,
+                                    pluginsEnabled = AppFeaturePolicy.pluginsEnabled,
+                                    supportersContributorsPageEnabled = AppFeaturePolicy.supportersContributorsPageEnabled,
+                                    accountDeletionEnabled = AppFeaturePolicy.accountDeletionEnabled,
+                                    personalMediaAddonCopyEnabled = AppFeaturePolicy.personalMediaAddonCopyEnabled,
+                                    liquidGlassNativeTabBarSupported = liquidGlassNativeTabBarSupported,
+                                    switchProfileAvailable = onSwitchProfile != null,
+                                    checkForUpdatesAvailable = onCheckForUpdatesClick != null,
+                                )
+                            },
                             isTablet = true,
                             showSearchField = rootSearchVisible,
                             animateSearchField = rootSearchRevealAnimating,

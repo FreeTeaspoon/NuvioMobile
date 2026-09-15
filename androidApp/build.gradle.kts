@@ -128,6 +128,10 @@ android {
         }
     }
 
+    androidResources {
+        noCompress += "cvr"
+    }
+
     splits {
         abi {
             isEnable = releaseAbiSplitEnabled.get()
@@ -142,8 +146,11 @@ android {
             applicationIdSuffix = ".dev"
         }
         getByName("release") {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            val minifyRelease = providers.gradleProperty("releaseMinifyEnabled")
+                .map(String::toBooleanStrict)
+                .getOrElse(true)
+            isMinifyEnabled = minifyRelease
+            isShrinkResources = minifyRelease
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "../composeApp/proguard-rules.pro",

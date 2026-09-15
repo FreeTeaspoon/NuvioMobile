@@ -10,6 +10,19 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ### Fixed
 
+## 0.4.20.1
+
+### Changed
+
+- Updated to upstream 0.4.20, including poster transitions, navigation glow controls, fullscreen trailers, player loading options, bundled download subtitles, and plugin runtime improvements.
+- Kept video zoom, custom playback speed, buffered seeking, download recovery and live speeds, watched confirmations, rating links, backups, and predictive back navigation.
+
+### Fixed
+
+- The shared player and trailer seek control commits the latest scrub position while playback catches up.
+- Backups preserve the recent-searches preference.
+- Release builds include the configured Simkl credentials.
+
 ## 0.4.15.2
 
 ### Changed

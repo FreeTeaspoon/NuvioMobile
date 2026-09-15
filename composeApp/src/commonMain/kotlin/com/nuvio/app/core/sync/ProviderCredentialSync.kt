@@ -12,8 +12,6 @@ import com.nuvio.app.features.mdblist.MdbListSettingsRepository
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.PlayerSettingsUiState
 import com.nuvio.app.features.profiles.ProfileRepository
-import com.nuvio.app.features.tmdb.TmdbSettings
-import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.atomicfu.locks.SynchronizedObject
@@ -49,7 +47,6 @@ object ProviderCredentialSync {
     private val stateLock = SynchronizedObject()
     private val observedSnapshots = mutableMapOf<Int, ProviderCredentialSnapshot>()
     private val baselineSnapshots = mutableMapOf<ProviderCredentialScope, ProviderCredentialSnapshot>()
-    private val pendingScopes = mutableSetOf<ProviderCredentialScope>()
     private var observeJob: Job? = null
     private var isApplyingRemote = false
 
@@ -71,7 +68,20 @@ object ProviderCredentialSync {
         synchronized(stateLock) {
             observedSnapshots.clear()
             baselineSnapshots.clear()
-            pendingScopes.clear()
+        }
+    }
+
+    internal fun onProfileChanged() {
+        if (observeJob?.isActive != true) return
+        ensureRepositoriesLoaded()
+        val profileId = ProfileRepository.activeProfileId
+        val snapshot = currentSnapshot(profileId)
+        val credentialScope = currentScope(profileId)
+        synchronized(stateLock) {
+            observedSnapshots[profileId] = snapshot
+            if (credentialScope != null) {
+                baselineSnapshots[credentialScope] = snapshot
+            }
         }
     }
 
@@ -80,24 +90,7 @@ object ProviderCredentialSync {
         val credentialScope = currentScope(profileId) ?: return@withLock false
         try {
             val localSnapshot = currentSnapshot(profileId)
-            val shouldPush = synchronized(stateLock) {
-                val baseline = baselineSnapshots.getOrPut(credentialScope) {
-                    observedSnapshots[profileId] ?: localSnapshot
-                }
-                credentialScope in pendingScopes || baseline != localSnapshot
-            }
-            if (shouldPush) {
-                pushSnapshot(localSnapshot)
-                synchronized(stateLock) {
-                    baselineSnapshots[credentialScope] = localSnapshot
-                    pendingScopes.remove(credentialScope)
-                }
-            }
-
             val rows = pullRows(profileId)
-            if (shouldSeedProviderCredentials(localSnapshot, rows)) {
-                seedSnapshot(localSnapshot)
-            }
             requireCurrentScope(credentialScope)
             val remoteSnapshot = localSnapshot.mergeRemote(rows)
             val applied = remoteSnapshot != localSnapshot
@@ -113,7 +106,6 @@ object ProviderCredentialSync {
             synchronized(stateLock) {
                 observedSnapshots[profileId] = remoteSnapshot
                 baselineSnapshots[credentialScope] = remoteSnapshot
-                pendingScopes.remove(credentialScope)
             }
             log.d { "Synchronized ${remoteSnapshot.values.size} credentials for profile $profileId applied=$applied" }
             applied
@@ -124,13 +116,6 @@ object ProviderCredentialSync {
             log.e(error) { "Provider credential sync failed for profile $profileId" }
             throw error
         }
-    }
-
-    private suspend fun seedSnapshot(snapshot: ProviderCredentialSnapshot) {
-        SupabaseProvider.client.postgrest.rpc(
-            function = "sync_seed_provider_credentials",
-            parameters = credentialParams(snapshot),
-        )
     }
 
     private suspend fun pushSnapshot(snapshot: ProviderCredentialSnapshot) {
@@ -166,14 +151,12 @@ object ProviderCredentialSync {
     private fun observeCredentialSnapshots() = combine(
         ProfileRepository.state,
         DebridSettingsRepository.uiState,
-        TmdbSettingsRepository.uiState,
         MdbListSettingsRepository.uiState,
         PlayerSettingsRepository.uiState,
-    ) { _, debrid, tmdb, mdbList, player ->
+    ) { _, debrid, mdbList, player ->
         buildSnapshot(
             profileId = ProfileRepository.activeProfileId,
             debrid = debrid,
-            tmdb = tmdb,
             mdbList = mdbList,
             player = player,
         )
@@ -184,7 +167,6 @@ object ProviderCredentialSync {
         val snapshot = buildSnapshot(
             profileId = profileId,
             debrid = DebridSettingsRepository.snapshot(),
-            tmdb = TmdbSettingsRepository.snapshot(),
             mdbList = MdbListSettingsRepository.snapshot(),
             player = PlayerSettingsRepository.uiState.value,
         )
@@ -195,7 +177,6 @@ object ProviderCredentialSync {
     private fun buildSnapshot(
         profileId: Int,
         debrid: DebridSettings,
-        tmdb: TmdbSettings,
         mdbList: MdbListSettings,
         player: PlayerSettingsUiState,
     ): ProviderCredentialSnapshot = ProviderCredentialSnapshot(
@@ -210,7 +191,6 @@ object ProviderCredentialSync {
                     ),
                 )
             }
-            add(ProviderCredentialValue(ProviderCredentialIds.TMDB, PROVIDER_API_KEY_FIELD, tmdb.apiKey.trim()))
             add(ProviderCredentialValue(ProviderCredentialIds.MDBLIST, PROVIDER_API_KEY_FIELD, mdbList.apiKey.trim()))
             add(
                 ProviderCredentialValue(
@@ -242,9 +222,6 @@ object ProviderCredentialSync {
                         credential.value,
                     )
                 }
-                credential.provider == ProviderCredentialIds.TMDB -> {
-                    TmdbSettingsRepository.setApiKey(credential.value)
-                }
                 credential.provider == ProviderCredentialIds.MDBLIST -> {
                     MdbListSettingsRepository.setApiKey(credential.value)
                 }
@@ -261,6 +238,8 @@ object ProviderCredentialSync {
     private suspend fun handleLocalSnapshot(snapshot: ProviderCredentialSnapshot) {
         if (isApplyingRemote) return
         syncMutex.withLock {
+            if (ProfileRepository.activeProfileId != snapshot.profileId) return@withLock
+            if (snapshot != currentSnapshot(snapshot.profileId)) return@withLock
             val previous = synchronized(stateLock) {
                 observedSnapshots.put(snapshot.profileId, snapshot)
             }
@@ -283,14 +262,10 @@ object ProviderCredentialSync {
                 pushSnapshot(snapshot)
                 synchronized(stateLock) {
                     baselineSnapshots[credentialScope] = snapshot
-                    pendingScopes.remove(credentialScope)
                 }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Throwable) {
-                synchronized(stateLock) {
-                    pendingScopes.add(credentialScope)
-                }
                 AuthRepository.signOutIfSessionInvalid(error, "Provider credential push")
                 log.e(error) { "Failed to push provider credentials for profile ${snapshot.profileId}" }
             }
@@ -311,7 +286,6 @@ object ProviderCredentialSync {
 
     private fun ensureRepositoriesLoaded() {
         DebridSettingsRepository.ensureLoaded()
-        TmdbSettingsRepository.ensureLoaded()
         MdbListSettingsRepository.ensureLoaded()
         PlayerSettingsRepository.ensureLoaded()
     }
