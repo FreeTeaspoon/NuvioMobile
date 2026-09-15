@@ -2296,4 +2296,7 @@
     <string name="watched_confirm_mark_title_unwatched">Mark %1$s as unwatched</string>
     <string name="watched_confirm_mark_title_watched">Mark %1$s as watched</string>
     <string name="watched_confirm_message">This will update watched status.</string>
+    <string name="profile_already_active">You&apos;re already on &quot;%1$s&quot;</string>
+    <string name="settings_tracking_anime_id_tvdb">Prefer TVDB</string>
+    <string name="settings_tracking_anime_id_tvdb_description">Use TVDB ID to group seasons. More stable than IMDB for anime with per-season IMDB splits.</string>
 </resources>

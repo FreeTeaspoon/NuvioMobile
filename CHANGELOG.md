@@ -10,11 +10,12 @@ Release notes are written for users first. Keep entries short, concrete, and gro
 
 ### Fixed
 
-## 0.4.20.1
+## 0.4.21.1
 
 ### Changed
 
-- Updated to upstream 0.4.20, including poster transitions, navigation glow controls, fullscreen trailers, player loading options, bundled download subtitles, and plugin runtime improvements.
+- Updated to upstream 0.4.21, including poster transitions, navigation glow controls, fullscreen trailers, player loading options, bundled download subtitles, and plugin runtime improvements.
+- Adopted faster root tab switching, playback startup without waiting for addon subtitles, and the Android player exit orientation fix.
 - Kept video zoom, custom playback speed, buffered seeking, download recovery and live speeds, watched confirmations, rating links, backups, and predictive back navigation.
 
 ### Fixed

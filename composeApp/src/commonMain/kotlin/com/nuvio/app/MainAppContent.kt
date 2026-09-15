@@ -24,11 +24,13 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -308,8 +310,9 @@ internal fun MainAppContent(
         PlayerSettingsRepository.ensureLoaded()
         PlayerSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
+    var visiblePlayerEntries by remember { mutableIntStateOf(0) }
     var streamLandscapeLoadingVisible by remember(currentRoute) { mutableStateOf(false) }
-    if (currentRoute is PlayerRoute || streamLandscapeLoadingVisible) {
+    if (currentRoute is PlayerRoute || visiblePlayerEntries > 0 || streamLandscapeLoadingVisible) {
         LockPlayerToLandscape()
         HidePlayerSystemBars()
     }
@@ -413,8 +416,9 @@ internal fun MainAppContent(
         liquidGlassNativeTabBarSupported,
         liquidGlassNativeTabBarEnabled,
         useNativeNavigation,
+        onActivate,
+        initialTab,
         currentRoute,
-        selectedTab,
     ) {
         NativeTabBridge.requestedTabs.collectLatest { requestedTab ->
             val requestedAppTab = requestedTab.toAppScreenTab()
@@ -459,10 +463,12 @@ internal fun MainAppContent(
         )
     }
 
-    LaunchedEffect(selectedTab) {
-        NativeTabBridge.publishSelectedTab(selectedTab.toNativeNavigationTab())
-        if (selectedTab != AppScreenTab.Search) {
-            searchFocusRequestCount = 0
+    LaunchedEffect(initialTab) {
+        snapshotFlow { selectedTab }.collectLatest { tab ->
+            NativeTabBridge.publishSelectedTab(tab.toNativeNavigationTab())
+            if (tab != AppScreenTab.Search) {
+                searchFocusRequestCount = 0
+            }
         }
     }
 
@@ -1316,22 +1322,41 @@ internal fun MainAppContent(
                         useNativeTabBar = useNativeTabBar,
                         liquidGlassNativeTabBarSupported = liquidGlassNativeTabBarSupported,
                         liquidGlassNativeTabBarEnabled = liquidGlassNativeTabBarEnabled,
-                        requests = AppTabRequests(
-                            homeScrollToTopRequests = homeScrollToTopRequests,
-                            searchScrollToTopRequests = searchScrollToTopRequests,
-                            libraryScrollToTopRequests = libraryScrollToTopRequests,
-                            settingsRootActionRequests = settingsRootActionRequests,
-                        ),
-                        state = AppTabState(
-                            searchListState = searchListState,
-                            homeContentGeneration = appContentGeneration,
-                            searchFocusRequestCount = searchFocusRequestCount,
-                            rootActionsEnabled = currentRoute is TabsRoute,
-                            animateHomeCollectionGifs = currentRoute is TabsRoute,
-                            libraryDisintegrationRequest = libraryDisintegrationRequests.current,
-                            continueWatchingDisintegrationRequest = continueWatchingDisintegrationRequests.current,
-                            requestedSettingsPageName = requestedSettingsPageName,
-                        ),
+                        requests = remember(
+                            homeScrollToTopRequests,
+                            searchScrollToTopRequests,
+                            libraryScrollToTopRequests,
+                            settingsRootActionRequests,
+                        ) {
+                            AppTabRequests(
+                                homeScrollToTopRequests = homeScrollToTopRequests,
+                                searchScrollToTopRequests = searchScrollToTopRequests,
+                                libraryScrollToTopRequests = libraryScrollToTopRequests,
+                                settingsRootActionRequests = settingsRootActionRequests,
+                            )
+                        },
+                        state = remember(
+                            searchListState,
+                            appContentGeneration,
+                            profileState.activeProfile?.profileIndex,
+                            searchFocusRequestCount,
+                            currentRoute is TabsRoute,
+                            libraryDisintegrationRequests.current,
+                            continueWatchingDisintegrationRequests.current,
+                            requestedSettingsPageName,
+                        ) {
+                            AppTabState(
+                                searchListState = searchListState,
+                                homeContentGeneration = appContentGeneration,
+                                profileId = profileState.activeProfile?.profileIndex,
+                                searchFocusRequestCount = searchFocusRequestCount,
+                                rootActionsEnabled = currentRoute is TabsRoute,
+                                animateHomeCollectionGifs = currentRoute is TabsRoute,
+                                libraryDisintegrationRequest = libraryDisintegrationRequests.current,
+                                continueWatchingDisintegrationRequest = continueWatchingDisintegrationRequests.current,
+                                requestedSettingsPageName = requestedSettingsPageName,
+                            )
+                        },
                         actions = { isTabletLayout ->
                             AppTabActions(
                                 onCatalogClick = onCatalogClick,
@@ -1470,11 +1495,13 @@ internal fun MainAppContent(
                         },
                         onTabSelected = ::handleRootTabClick,
                         onProfileSelected = { profile ->
-                            profileSwitchLoading = true
-                            NativeTabBridge.publishTabBarVisible(false)
-                            activateTab(AppScreenTab.Home)
-                            ProfileRepository.selectProfile(profile.profileIndex)
-                            SyncManager.pullAllForProfile(profile.profileIndex)
+                            if (profile.profileIndex != ProfileRepository.state.value.activeProfile?.profileIndex) {
+                                profileSwitchLoading = true
+                                NativeTabBridge.publishTabBarVisible(false)
+                                activateTab(AppScreenTab.Home)
+                                ProfileRepository.selectProfile(profile.profileIndex)
+                                SyncManager.pullAllForProfile(profile.profileIndex)
+                            }
                         },
                         onAddProfileRequested = onSwitchProfile,
                     )
@@ -1513,6 +1540,12 @@ internal fun MainAppContent(
                     )
                 }
                 entry<PlayerRoute> { route ->
+                    if (!isIos) {
+                        DisposableEffect(route) {
+                            visiblePlayerEntries += 1
+                            onDispose { visiblePlayerEntries -= 1 }
+                        }
+                    }
                     PlayerDestination(
                         route = route,
                         navController = navController,
