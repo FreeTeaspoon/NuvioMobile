@@ -144,6 +144,8 @@ jobs:
 
       - name: Set up Android SDK for official APK metadata
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Sync official release source and version
         id: sync_source
@@ -300,6 +302,8 @@ jobs:
       - name: Set up Android SDK
         if: steps.existing_release.outputs.skip != 'true'
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Install Android SDK platform
         if: steps.existing_release.outputs.skip != 'true'
