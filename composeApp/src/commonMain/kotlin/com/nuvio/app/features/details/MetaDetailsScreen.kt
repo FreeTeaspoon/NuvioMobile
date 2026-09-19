@@ -110,6 +110,7 @@ import com.nuvio.app.features.details.components.EpisodeWatchedActionSheet
 import com.nuvio.app.features.details.components.SeasonWatchedActionSheet
 import com.nuvio.app.features.details.components.TrailerPlayerPopup
 import com.nuvio.app.features.home.MetaPreview
+import com.nuvio.app.features.mdblist.MdbListSettingsRepository
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.library.PendingTrackingMembershipRemoval
 import com.nuvio.app.features.library.TrackingMembershipRemovalConfirmationHost
@@ -182,6 +183,10 @@ fun MetaDetailsScreen(
     val metaScreenSettingsUiState by remember {
         MetaScreenSettingsRepository.ensureLoaded()
         MetaScreenSettingsRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val mdbListSettings by remember {
+        MdbListSettingsRepository.ensureLoaded()
+        MdbListSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
     val traktAuthUiState by remember {
         TraktAuthRepository.ensureLoaded()
@@ -336,7 +341,16 @@ fun MetaDetailsScreen(
         isCommentsLoading = false
     }
 
-    LaunchedEffect(displayedMeta?.id, displayedMeta?.videos, deferredMetaWorkAllowed) {
+    LaunchedEffect(
+        displayedMeta?.id,
+        displayedMeta?.videos,
+        deferredMetaWorkAllowed,
+        metaScreenSettingsUiState.episodeRatingsVisibility,
+    ) {
+        if (!metaScreenSettingsUiState.episodeRatingsVisibility.showRatings) {
+            episodeImdbRatings = emptyMap()
+            return@LaunchedEffect
+        }
         val metaForRatings = displayedMeta
         if (!deferredMetaWorkAllowed) return@LaunchedEffect
         if (metaForRatings == null || !metaForRatings.isSeriesLikeForEpisodeRatings()) {
@@ -344,11 +358,11 @@ fun MetaDetailsScreen(
             return@LaunchedEffect
         }
 
-        val imdbId = extractImdbId(metaForRatings.id) ?: extractImdbId(id)
+        val imdbId = extractImdbId(metaForRatings.id) ?: extractImdbId(id) ?: metaForRatings.imdbId
         val tmdbId = extractTmdbId(metaForRatings.id)
             ?: extractTmdbId(id)
-            ?: TmdbService.ensureTmdbId(metaForRatings.id, metaForRatings.type)?.toIntOrNull()
-            ?: TmdbService.ensureTmdbId(id, type)?.toIntOrNull()
+            ?: TmdbService.ensureTmdbId(metaForRatings.id, metaForRatings.type, fallbackImdbId = metaForRatings.imdbId)?.toIntOrNull()
+            ?: TmdbService.ensureTmdbId(id, type, fallbackImdbId = metaForRatings.imdbId)?.toIntOrNull()
 
         if (imdbId == null && tmdbId == null) {
             episodeImdbRatings = emptyMap()
@@ -1092,6 +1106,7 @@ fun MetaDetailsScreen(
 
                                 configuredMetaSectionItems(
                                     settings = metaScreenSettingsUiState,
+                                    isMdbListActive = mdbListSettings.enabled && mdbListSettings.hasApiKey,
                                     meta = meta,
                                     isTablet = isTablet,
                                     contentHorizontalPadding = contentHorizontalPadding,
@@ -1855,6 +1870,7 @@ private fun MetaDetails.toMetaPreview(): MetaPreview =
 
 private fun LazyListScope.configuredMetaSectionItems(
     settings: MetaScreenSettingsUiState,
+    isMdbListActive: Boolean,
     meta: MetaDetails,
     isTablet: Boolean,
     contentHorizontalPadding: Dp,
@@ -1938,6 +1954,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                         items = sectionItems,
                         tabLayout = forceTabLayout,
                     ),
+                    isMdbListActive = isMdbListActive,
                     meta = meta,
                     isTablet = isTablet,
                     horizontalScrollPadding = contentHorizontalPadding,
@@ -2031,6 +2048,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                     progressByVideoId = progressByVideoId,
                     watchedKeys = watchedKeys,
                     episodeRatings = episodeImdbRatings,
+                    episodeRatingsVisibility = settings.episodeRatingsVisibility,
                     blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                     onEpisodeClick = onEpisodeClick,
                     onEpisodeLongPress = onEpisodeLongPress,
@@ -2163,6 +2181,7 @@ private fun metaSectionHasContent(
 @OptIn(ExperimentalSharedTransitionApi::class)
 private fun ConfiguredMetaSections(
     settings: MetaScreenSettingsUiState,
+    isMdbListActive: Boolean,
     meta: MetaDetails,
     isTablet: Boolean,
     horizontalScrollPadding: Dp,
@@ -2273,6 +2292,8 @@ private fun ConfiguredMetaSections(
             MetaScreenSectionKey.OVERVIEW -> {
                 DetailMetaInfo(
                     meta = meta,
+                    showOverallRatings = settings.showOverallRatings,
+                    isMdbListActive = isMdbListActive,
                     horizontalScrollPadding = horizontalScrollPadding,
                 )
             }
@@ -2329,6 +2350,7 @@ private fun ConfiguredMetaSections(
                         progressByVideoId = progressByVideoId,
                         watchedKeys = watchedKeys,
                         episodeRatings = episodeImdbRatings,
+                        episodeRatingsVisibility = settings.episodeRatingsVisibility,
                         blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                         onEpisodeClick = onEpisodeClick,
                         onEpisodeLongPress = onEpisodeLongPress,

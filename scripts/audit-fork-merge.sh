@@ -60,6 +60,8 @@ check 'upstream loading indicator' 'NuvioLoadingIndicator' "$common/core/ui/Load
 check 'upstream custom themes' 'AppearanceThemePicker' "$common/features/settings/AppearanceSettingsPage.kt"
 check 'zoom modal host' 'VideoZoomModal\(' "$common/features/player/PlayerScreenModalHosts.kt"
 check 'zoom runtime binding' 'BindVideoZoom\(' "$common/features/player/PlayerScreenRuntimeUi.kt"
+check 'new player controls zoom callback' 'onVideoZoomClick = onVideoZoomClick' "$common/features/player/PlayerControls.kt"
+check 'new player controls zoom action' 'compose_player_video_zoom\), onVideoZoomClick' "$common/features/player/PlayerControlActions.kt"
 check 'Media3 zoom wiring' 'applyVideoZoom\(videoZoom\)' "$android/features/player/PlayerEngine.android.kt"
 check 'MPV zoom wiring' 'setPropertyDouble\("video-zoom"' "$android/features/player/PlayerEngine.android.kt"
 check 'zoom persistence' 'VideoZoomStorage.save' "$common/features/player/RememberedVideoZoom.kt"
@@ -76,7 +78,7 @@ check 'backup UI' 'BackupRepository' "$common/features/settings/AccountSettingsP
 check 'watched confirmations' 'WatchedConfirmationAction' "$common/features/details/MetaDetailsScreen.kt"
 check 'rating links' 'buildRatingProviderUrl' "$common/features/details/components/DetailMetaInfo.kt"
 check 'Parents Guide' 'buildImdbParentsGuideUrl' "$common/features/details/components/DetailMetaInfo.kt"
-check 'fork updater' 'FreeTeaspoon' "$common/features/updater/AppUpdater.kt"
+check 'fork updater' 'FreeTeaspoon' "$common/features/updater/AppUpdaterRepository.kt"
 check 'predictive back root ownership' 'PlatformBackHandler\(enabled = rootRouteActive' "$common/MainTabsDestination.kt"
 check 'predictive back transition' 'predictivePopTransitionSpec = \{ nuvioPopTransition\(\)' "$common/MainAppContent.kt"
 check 'Supabase local aliases' 'arrayOf\("NUVIO_SUPABASE_URL", "SUPABASE_URL"\)' composeApp/build.gradle.kts

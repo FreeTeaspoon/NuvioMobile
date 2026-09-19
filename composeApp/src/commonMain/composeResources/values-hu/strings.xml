@@ -1389,9 +1389,6 @@
     <string name="settings_licenses_attributions_premiumize_body">A Nuvio a Premiumize szolgáltatáshoz kapcsolódik a fiók hitelesítése, a felhő könyvtár elérése, a gyorsítótár ellenőrzése és a felhőalapú lejátszási funkciók érdekében. A Nuvio nem áll kapcsolatban a Premiumize-zal, és az nem támogatja azt.</string>
     <string name="settings_licenses_attributions_torbox_title">TorBox</string>
     <string name="settings_licenses_attributions_torbox_body">A Nuvio a TorBox szolgáltatáshoz kapcsolódik a fiók hitelesítése, a felhő könyvtár elérése, a gyorsítótár ellenőrzése és a felhőalapú lejátszási funkciók érdekében. A Nuvio nem áll kapcsolatban a TorBox-szal, és az nem támogatja azt.</string>
-
-
-
     <string name="settings_appearance_app_language_device">Eszköz nyelve</string>
     <string name="settings_show_secret">Érték megjelenítése</string>
     <string name="settings_continue_watching_style_card">Kártya</string>
@@ -2121,8 +2118,14 @@
     <string name="player_torrent_preparing_stream">Torrent stream előkészítése...</string>
     <string name="player_torrent_connecting_status">%1$s · %2$s · %3$s</string>
     <string name="player_torrent_loading_status">%1$s letöltve · %2$s · %3$s</string>
-
-    <!-- Fallbacks for strings not yet translated in this locale. -->
+    <string name="layout_overall_ratings">Általános értékelések</string>
+    <string name="layout_overall_ratings_sub_on">A normál és a TMDB értékelések látszanak.</string>
+    <string name="layout_overall_ratings_sub_off">A normál és a TMDB értékelések rejtve vannak. A részletek oldalon az MDBList szolgáltatóbeállításai élveznek elsőbbséget.</string>
+    <string name="layout_episode_ratings">Epizódértékelések</string>
+    <string name="layout_episode_ratings_sub">Válaszd ki, mely epizódértékelések látszanak.</string>
+    <string name="layout_ratings_show">Megjelenítés</string>
+    <string name="layout_ratings_hide">Elrejtés</string>
+    <string name="layout_ratings_hide_unwatched">Nem látottak elrejtése</string>
     <string name="action_confirm">Confirm</string>
     <string name="action_delete_confirm_message">Are you sure you want to delete it?</string>
     <string name="action_delete_confirm_title">Delete?</string>
@@ -2293,4 +2296,37 @@
     <string name="profile_already_active">You&apos;re already on &quot;%1$s&quot;</string>
     <string name="settings_tracking_anime_id_tvdb">Prefer TVDB</string>
     <string name="settings_tracking_anime_id_tvdb_description">Use TVDB ID to group seasons. More stable than IMDB for anime with per-season IMDB splits.</string>
+    <string name="settings_tmdb_api_key_label">API key</string>
+    <string name="settings_tmdb_api_key_override_description">Use your own TMDB API key, or leave blank to use the default.</string>
+    <string name="settings_tmdb_personal_api_key">Personal API key</string>
+    <string name="updates_channel_title">Update channel</string>
+    <string name="updates_channel_description">Choose the type of app updates to receive</string>
+    <string name="updates_channel_stable">Stable</string>
+    <string name="updates_channel_beta">Beta</string>
+    <string name="updates_channel_stable_description">Intended for everyday use.</string>
+    <string name="updates_channel_beta_description">Early updates that may contain bugs, break features, or behave unexpectedly.</string>
+    <string name="updates_waiting_for_stable">You’ll receive the next stable release when it becomes available</string>
+    <string name="settings_playback_auto_skip_segments">Automatic Skipping</string>
+    <string name="settings_playback_auto_skip_none">None</string>
+    <string name="settings_playback_auto_skip_intro">Intro / Opening</string>
+    <string name="settings_playback_auto_skip_intro_description">Skip intros and anime openings automatically.</string>
+    <string name="settings_playback_auto_skip_recap">Recap</string>
+    <string name="settings_playback_auto_skip_recap_description">Skip recap segments automatically.</string>
+    <string name="settings_playback_auto_skip_outro">Outro / Ending</string>
+    <string name="settings_playback_auto_skip_outro_description">Skip outros and anime endings automatically.</string>
+    <string name="settings_playback_auto_skip_movie_credits">End Credits</string>
+    <string name="settings_playback_auto_skip_movie_credits_description">Skip movie credits, keeping post-credits scenes.</string>
+    <string name="player_skip_movie_credits">Skip Credits</string>
+    <string name="player_skip_to_post_credits">Skip to Post-Credits</string>
+    <string name="settings_playback_legacy_layout">Legacy layout</string>
+    <string name="settings_playback_legacy_layout_description">Use the original player controls.</string>
+    <string name="compose_player_via">Via %1$s</string>
+    <string name="compose_player_episode_code">S%1$d E%2$d</string>
+    <string name="compose_player_more_actions">More controls</string>
+    <string name="compose_player_fewer_actions">Fewer controls</string>
+    <string name="compose_player_speed">Playback speed</string>
+    <string name="compose_player_show_elapsed_time">Show elapsed time</string>
+    <string name="compose_player_show_remaining_time">Show remaining time</string>
+    <string name="compose_player_brightness">Brightness</string>
+    <string name="compose_player_volume">Volume</string>
 </resources>

@@ -127,6 +127,7 @@ fun SettingsScreen(
     requestedPageName: String? = null,
     onRequestedPageConsumed: () -> Unit = {},
     rootActionsEnabled: Boolean = true,
+    isSelectedTab: Boolean = true,
     onNavigatePage: ((pageName: String, title: String) -> Unit)? = null,
     onExternalBack: (() -> Unit)? = null,
     showInternalHeader: Boolean = true,
@@ -376,7 +377,7 @@ fun SettingsScreen(
             onBack = ::navigateBack,
         )
 
-        if (screenActive || page == SettingsPage.Root) {
+        if (isSelectedTab || page == SettingsPage.Root) {
             pageStateHolder.SaveableStateProvider("content") {
                 if (maxWidth >= 768.dp) {
                     TabletSettingsScreen(
