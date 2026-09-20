@@ -13,6 +13,7 @@ import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -80,6 +81,16 @@ private class AndroidPlayerSystemMediaControls(
     private val notificationManager = NotificationManagerCompat.from(context)
     private var controllerProvider: () -> PlayerEngineController? = { null }
     private var notificationSignature: String? = null
+    private var publishedMetadata: MetadataSignature? = null
+
+    private data class MetadataSignature(
+        val title: String?,
+        val subtitle: String?,
+        val artworkUrl: String?,
+        val artwork: Bitmap?,
+        val artworkGeneration: Int?,
+        val durationMs: Long,
+    )
 
     private val session = MediaSession(context, "NuvioPlayer").apply {
         setSessionActivity(context.launchPendingIntent())
@@ -128,7 +139,17 @@ private class AndroidPlayerSystemMediaControls(
 
         activeControls = this
         ensureNotificationChannel()
-        session.setMetadata(snapshot.toMediaMetadata(title, subtitle, artwork))
+        val usableArtwork = artwork?.takeUnless { it.isRecycled }
+        val metadataSignature = MetadataSignature(
+            title, subtitle, artworkUrl, usableArtwork, usableArtwork?.generationId,
+            snapshot.durationMs.coerceAtLeast(0L),
+        )
+        if (publishedMetadata != metadataSignature) {
+            // Position updates must not repeatedly parcel the same artwork.
+            if (publishMetadata(snapshot, title, subtitle, usableArtwork)) {
+                publishedMetadata = metadataSignature
+            }
+        }
         session.setPlaybackState(snapshot.toPlaybackState())
         session.isActive = true
 
@@ -158,10 +179,34 @@ private class AndroidPlayerSystemMediaControls(
         session.release()
     }
 
+    private fun publishMetadata(
+        snapshot: PlayerPlaybackSnapshot,
+        title: String?,
+        subtitle: String?,
+        artwork: Bitmap?,
+    ): Boolean {
+        if (artwork != null) {
+            try {
+                session.setMetadata(snapshot.toMediaMetadata(title, subtitle, artwork))
+                return true
+            } catch (error: RuntimeException) {
+                Log.w("NuvioMediaControls", "Unable to publish artwork; retrying without it", error)
+            }
+        }
+        return try {
+            session.setMetadata(snapshot.toMediaMetadata(title, subtitle, null))
+            true
+        } catch (error: RuntimeException) {
+            Log.w("NuvioMediaControls", "Unable to publish media metadata", error)
+            false
+        }
+    }
+
     private fun clear() {
         session.isActive = false
         session.setPlaybackState(null)
         notificationSignature = null
+        publishedMetadata = null
         notificationManager.cancel(NotificationId)
     }
 
