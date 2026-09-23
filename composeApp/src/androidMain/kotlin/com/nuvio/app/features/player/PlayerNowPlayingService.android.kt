@@ -1,6 +1,7 @@
 package com.nuvio.app.features.player
 
 import android.app.Notification
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
@@ -8,7 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
-import androidx.core.content.IntentCompat
+import com.nuvio.app.R
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.concurrent.ConflatedTaskDispatcher
 import java.util.concurrent.Executors
@@ -17,8 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 internal const val NOW_PLAYING_TAG = "NuvioNowPlaying"
 internal const val NOW_PLAYING_CHANNEL_ID = "nuvio_playback"
 internal const val NOW_PLAYING_NOTIFICATION_ID = 0x4E55
-private const val ACTION_START_FOREGROUND = "com.nuvio.app.nowplaying.START_FOREGROUND"
-private const val EXTRA_START_NOTIFICATION = "com.nuvio.app.nowplaying.START_NOTIFICATION"
+internal const val ACTION_START_FOREGROUND = "com.nuvio.app.nowplaying.START_FOREGROUND"
 
 class PlayerNowPlayingService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
@@ -29,13 +29,9 @@ class PlayerNowPlayingService : Service() {
             return START_NOT_STICKY
         }
 
-        val startNotification = IntentCompat.getParcelableExtra(intent, EXTRA_START_NOTIFICATION, Notification::class.java)
-            ?: PlayerNowPlayingServiceState.notification
-        if (startNotification == null) {
-            stopSelf(startId)
-            return START_NOT_STICKY
-        }
-
+        ensureNowPlayingNotificationChannel(this)
+        val currentNotification = PlayerNowPlayingServiceState.notification
+        val startNotification = currentNotification ?: nowPlayingPlaceholderNotification(this)
         val started = runCatching {
             startForeground(NOW_PLAYING_NOTIFICATION_ID, startNotification)
         }.onFailure { error ->
@@ -46,7 +42,6 @@ class PlayerNowPlayingService : Service() {
             return START_NOT_STICKY
         }
 
-        val currentNotification = PlayerNowPlayingServiceState.notification
         if (currentNotification == null) {
             stopSelf(startId)
         } else if (currentNotification !== startNotification) {
@@ -69,12 +64,10 @@ class PlayerNowPlayingService : Service() {
 
     companion object {
         internal fun publish(context: Context, notification: Notification) {
-            if (!AppFeaturePolicy.mediaPlaybackForegroundServiceEnabled) return
             PlayerNowPlayingServiceController.publish(context.applicationContext, notification)
         }
 
         internal fun hide(context: Context) {
-            if (!AppFeaturePolicy.mediaPlaybackForegroundServiceEnabled) return
             PlayerNowPlayingServiceController.hide(context.applicationContext)
         }
     }
@@ -124,10 +117,9 @@ private object PlayerNowPlayingServiceController {
 
     private fun publishNow(command: PlayerNowPlayingServiceCommand.Publish) {
         if (PlayerNowPlayingServiceState.notification !== command.notification) return
-        if (startRequested.compareAndSet(false, true)) {
+        if (AppFeaturePolicy.mediaPlaybackForegroundServiceEnabled && startRequested.compareAndSet(false, true)) {
             val intent = Intent(command.context, PlayerNowPlayingService::class.java)
                 .setAction(ACTION_START_FOREGROUND)
-                .putExtra(EXTRA_START_NOTIFICATION, command.notification)
             val started = runCatching {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     command.context.startForegroundService(intent)
@@ -155,7 +147,9 @@ private object PlayerNowPlayingServiceController {
         if (PlayerNowPlayingServiceState.notification != null) return
         startRequested.set(false)
         runCatching {
-            command.context.stopService(Intent(command.context, PlayerNowPlayingService::class.java))
+            if (AppFeaturePolicy.mediaPlaybackForegroundServiceEnabled) {
+                command.context.stopService(Intent(command.context, PlayerNowPlayingService::class.java))
+            }
         }.onFailure { error ->
             Log.w(NOW_PLAYING_TAG, "Unable to stop playback service", error)
         }
@@ -171,4 +165,38 @@ private object PlayerNowPlayingServiceController {
 private object PlayerNowPlayingServiceState {
     @Volatile
     var notification: Notification? = null
+}
+
+internal fun nowPlayingPlaceholderNotification(context: Context): Notification {
+    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Notification.Builder(context, NOW_PLAYING_CHANNEL_ID)
+    } else {
+        @Suppress("DEPRECATION")
+        Notification.Builder(context)
+    }
+    return builder
+        .setSmallIcon(R.drawable.ic_notification_small)
+        .setContentTitle("Playback")
+        .setCategory(Notification.CATEGORY_TRANSPORT)
+        .setOngoing(true)
+        .setShowWhen(false)
+        .setOnlyAlertOnce(true)
+        .build()
+}
+
+internal fun ensureNowPlayingNotificationChannel(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    val manager = context.getSystemService(NotificationManager::class.java) ?: return
+    val channel = NotificationChannel(
+        NOW_PLAYING_CHANNEL_ID,
+        "Playback",
+        NotificationManager.IMPORTANCE_LOW,
+    ).apply {
+        description = "Media playback controls"
+        setSound(null, null)
+        enableVibration(false)
+        setShowBadge(false)
+        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+    }
+    manager.createNotificationChannel(channel)
 }

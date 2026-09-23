@@ -255,6 +255,8 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         activeSeasonNumber,
         activeEpisodeNumber,
         activeEpisodeTitle,
+        activeEpisodeThumbnail,
+        activeProviderName,
         poster,
         background,
     ) {
@@ -678,8 +680,9 @@ private fun PlayerScreenRuntime.buildNowPlayingInfo(): PlayerNowPlayingInfo {
             seasonNumber = activeSeasonNumber,
             episodeNumber = activeEpisodeNumber,
             episodeTitle = activeEpisodeTitle,
+            providerName = activeProviderName,
         ),
-        artworkUrl = firstNonBlankUrl(poster, background),
+        artworkUrl = firstNonBlankUrl(activeEpisodeThumbnail, poster, background),
     )
 }
 
@@ -688,21 +691,17 @@ private fun buildNowPlayingSubtitle(
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
+    providerName: String,
 ): String? {
-    if (!isEpisode) return null
-
     val episodeParts = buildList {
-        if (seasonNumber != null && episodeNumber != null) {
+        if (isEpisode && seasonNumber != null && episodeNumber != null) {
             add("S${seasonNumber}E${episodeNumber}")
         }
         episodeTitle?.takeIf { it.isNotBlank() }?.let { add(it) }
+        providerName.takeIf { it.isNotBlank() }?.let { add(it) }
     }
 
-    return when (episodeParts.size) {
-        0 -> null
-        1 -> episodeParts.first()
-        else -> "${episodeParts[0]} - ${episodeParts[1]}"
-    }
+    return episodeParts.takeIf { it.isNotEmpty() }?.joinToString(" - ")
 }
 
 private fun firstNonBlankUrl(vararg values: String?): String? =

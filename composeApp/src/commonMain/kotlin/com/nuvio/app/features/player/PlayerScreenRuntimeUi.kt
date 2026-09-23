@@ -22,30 +22,6 @@ import nuvio.composeapp.generated.resources.*
 internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
     val runtime = this
     BindVideoZoom()
-    PlatformSystemMediaControls(
-        title = title,
-        subtitle = buildString {
-            if (activeSeasonNumber != null && activeEpisodeNumber != null) {
-                append("S$activeSeasonNumber E$activeEpisodeNumber")
-            }
-            activeEpisodeTitle
-                ?.takeIf { it.isNotBlank() }
-                ?.let { episodeTitle ->
-                    if (isNotEmpty()) append(" - ")
-                    append(episodeTitle)
-                }
-            activeProviderName
-                .takeIf { it.isNotBlank() }
-                ?.let { provider ->
-                    if (isNotEmpty()) append(" - ")
-                    append(provider)
-                }
-        },
-        artworkUrl = activeEpisodeThumbnail ?: poster ?: background,
-        controller = playerController,
-        snapshot = playbackSnapshot,
-        enabled = errorMessage == null,
-    )
     val isInPip = rememberIsInPictureInPicture()
     val displayedPositionMs = scrubbingPositionMs ?: playbackSnapshot.positionMs
     val isEpisode = activeSeasonNumber != null && activeEpisodeNumber != null

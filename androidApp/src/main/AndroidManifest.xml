@@ -173,9 +173,6 @@
         <receiver
             android:name="com.nuvio.app.features.downloads.DownloadsNotificationActionReceiver"
             android:exported="false" />
-        <receiver
-            android:name="com.nuvio.app.features.player.PlayerMediaButtonReceiver"
-            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

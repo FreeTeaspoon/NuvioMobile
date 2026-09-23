@@ -1,8 +1,6 @@
 package com.nuvio.app.features.player
 
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -18,7 +16,6 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import com.nuvio.app.R
-import com.nuvio.app.core.build.AppFeaturePolicy
 import java.io.ByteArrayOutputStream
 import java.lang.ref.WeakReference
 import java.net.HttpURLConnection
@@ -29,7 +26,8 @@ import kotlin.math.abs
 
 private const val SEEK_INTERVAL_MS = 10_000L
 private const val MAX_ARTWORK_DOWNLOAD_BYTES = 12 * 1024 * 1024
-private const val MAX_ARTWORK_EDGE_PX = 1_024
+internal const val MAX_ARTWORK_EDGE_PX = 256
+internal const val NOTIFICATION_ARTWORK_EDGE_PX = 128
 
 private const val ACTION_PLAY = "com.nuvio.app.nowplaying.PLAY"
 private const val ACTION_PAUSE = "com.nuvio.app.nowplaying.PAUSE"
@@ -86,10 +84,9 @@ internal class AndroidPlayerNowPlayingController(
     private var metadata: AndroidNowPlayingMetadata? = null
     private var snapshot = PlayerPlaybackSnapshot()
     private var artworkArt: Bitmap? = null
-    private var artworkAlbumArt: Bitmap? = null
-    private var artworkDisplayIcon: Bitmap? = null
     private var artworkNotificationIcon: Bitmap? = null
     private var released = false
+    private var lastPublishedMetadataSignature: String? = null
     private var lastPublishedPositionMs = Long.MIN_VALUE
     private var lastPublishedDurationMs = Long.MIN_VALUE
     private var lastPublishedPlaying: Boolean? = null
@@ -101,9 +98,7 @@ internal class AndroidPlayerNowPlayingController(
         get() = !released && metadata != null
 
     init {
-        if (AppFeaturePolicy.mediaPlaybackForegroundServiceEnabled) {
-            createNotificationChannel(appContext)
-        }
+        ensureNowPlayingNotificationChannel(appContext)
         AndroidNowPlayingActionDispatcher.register(this)
     }
 
@@ -127,9 +122,8 @@ internal class AndroidPlayerNowPlayingController(
 
             if (artworkChanged) {
                 artworkArt = null
-                artworkAlbumArt = null
-                artworkDisplayIcon = null
                 artworkNotificationIcon = null
+                lastPublishedMetadataSignature = null
                 loadArtwork(normalized.artworkUrl)
             }
 
@@ -188,9 +182,8 @@ internal class AndroidPlayerNowPlayingController(
         metadata = null
         snapshot = PlayerPlaybackSnapshot()
         artworkArt = null
-        artworkAlbumArt = null
-        artworkDisplayIcon = null
         artworkNotificationIcon = null
+        lastPublishedMetadataSignature = null
         resetPublishedPlaybackState()
         mediaSession.setMetadata(null)
         mediaSession.setPlaybackState(
@@ -204,6 +197,16 @@ internal class AndroidPlayerNowPlayingController(
 
     private fun publishMetadata() {
         val currentMetadata = metadata ?: return
+        val artwork = artworkArt?.takeIf { !it.isRecycled }
+        val signature = listOf(
+            currentMetadata.title,
+            currentMetadata.subtitle.orEmpty(),
+            currentMetadata.artworkUrl.orEmpty(),
+            artwork?.generationId ?: 0,
+            snapshot.durationMs.coerceAtLeast(0L),
+        ).joinToString("\u0000")
+        if (signature == lastPublishedMetadataSignature) return
+
         val builder = MediaMetadata.Builder()
             .putString(MediaMetadata.METADATA_KEY_TITLE, currentMetadata.title)
             .putString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE, currentMetadata.title)
@@ -217,20 +220,20 @@ internal class AndroidPlayerNowPlayingController(
         }
 
         val base = builder.build()
-        val withArtwork = artworkArt?.takeIf { !it.isRecycled }?.let { art ->
+        val withArtwork = artwork?.let { art ->
             MediaMetadata.Builder(base)
-                .putBitmap(MediaMetadata.METADATA_KEY_ART, art)
-                .apply {
-                    artworkAlbumArt?.takeIf { !it.isRecycled }
-                        ?.let { putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, it) }
-                    artworkDisplayIcon?.takeIf { !it.isRecycled }
-                        ?.let { putBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON, it) }
-                }
+                .putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, art)
                 .build()
         }
 
-        if (withArtwork == null || runCatching { mediaSession.setMetadata(withArtwork) }.isFailure) {
-            runCatching { mediaSession.setMetadata(base) }
+        val published = if (withArtwork != null) {
+            runCatching { mediaSession.setMetadata(withArtwork) }.isSuccess ||
+                runCatching { mediaSession.setMetadata(base) }.isSuccess
+        } else {
+            runCatching { mediaSession.setMetadata(base) }.isSuccess
+        }
+        if (published) {
+            lastPublishedMetadataSignature = signature
         }
     }
 
@@ -285,7 +288,6 @@ internal class AndroidPlayerNowPlayingController(
     }
 
     private fun publishNotification() {
-        if (!AppFeaturePolicy.mediaPlaybackForegroundServiceEnabled) return
         val currentMetadata = metadata ?: return
         val notification = buildNotification(
             context = appContext,
@@ -311,9 +313,10 @@ internal class AndroidPlayerNowPlayingController(
                     return@post
                 }
                 artworkArt = bitmap
-                artworkAlbumArt = bitmap?.let(::copyArtwork)
-                artworkDisplayIcon = bitmap?.let(::copyArtwork)
-                artworkNotificationIcon = bitmap?.let(::copyArtwork)
+                artworkNotificationIcon = bitmap?.let { source ->
+                    scaleArtwork(source, NOTIFICATION_ARTWORK_EDGE_PX)
+                }
+                lastPublishedMetadataSignature = null
                 publishMetadata()
                 publishNotification()
             }
@@ -359,23 +362,6 @@ private object AndroidNowPlayingActionDispatcher {
     fun dispatch(action: String?) {
         controllerRef?.get()?.handleAction(action)
     }
-}
-
-private fun createNotificationChannel(context: Context) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-    val manager = context.getSystemService(NotificationManager::class.java) ?: return
-    val channel = NotificationChannel(
-        NOW_PLAYING_CHANNEL_ID,
-        "Playback",
-        NotificationManager.IMPORTANCE_LOW,
-    ).apply {
-        description = "Media playback controls"
-        setSound(null, null)
-        enableVibration(false)
-        setShowBadge(false)
-        lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-    }
-    manager.createNotificationChannel(channel)
 }
 
 private fun buildNotification(
@@ -491,10 +477,23 @@ private fun downloadArtwork(urlString: String): Bitmap? {
     }
 }
 
-private fun copyArtwork(bitmap: Bitmap): Bitmap? =
-    if (bitmap.isRecycled) null else runCatching { bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false) }.getOrNull()
+internal fun scaleArtwork(bitmap: Bitmap, maxEdgePx: Int): Bitmap? {
+    if (bitmap.isRecycled || maxEdgePx <= 0) return null
+    val longestEdge = maxOf(bitmap.width, bitmap.height)
+    if (longestEdge <= maxEdgePx) {
+        return if (bitmap.config == Bitmap.Config.ARGB_8888) {
+            bitmap
+        } else {
+            runCatching { bitmap.copy(Bitmap.Config.ARGB_8888, false) }.getOrNull() ?: bitmap
+        }
+    }
+    val scale = maxEdgePx.toFloat() / longestEdge.toFloat()
+    val width = (bitmap.width * scale).toInt().coerceAtLeast(1)
+    val height = (bitmap.height * scale).toInt().coerceAtLeast(1)
+    return runCatching { Bitmap.createScaledBitmap(bitmap, width, height, true) }.getOrNull()
+}
 
-private fun decodeSampledBitmap(bytes: ByteArray, maxEdgePx: Int): Bitmap? {
+internal fun decodeSampledBitmap(bytes: ByteArray, maxEdgePx: Int): Bitmap? {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
     if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
@@ -508,5 +507,6 @@ private fun decodeSampledBitmap(bytes: ByteArray, maxEdgePx: Int): Bitmap? {
         inSampleSize = sampleSize
         inPreferredConfig = Bitmap.Config.ARGB_8888
     }
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+    val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: return null
+    return scaleArtwork(decoded, maxEdgePx) ?: decoded
 }
