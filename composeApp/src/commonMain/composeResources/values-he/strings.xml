@@ -2064,8 +2064,6 @@
     <string name="settings_tmdb_module_more_like_this_description">TMDB recommendation backdrops on detail page</string>
     <string name="settings_tmdb_module_networks_description">Networks with logos from TMDB</string>
     <string name="settings_tmdb_module_production_companies_description">Production companies from TMDB</string>
-    <string name="settings_tmdb_module_release_dates">Release dates</string>
-    <string name="settings_tmdb_module_release_dates_description">Use TMDB broadcaster air dates instead of precise add-on release times</string>
     <string name="settings_tmdb_module_season_posters_description">Use TMDB season posters in the metadata screen season selector for series.</string>
     <string name="settings_tmdb_module_trailers_description">Trailer candidates from TMDB videos for the detail trailer section</string>
     <string name="settings_tmdb_preferred_language_description">TMDB metadata language for title, logo, and enabled fields</string>
@@ -2318,4 +2316,14 @@
     <string name="compose_player_show_remaining_time">Show remaining time</string>
     <string name="compose_player_brightness">Brightness</string>
     <string name="compose_player_volume">Volume</string>
+    <string name="action_collapse">Collapse</string>
+    <string name="action_expand">Expand</string>
+    <string name="settings_custom_poster_active">Custom poster source active</string>
+    <string name="settings_custom_poster_clear">Clear</string>
+    <string name="settings_custom_poster_description">Provide a poster URL pattern from an external service. If a placeholder has no value for a given title, the original poster is used instead.</string>
+    <string name="settings_custom_poster_none">No pattern configured</string>
+    <string name="settings_custom_poster_placeholder">https://example.com/poster?id={id}&amp;id_type={id_type}&amp;type={type}</string>
+    <string name="settings_custom_poster_save">Save</string>
+    <string name="settings_custom_poster_title">CUSTOM POSTER SOURCE</string>
+    <string name="settings_tracking_not_connected">Not connected</string>
 </resources>

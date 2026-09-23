@@ -1190,8 +1190,6 @@
     <string name="settings_tmdb_module_credits_description">Cast met foto's, regisseur en schrijver van TMDB</string>
     <string name="settings_tmdb_module_details">Details</string>
     <string name="settings_tmdb_module_details_description">Speelduur, status, land en taal van TMDB</string>
-    <string name="settings_tmdb_module_release_dates">Releasedata</string>
-    <string name="settings_tmdb_module_release_dates_description">Gebruik uitzenddata van TMDB-zenders in plaats van exacte releasetijden van add-ons</string>
     <string name="settings_tmdb_module_episodes">Afleveringen</string>
     <string name="settings_tmdb_module_episodes_description">Afleveringstitels, overzichten, miniaturen en speelduur van TMDB</string>
     <string name="settings_tmdb_module_more_like_this">Meer zoals dit</string>
@@ -2361,4 +2359,14 @@
     <string name="compose_player_show_remaining_time">Show remaining time</string>
     <string name="compose_player_brightness">Brightness</string>
     <string name="compose_player_volume">Volume</string>
+    <string name="action_collapse">Collapse</string>
+    <string name="action_expand">Expand</string>
+    <string name="settings_custom_poster_active">Custom poster source active</string>
+    <string name="settings_custom_poster_clear">Clear</string>
+    <string name="settings_custom_poster_description">Provide a poster URL pattern from an external service. If a placeholder has no value for a given title, the original poster is used instead.</string>
+    <string name="settings_custom_poster_none">No pattern configured</string>
+    <string name="settings_custom_poster_placeholder">https://example.com/poster?id={id}&amp;id_type={id_type}&amp;type={type}</string>
+    <string name="settings_custom_poster_save">Save</string>
+    <string name="settings_custom_poster_title">CUSTOM POSTER SOURCE</string>
+    <string name="settings_tracking_not_connected">Not connected</string>
 </resources>

@@ -16,9 +16,8 @@ composeApp/src/androidMain/kotlin/com/nuvio/app/features/downloads/DownloadWebDa
 composeApp/src/androidMain/kotlin/com/nuvio/app/features/downloads/DownloadsForegroundService.kt
 composeApp/src/androidMain/kotlin/com/nuvio/app/features/downloads/DownloadsTransferWorker.kt
 composeApp/src/androidMain/kotlin/com/nuvio/app/features/p2p/P2pStreamingEngine.android.kt
+# Now-playing controller and service intentionally retain fork artwork and foreground-service fixes.
 composeApp/src/androidMain/kotlin/com/nuvio/app/features/player/PlayerLaunchStorage.android.kt
-composeApp/src/androidMain/kotlin/com/nuvio/app/features/player/PlayerNowPlayingController.android.kt
-composeApp/src/androidMain/kotlin/com/nuvio/app/features/player/PlayerNowPlayingService.android.kt
 composeApp/src/androidMain/kotlin/com/nuvio/app/features/player/PlayerPictureInPictureManager.android.kt
 composeApp/src/androidMain/kotlin/com/nuvio/app/features/player/PlayerPlatformEffects.android.kt
 composeApp/src/androidMain/kotlin/com/nuvio/app/features/player/PlayerSettingsStorage.android.kt

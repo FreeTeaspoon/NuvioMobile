@@ -2249,8 +2249,6 @@
     <string name="settings_simkl_visit">Visit Simkl</string>
     <string name="settings_stream_background_description">Choose the background for the streams screen.</string>
     <string name="settings_stream_background_title">Background</string>
-    <string name="settings_tmdb_module_release_dates">Release dates</string>
-    <string name="settings_tmdb_module_release_dates_description">Use TMDB broadcaster air dates instead of precise add-on release times</string>
     <string name="settings_tracking_anime_id_dialog_subtitle">This controls how anime series are identified. Choosing MAL or Kitsu gives each season its own entry instead of grouping under one IMDB ID.</string>
     <string name="settings_tracking_anime_id_dialog_title">Anime ID preference</string>
     <string name="settings_tracking_anime_id_imdb">Prefer IMDB</string>
@@ -2356,4 +2354,14 @@
     <string name="compose_player_show_remaining_time">Show remaining time</string>
     <string name="compose_player_brightness">Brightness</string>
     <string name="compose_player_volume">Volume</string>
+    <string name="action_collapse">Collapse</string>
+    <string name="action_expand">Expand</string>
+    <string name="settings_custom_poster_active">Custom poster source active</string>
+    <string name="settings_custom_poster_clear">Clear</string>
+    <string name="settings_custom_poster_description">Provide a poster URL pattern from an external service. If a placeholder has no value for a given title, the original poster is used instead.</string>
+    <string name="settings_custom_poster_none">No pattern configured</string>
+    <string name="settings_custom_poster_placeholder">https://example.com/poster?id={id}&amp;id_type={id_type}&amp;type={type}</string>
+    <string name="settings_custom_poster_save">Save</string>
+    <string name="settings_custom_poster_title">CUSTOM POSTER SOURCE</string>
+    <string name="settings_tracking_not_connected">Not connected</string>
 </resources>

@@ -1190,8 +1190,6 @@
     <string name="settings_tmdb_module_credits_description">Usar creadores, directores, guionistas y fotos del reparto de TMDB.</string>
     <string name="settings_tmdb_module_details">Detalles</string>
     <string name="settings_tmdb_module_details_description">Usar información de estreno, duración, clasificación por edad, estado, país e idioma de TMDB.</string>
-    <string name="settings_tmdb_module_release_dates">Fechas de estreno</string>
-    <string name="settings_tmdb_module_release_dates_description">Usar las fechas de emisión de la cadena de TMDB en lugar de las horas exactas de lanzamiento del complemento</string>
     <string name="settings_tmdb_module_episodes">Episodios</string>
     <string name="settings_tmdb_module_episodes_description">Usar títulos, miniaturas, descripciones y duraciones de episodios de TMDB para series.</string>
     <string name="settings_tmdb_module_more_like_this">Más como esto</string>
@@ -2337,4 +2335,14 @@ Utilizas esta función bajo tu propia responsabilidad. P2P se puede desactivar e
     <string name="compose_player_show_remaining_time">Show remaining time</string>
     <string name="compose_player_brightness">Brightness</string>
     <string name="compose_player_volume">Volume</string>
+    <string name="action_collapse">Collapse</string>
+    <string name="action_expand">Expand</string>
+    <string name="settings_custom_poster_active">Custom poster source active</string>
+    <string name="settings_custom_poster_clear">Clear</string>
+    <string name="settings_custom_poster_description">Provide a poster URL pattern from an external service. If a placeholder has no value for a given title, the original poster is used instead.</string>
+    <string name="settings_custom_poster_none">No pattern configured</string>
+    <string name="settings_custom_poster_placeholder">https://example.com/poster?id={id}&amp;id_type={id_type}&amp;type={type}</string>
+    <string name="settings_custom_poster_save">Save</string>
+    <string name="settings_custom_poster_title">CUSTOM POSTER SOURCE</string>
+    <string name="settings_tracking_not_connected">Not connected</string>
 </resources>
