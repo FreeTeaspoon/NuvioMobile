@@ -65,17 +65,18 @@ if [[ -n "$previous_ref" ]]; then
         exit 1
     }
 else
-    base_version="${tag%.*}"
     while IFS= read -r candidate; do
         [[ -n "$candidate" ]] || continue
         [[ "$candidate" == "$tag" ]] && continue
+        [[ "$candidate" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
         if git merge-base --is-ancestor "$candidate" "$to_ref" 2>/dev/null; then
             previous_ref="$candidate"
             break
         fi
-    done < <(git tag --list "${base_version}.*" --sort=-v:refname)
+    done < <(git tag --list --sort=-v:refname)
 
-    if [[ -z "$previous_ref" ]] && git cat-file -e "refs/tags/${base_version}^{commit}" 2>/dev/null; then
+    base_version="${tag%.*}"
+    if [[ -z "$previous_ref" ]] && git merge-base --is-ancestor "$base_version" "$to_ref" 2>/dev/null; then
         previous_ref="$base_version"
     fi
 fi
