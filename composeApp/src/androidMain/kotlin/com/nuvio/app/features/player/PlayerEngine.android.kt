@@ -7,7 +7,6 @@ import android.text.SpannableString
 import android.net.Uri
 import android.util.Log
 import android.util.TypedValue
-import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Build
@@ -1293,16 +1292,9 @@ private class NuvioLibmpvView(
     @Volatile
     private var latestSubtitleTracks: List<LibmpvTrack> = emptyList()
 
-    init {
-        holder.setFormat(PixelFormat.RGBX_8888)
-    }
-
     override fun initOptions() {
         setVo(videoOutput.mpvValue)
         mpv.setOptionString("profile", "fast")
-        mpv.setOptionString("gpu-api", "opengl")
-        mpv.setOptionString("opengl-es", "yes")
-        mpv.setOptionString("swapchain-depth", "2")
         mpv.setOptionString("hwdec", if (hardwareDecodingEnabled) "auto" else "no")
         if (yuv420pEnabled) {
             mpv.setOptionString("vf", "format=yuv420p")
