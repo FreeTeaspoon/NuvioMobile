@@ -97,7 +97,7 @@ enum class AndroidLibmpvVideoOutput(
     Gpu(
         mpvValue = "gpu",
         label = "GPU",
-        description = "Compatibility renderer for devices that have issues with GPU next.",
+        description = "Traditional libmpv renderer with broad Android compatibility.",
     ),
 }
 
