@@ -554,6 +554,9 @@
     <string name="settings_advanced_remember_last_profile_description">Remember last selected profile at startup</string>
     <string name="settings_advanced_sentry_reports">Sentry Crash Reports</string>
     <string name="settings_advanced_sentry_reports_subtitle">Send crash and ANR reports with safe context. On by default.</string>
+    <string name="settings_advanced_share_crash_report">Share Last Crash Report</string>
+    <string name="settings_advanced_share_crash_report_subtitle">Export the last Android crash or ANR record from this device.</string>
+    <string name="settings_advanced_share_crash_report_empty">No crash or ANR record is available yet.</string>
     <string name="sentry_enable_dialog_title">Turn on crash reports?</string>
     <string name="sentry_enable_dialog_subtitle">Crash reports help identify device-specific failures without asking you to reproduce the issue with ADB logs.</string>
     <string name="sentry_disable_dialog_title">Turn off crash reports?</string>

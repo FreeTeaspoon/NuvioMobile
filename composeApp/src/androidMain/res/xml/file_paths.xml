@@ -9,4 +9,7 @@
     <files-path
         name="nuvio_downloads"
         path="downloads/" />
+    <files-path
+        name="nuvio_diagnostics"
+        path="diagnostics/" />
 </paths>

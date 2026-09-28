@@ -12,7 +12,6 @@ import android.graphics.Typeface
 import android.os.Build
 import android.os.SystemClock
 import android.util.AttributeSet
-import android.view.SurfaceHolder
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -1312,29 +1311,6 @@ private class NuvioLibmpvView(
 
     override fun postInitOptions() = Unit
 
-    override fun surfaceCreated(holder: SurfaceHolder) {
-        if (released.get()) return
-        super.surfaceCreated(holder)
-    }
-
-    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        if (released.get()) return
-        super.surfaceChanged(holder, format, width, height)
-    }
-
-    override fun surfaceDestroyed(holder: SurfaceHolder) {
-        runCatching {
-            mpv.setPropertyBoolean("pause", true)
-            mpv.setPropertyString("vo", "null")
-            mpv.setPropertyString("force-window", "no")
-        }
-        if (released.get()) {
-            runCatching { mpv.detachSurface() }
-        } else {
-            super.surfaceDestroyed(holder)
-        }
-    }
-
     override fun observeProperties() {
         val props = mapOf(
             "pause" to MPV.mpvFormat.MPV_FORMAT_FLAG,
@@ -1659,12 +1635,6 @@ private class NuvioLibmpvView(
     fun releaseMpv() {
         if (!released.compareAndSet(false, true)) return
         holder.removeCallback(this)
-        runCatching {
-            mpv.setPropertyBoolean("pause", true)
-            mpv.setPropertyString("vo", "null")
-            mpv.setPropertyString("force-window", "no")
-            mpv.detachSurface()
-        }
         mpvScope.launch {
             runCatching { mpv.destroy() }
             mpvDispatcher.close()

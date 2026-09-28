@@ -42,6 +42,9 @@ import nuvio.composeapp.generated.resources.settings_advanced_remember_last_prof
 import nuvio.composeapp.generated.resources.settings_advanced_section_cache
 import nuvio.composeapp.generated.resources.settings_advanced_section_diagnostics
 import nuvio.composeapp.generated.resources.settings_advanced_section_startup
+import nuvio.composeapp.generated.resources.settings_advanced_share_crash_report
+import nuvio.composeapp.generated.resources.settings_advanced_share_crash_report_empty
+import nuvio.composeapp.generated.resources.settings_advanced_share_crash_report_subtitle
 import nuvio.composeapp.generated.resources.settings_advanced_sentry_reports
 import nuvio.composeapp.generated.resources.settings_advanced_sentry_reports_subtitle
 import nuvio.composeapp.generated.resources.sentry_disable_dialog_subtitle
@@ -79,10 +82,10 @@ internal fun LazyListScope.advancedSettingsContent(
             }
         }
     }
-    if (SentrySettingsRepository.isSupported) {
+    if (SentrySettingsRepository.isSupported || CrashDiagnosticsPlatform.isSupported) {
         item {
             val sentryEnabledFlow = remember {
-                SentrySettingsRepository.ensureLoaded()
+                if (SentrySettingsRepository.isSupported) SentrySettingsRepository.ensureLoaded()
                 SentrySettingsRepository.enabled
             }
             val sentryEnabled by sentryEnabledFlow.collectAsStateWithLifecycle()
@@ -93,17 +96,33 @@ internal fun LazyListScope.advancedSettingsContent(
                 isTablet = isTablet,
             ) {
                 SettingsGroup(isTablet = isTablet) {
-                    SettingsSwitchRow(
-                        title = stringResource(Res.string.settings_advanced_sentry_reports),
-                        description = stringResource(Res.string.settings_advanced_sentry_reports_subtitle),
-                        checked = sentryEnabled,
-                        isTablet = isTablet,
-                        onCheckedChange = { showSentryDialog = true },
-                    )
+                    if (SentrySettingsRepository.isSupported) {
+                        SettingsSwitchRow(
+                            title = stringResource(Res.string.settings_advanced_sentry_reports),
+                            description = stringResource(Res.string.settings_advanced_sentry_reports_subtitle),
+                            checked = sentryEnabled,
+                            isTablet = isTablet,
+                            onCheckedChange = { showSentryDialog = true },
+                        )
+                    }
+                    if (CrashDiagnosticsPlatform.isSupported) {
+                        SettingsNavigationRow(
+                            title = stringResource(Res.string.settings_advanced_share_crash_report),
+                            description = stringResource(
+                                if (CrashDiagnosticsPlatform.hasReport) {
+                                    Res.string.settings_advanced_share_crash_report_subtitle
+                                } else {
+                                    Res.string.settings_advanced_share_crash_report_empty
+                                },
+                            ),
+                            isTablet = isTablet,
+                            onClick = CrashDiagnosticsPlatform::shareLatestReport,
+                        )
+                    }
                 }
             }
 
-            if (showSentryDialog) {
+            if (showSentryDialog && SentrySettingsRepository.isSupported) {
                 SentrySettingsDialog(
                     enabled = sentryEnabled,
                     onConfirm = {

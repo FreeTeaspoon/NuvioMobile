@@ -154,6 +154,7 @@ jobs:
           TRAKT_REDIRECT_URI: ${{ secrets.TRAKT_REDIRECT_URI || vars.TRAKT_REDIRECT_URI || 'nuvio://auth/trakt' }}
           SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID || vars.SIMKL_CLIENT_ID }}
           SIMKL_REDIRECT_URI: ${{ secrets.SIMKL_REDIRECT_URI || vars.SIMKL_REDIRECT_URI || 'nuvio://auth/simkl' }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN || vars.SENTRY_DSN }}
           ANDROID_RELEASE_KEYSTORE_BASE64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_BASE64 }}
           ANDROID_RELEASE_STORE_PASSWORD: ${{ secrets.ANDROID_RELEASE_STORE_PASSWORD }}
           ANDROID_RELEASE_KEY_ALIAS: ${{ secrets.ANDROID_RELEASE_KEY_ALIAS }}
@@ -185,6 +186,7 @@ jobs:
             printf 'TRAKT_REDIRECT_URI=%s\n' "${TRAKT_REDIRECT_URI}"
             printf 'SIMKL_CLIENT_ID=%s\n' "${SIMKL_CLIENT_ID}"
             printf 'SIMKL_REDIRECT_URI=%s\n' "${SIMKL_REDIRECT_URI}"
+            printf 'SENTRY_DSN=%s\n' "${SENTRY_DSN}"
             printf 'INTRODB_API_URL=https://api.introdb.app\n'
             printf 'NUVIO_RELEASE_STORE_FILE=release-key.jks\n'
             printf 'NUVIO_RELEASE_STORE_PASSWORD=%s\n' "${ANDROID_RELEASE_STORE_PASSWORD}"
